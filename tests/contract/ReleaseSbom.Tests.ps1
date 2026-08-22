@@ -120,8 +120,10 @@ Describe 'Release SBOM attestation workflow' {
         $content | Should -Match 'New-ReleaseSbom\.ps1'
         $content | Should -Match "actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26"
         $content | Should -Match 'subject-path: dist/CopyGitHubRepo-\*\.zip'
-        $content | Should -Match 'sbom-path: dist/CopyGitHubRepo-\*\.spdx\.json'
+        $content | Should -Match '(?m)^\s*id: sbom\s*$'
         $content | Should -Match '\$sbomPath = "dist/CopyGitHubRepo-\$version\.spdx\.json"'
+        $content | Should -Match '"sbom_path=\$sbomPath" >> \$env:GITHUB_OUTPUT'
+        $content | Should -Match 'sbom-path: \$\{\{ steps\.sbom\.outputs\.sbom_path \}\}'
         $content | Should -Match 'gh release create \$tag \$artifactPath \$checksumPath \$sbomPath'
     }
 

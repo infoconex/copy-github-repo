@@ -118,7 +118,7 @@ Describe 'Release SBOM attestation workflow' {
         $content | Should -Match 'id-token: write'
         $content | Should -Match 'attestations: write'
         $content | Should -Match 'New-ReleaseSbom\.ps1'
-        $content | Should -Match "actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26"
+        $content | Should -Match "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6"
         $content | Should -Match 'subject-path: dist/CopyGitHubRepo-\*\.zip'
         $content | Should -Match '(?m)^\s*id: sbom\s*$'
         $content | Should -Match '\$sbomPath = "dist/CopyGitHubRepo-\$version\.spdx\.json"'

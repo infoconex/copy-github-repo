@@ -114,11 +114,13 @@ jobs:
           ./build/New-PowerShellGalleryPackage.ps1 | Format-List
 
       - name: Generate SPDX release SBOM
+        id: sbom
         shell: pwsh
         run: |
           $manifest = Import-PowerShellDataFile ./src/CopyGitHubRepo/CopyGitHubRepo.psd1
           $version = [string] $manifest.ModuleVersion
           $artifactPath = "dist/CopyGitHubRepo-$version.zip"
+          $sbomPath = "dist/CopyGitHubRepo-$version.spdx.json"
           $createdAt = [datetimeoffset] (& git show -s --format=%cI '${{ github.sha }}').Trim()
           if ($LASTEXITCODE -ne 0) {
               throw 'Unable to resolve the release commit timestamp for deterministic SBOM generation.'
@@ -129,6 +131,8 @@ jobs:
               -SourceCommit '${{ github.sha }}' `
               -CreatedAt $createdAt | Format-List
 
+          "sbom_path=$sbomPath" >> $env:GITHUB_OUTPUT
+
       - name: Attest release artifact provenance
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
         with:
@@ -138,7 +142,7 @@ jobs:
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
         with:
           subject-path: dist/CopyGitHubRepo-*.zip
-          sbom-path: dist/CopyGitHubRepo-*.spdx.json
+          sbom-path: ${{ steps.sbom.outputs.sbom_path }}
 
       - name: Verify PowerShell Gallery publishing commands
         shell: pwsh

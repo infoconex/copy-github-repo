@@ -1,0 +1,22 @@
+function Get-CgrObjectProperty {
+    [CmdletBinding()]
+    param(
+        [AllowNull()]
+        [object] $InputObject,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string] $Name
+    )
+
+    if ($null -eq $InputObject) {
+        return $null
+    }
+
+    $property = $InputObject.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $null
+    }
+
+    return $property.Value
+}

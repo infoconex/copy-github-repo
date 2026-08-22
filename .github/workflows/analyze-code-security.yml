@@ -1,0 +1,158 @@
+name: Analyze Code Security
+
+'on':
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'build/**'
+      - 'tests/**'
+      - '*.ps1'
+      - 'PSScriptAnalyzerSecuritySettings.psd1'
+      - '.github/workflows/analyze-code-security.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'build/**'
+      - 'tests/**'
+      - '*.ps1'
+      - 'PSScriptAnalyzerSecuritySettings.psd1'
+      - '.github/workflows/analyze-code-security.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: analyze-code-security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze PowerShell Code Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Resolve PowerShell module cache
+        id: powershell-cache
+        shell: pwsh
+        run: |
+          $modulePath = $env:PSModulePath -split [IO.Path]::PathSeparator | Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($modulePath)) {
+              throw 'Unable to resolve the current-user PowerShell module path.'
+          }
+
+          "module-path=$modulePath" >> $env:GITHUB_OUTPUT
+          "version=$($PSVersionTable.PSVersion)" >> $env:GITHUB_OUTPUT
+
+      - name: Restore development dependency cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ steps.powershell-cache.outputs.module-path }}
+          key: powershell-dev-${{ runner.os }}-${{ steps.powershell-cache.outputs.version }}-${{ hashFiles('build/DevelopmentDependencies.psd1') }}
+
+      - name: Install security analysis dependencies
+        shell: pwsh
+        run: ./build/Install-DevelopmentDependencies.ps1
+
+      - name: Run PowerShell security analyzer
+        shell: pwsh
+        run: |
+          $targets = @(
+              './src'
+              './build'
+              './copy-github-repo.ps1'
+              './install.ps1'
+              './install-prerelease.ps1'
+              './install-release.ps1'
+              './uninstall.ps1'
+          )
+
+          $findings = @(
+              foreach ($target in $targets) {
+                  $parameters = @{
+                      Path = $target
+                      Settings = './PSScriptAnalyzerSecuritySettings.psd1'
+                  }
+                  if ((Get-Item -LiteralPath $target) -is [System.IO.DirectoryInfo]) {
+                      $parameters.Recurse = $true
+                  }
+                  Invoke-ScriptAnalyzer @parameters
+              }
+          )
+
+          if ($findings.Count -gt 0) {
+              $findings | Format-Table -AutoSize
+              throw "$($findings.Count) code-security analyzer finding(s) detected."
+          }
+
+      - name: Run security behavior tests
+        shell: pwsh
+        run: |
+          $testSources = @(
+              './tests/contract/PSScriptAnalyzerSecurityRules.Tests.ps1'
+              './tests/unit/GitHubApiAdapters.Tests.ps1'
+              './tests/unit/HostName.Tests.ps1'
+              './tests/integration/ExistingDestinationReplacement.Tests.ps1'
+              './tests/integration/Recovery.Tests.ps1'
+              './tests/integration/RetryIdempotency.Tests.ps1'
+              './tests/integration/RiskFailurePaths.Tests.ps1'
+              './tests/integration/SameNameSafety.Tests.ps1'
+              './tests/integration/StaleStateSafety.Tests.ps1'
+          )
+          $executionRoot = Join-Path $PWD '.security-test-execution'
+          $resultsRoot = Join-Path $PWD 'TestResults'
+
+          New-Item -Path $executionRoot -ItemType Directory -Force | Out-Null
+          New-Item -Path $resultsRoot -ItemType Directory -Force | Out-Null
+
+          try {
+              $staged = @(
+                  foreach ($source in $testSources) {
+                      if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+                          throw "Security test '$source' does not exist."
+                      }
+                      $destination = Join-Path $executionRoot (Split-Path -Leaf $source)
+                      Copy-Item -LiteralPath $source -Destination $destination -Force
+                      $destination
+                  }
+              )
+
+              foreach ($supportFile in @(Get-ChildItem -LiteralPath ./tests -Filter '*.psd1' -File)) {
+                  Copy-Item -LiteralPath $supportFile.FullName -Destination (Join-Path $executionRoot $supportFile.Name) -Force
+              }
+
+              $configuration = New-PesterConfiguration
+              $configuration.Run.Path = $staged
+              $configuration.Run.PassThru = $true
+              $configuration.Output.Verbosity = 'Detailed'
+              $configuration.TestResult.Enabled = $true
+              $configuration.TestResult.OutputPath = Join-Path $resultsRoot 'security-tests.xml'
+              $result = Invoke-Pester -Configuration $configuration
+          }
+          finally {
+              Remove-Item -LiteralPath $executionRoot -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
+          if ($result.FailedCount -gt 0) {
+              throw "$($result.FailedCount) security behavior test(s) failed."
+          }
+
+      - name: Upload security test diagnostics
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: code-security-test-results
+          path: TestResults/
+          if-no-files-found: warn
+          retention-days: 14

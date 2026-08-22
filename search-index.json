@@ -1,0 +1,21 @@
+---
+layout: null
+permalink: /assets/search-index.json
+---
+[
+{% assign first_search_item = true %}
+{% for section in site.data.navigation %}
+  {% for item in section.items %}
+    {% assign search_page = site.pages | where: 'path', item.path | first %}
+    {% if search_page %}
+      {% unless first_search_item %},{% endunless %}
+      {
+        "title": {{ item.title | jsonify }},
+        "url": {{ search_page.url | relative_url | jsonify }},
+        "text": {{ search_page.content | markdownify | strip_html | normalize_whitespace | jsonify }}
+      }
+      {% assign first_search_item = false %}
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+]

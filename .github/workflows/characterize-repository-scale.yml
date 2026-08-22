@@ -1,0 +1,164 @@
+name: Characterize Repository Scale
+
+'on':
+  workflow_dispatch:
+    inputs:
+      include_combined:
+        description: 'Also run the combined stress profile'
+        required: false
+        default: false
+        type: boolean
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/characterize-repository-scale.yml'
+      - 'build/New-ScaleCharacterizationFixture.ps1'
+      - 'build/Measure-ScaleCharacterization.ps1'
+      - 'tests/integration/ScaleCharacterizationHarness.Tests.ps1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: characterize-repository-scale-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  local-git-substrate:
+    name: Characterize ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: baseline
+            commits: 100
+            branches: 10
+            tags: 25
+            tracked_files: 20
+            file_size_kib: 16
+            lfs_files: 0
+            lfs_file_size_kib: 1024
+          - profile: history-heavy
+            commits: 1000
+            branches: 20
+            tags: 100
+            tracked_files: 20
+            file_size_kib: 16
+            lfs_files: 0
+            lfs_file_size_kib: 1024
+          - profile: ref-heavy
+            commits: 250
+            branches: 200
+            tags: 250
+            tracked_files: 20
+            file_size_kib: 16
+            lfs_files: 0
+            lfs_file_size_kib: 1024
+          - profile: content-heavy
+            commits: 100
+            branches: 10
+            tags: 25
+            tracked_files: 100
+            file_size_kib: 2048
+            lfs_files: 0
+            lfs_file_size_kib: 1024
+          - profile: lfs-heavy
+            commits: 100
+            branches: 10
+            tags: 25
+            tracked_files: 20
+            file_size_kib: 16
+            lfs_files: 50
+            lfs_file_size_kib: 10240
+          - profile: combined
+            commits: 1000
+            branches: 200
+            tags: 250
+            tracked_files: 100
+            file_size_kib: 2048
+            lfs_files: 50
+            lfs_file_size_kib: 10240
+
+    steps:
+      - name: Skip combined profile unless requested
+        if: ${{ matrix.profile == 'combined' && !(github.event_name == 'workflow_dispatch' && inputs.include_combined == true) }}
+        shell: bash
+        run: echo 'Combined profile intentionally skipped. Re-run manually with include_combined=true after individual dimensions are understood.'
+
+      - name: Check out repository
+        if: ${{ matrix.profile != 'combined' || (github.event_name == 'workflow_dispatch' && inputs.include_combined == true) }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Verify prerequisites
+        if: ${{ matrix.profile != 'combined' || (github.event_name == 'workflow_dispatch' && inputs.include_combined == true) }}
+        shell: pwsh
+        run: |
+          $PSVersionTable.PSVersion.ToString()
+          git --version
+          git lfs version
+
+      - name: Generate fixture
+        if: ${{ matrix.profile != 'combined' || (github.event_name == 'workflow_dispatch' && inputs.include_combined == true) }}
+        shell: pwsh
+        run: |
+          $parameters = @{
+              Path = 'artifacts/scale/fixtures/${{ matrix.profile }}'
+              CommitCount = ${{ matrix.commits }}
+              BranchCount = ${{ matrix.branches }}
+              TagCount = ${{ matrix.tags }}
+              TrackedFileCount = ${{ matrix.tracked_files }}
+              FileSizeKiB = ${{ matrix.file_size_kib }}
+              LfsFileCount = ${{ matrix.lfs_files }}
+              LfsFileSizeKiB = ${{ matrix.lfs_file_size_kib }}
+          }
+          ./build/New-ScaleCharacterizationFixture.ps1 @parameters |
+              ConvertTo-Json -Depth 6 |
+              Set-Content -LiteralPath 'artifacts/scale/${{ matrix.profile }}-fixture.json' -Encoding utf8
+
+      - name: Measure local Git substrate
+        if: ${{ matrix.profile != 'combined' || (github.event_name == 'workflow_dispatch' && inputs.include_combined == true) }}
+        shell: pwsh
+        run: |
+          ./build/Measure-ScaleCharacterization.ps1 `
+              -FixturePath 'artifacts/scale/fixtures/${{ matrix.profile }}' `
+              -OutputPath 'artifacts/scale/${{ matrix.profile }}-measurement.json' |
+              Out-Null
+
+          $measurement = Get-Content -LiteralPath 'artifacts/scale/${{ matrix.profile }}-measurement.json' -Raw | ConvertFrom-Json
+          $summary = @(
+              '### ${{ matrix.profile }} local Git characterization',
+              '',
+              '| Observation | Value |',
+              '| --- | ---: |',
+              "| Commits | $($measurement.Fixture.CommitCount) |",
+              "| Branches | $($measurement.Fixture.BranchCount) |",
+              "| Tags | $($measurement.Fixture.TagCount) |",
+              "| Working tree bytes | $($measurement.Fixture.WorkingTreeBytes) |",
+              "| .git bytes | $($measurement.Fixture.GitDirectoryBytes) |",
+              "| LFS object bytes | $($measurement.Fixture.LfsObjectBytes) |",
+              "| Snapshot clone ms | $($measurement.Stages.SnapshotLocalClone.ElapsedMilliseconds) |",
+              "| Snapshot workspace bytes | $($measurement.Stages.SnapshotLocalClone.WorkspaceBytes) |",
+              "| FullHistory mirror ms | $($measurement.Stages.FullHistoryMirrorClone.ElapsedMilliseconds) |",
+              "| FullHistory workspace bytes | $($measurement.Stages.FullHistoryMirrorClone.WorkspaceBytes) |",
+              "| Characterization workspace bytes | $($measurement.LocalResources.CharacterizationWorkspaceBytes) |",
+              '',
+              '> Observed characterization only. These values are not a supported limit, SLA, or blocking CI threshold.'
+          )
+          $summary | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+
+      - name: Upload characterization evidence
+        if: ${{ (matrix.profile != 'combined' || (github.event_name == 'workflow_dispatch' && inputs.include_combined == true)) && always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: scale-characterization-${{ matrix.profile }}
+          path: |
+            artifacts/scale/${{ matrix.profile }}-fixture.json
+            artifacts/scale/${{ matrix.profile }}-measurement.json
+          if-no-files-found: warn
+          retention-days: 30

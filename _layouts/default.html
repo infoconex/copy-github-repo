@@ -1,0 +1,147 @@
+{% assign asset_version = site.time | date: '%Y%m%d%H%M%S' %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d1117">
+  <script>
+    (() => {
+      try {
+        const savedTheme = localStorage.getItem('copy-github-repo-theme');
+        if (savedTheme && savedTheme !== 'light') document.documentElement.dataset.theme = savedTheme;
+      } catch {
+        // Local storage can be unavailable in hardened browser contexts.
+      }
+    })();
+  </script>
+  {% seo %}
+  <link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}?v={{ asset_version }}">
+  <link rel="stylesheet" href="{{ '/assets/css/site-layout.css' | relative_url }}?v={{ asset_version }}">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <header class="site-header">
+    <div class="site-header__inner">
+      <button class="nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="site-sidebar">
+        <span></span><span></span><span></span>
+      </button>
+
+      <a class="brand" href="{{ '/' | relative_url }}" aria-label="Copy GitHub Repository home">
+        <img class="brand__image" src="{{ '/assets/images/hero_icon.png' | relative_url }}" alt="">
+        <span class="brand__text">
+          <strong>Copy GitHub Repository</strong>
+          <span>PowerShell migration toolkit</span>
+        </span>
+      </a>
+
+      <div class="site-search" data-site-search data-search-index="{{ '/assets/search-index.json' | relative_url }}?v={{ asset_version }}">
+        <label class="sr-only" for="site-search-input">Search documentation</label>
+        <input id="site-search-input" type="search" placeholder="Search documentation" autocomplete="off" aria-controls="site-search-results" aria-expanded="false">
+        <div class="site-search__results" id="site-search-results" role="listbox" hidden></div>
+      </div>
+
+      <nav class="header-actions" aria-label="Repository links">
+        <label class="theme-picker">
+          <span class="sr-only">Theme</span>
+          <select id="theme-picker" aria-label="Choose site theme">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="sepia">Sepia</option>
+          </select>
+        </label>
+        <a class="header-link" href="https://github.com/infoconex/copy-github-repo">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="reading-progress" aria-hidden="true"><div class="reading-progress__bar"></div></div>
+
+  <div class="site-shell">
+    <aside class="sidebar" id="site-sidebar">
+      <div class="sidebar__inner">
+        <nav class="docs-nav" aria-label="Documentation navigation">
+          {% for section in site.data.navigation %}
+            <div class="nav-section" data-nav-group>
+              <span class="nav-section__title">{{ section.title }}</span>
+              {% if section.items %}
+                <ul>
+                  {% for item in section.items %}
+                    {% assign nav_page = site.pages | where: 'path', item.path | first %}
+                    {% if nav_page %}
+                      {% assign item_url = nav_page.url | relative_url %}
+                      <li data-nav-item>
+                        <a class="{% if page.url == nav_page.url %}is-active{% endif %}" href="{{ item_url }}">{{ item.title }}</a>
+                      </li>
+                    {% endif %}
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </nav>
+        <div class="sidebar-footer">Safe migrations. Explicit authority. Verifiable outcomes.</div>
+      </div>
+    </aside>
+
+    <div class="sidebar-backdrop" data-nav-close></div>
+
+    <main class="content-wrap" id="main-content">
+      <article class="content-card"><div class="content-prose">{{ content }}</div></article>
+      <footer class="site-footer">
+        <span>Copy GitHub Repository</span><span aria-hidden="true">·</span>
+        <a href="https://github.com/infoconex/copy-github-repo">View source on GitHub</a>
+      </footer>
+    </main>
+  </div>
+
+  <button class="back-to-top" type="button" aria-label="Back to top" title="Back to top">↑</button>
+
+  {% if content contains 'language-mermaid' %}
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.10.1/dist/mermaid.esm.min.mjs';
+    const expandIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const collapseIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9H4V4M15 9h5V4M9 15H4v5M15 15h5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const blocks = document.querySelectorAll('pre > code.language-mermaid');
+
+    blocks.forEach((codeBlock) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'mermaid-diagram';
+      const fullscreenButton = document.createElement('button');
+      fullscreenButton.className = 'mermaid-diagram__fullscreen';
+      fullscreenButton.type = 'button';
+      fullscreenButton.innerHTML = expandIcon;
+      fullscreenButton.setAttribute('aria-label', 'View diagram full screen');
+      fullscreenButton.setAttribute('title', 'View diagram full screen');
+      const mermaidBlock = document.createElement('div');
+      mermaidBlock.className = 'mermaid';
+      mermaidBlock.textContent = codeBlock.textContent;
+      fullscreenButton.addEventListener('click', async () => {
+        try {
+          if (document.fullscreenElement === wrapper) await document.exitFullscreen();
+          else await wrapper.requestFullscreen();
+        } catch {
+          // Fullscreen can be unavailable in embedded browser contexts.
+        }
+      });
+      document.addEventListener('fullscreenchange', () => {
+        const isFullscreen = document.fullscreenElement === wrapper;
+        fullscreenButton.innerHTML = isFullscreen ? collapseIcon : expandIcon;
+        fullscreenButton.setAttribute('aria-label', isFullscreen ? 'Exit full screen' : 'View diagram full screen');
+        fullscreenButton.setAttribute('title', isFullscreen ? 'Exit full screen' : 'View diagram full screen');
+      });
+      wrapper.append(fullscreenButton, mermaidBlock);
+      codeBlock.parentElement.replaceWith(wrapper);
+    });
+
+    if (blocks.length > 0) {
+      const theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'base';
+      mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme });
+      await mermaid.run({ querySelector: '.mermaid' });
+    }
+  </script>
+  {% endif %}
+  <script src="{{ '/assets/js/site.js' | relative_url }}?v={{ asset_version }}" defer></script>
+</body>
+</html>

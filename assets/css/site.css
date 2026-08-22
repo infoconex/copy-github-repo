@@ -1,0 +1,55 @@
+:root {
+  --bg: #f6f8fa;
+  --surface: #ffffff;
+  --surface-muted: #f6f8fa;
+  --text: #1f2328;
+  --text-muted: #59636e;
+  --heading: #0d1117;
+  --border: #d0d7de;
+  --border-soft: #d8dee4;
+  --accent: #0969da;
+  --accent-strong: #0550ae;
+  --accent-soft: #ddf4ff;
+  --header: #0d1117;
+  --header-text: #f0f6fc;
+  --code-bg: #0d1117;
+  --code-text: #e6edf3;
+  --inline-code-bg: #eff1f3;
+  --sidebar-width: 286px;
+  --header-height: 68px;
+  --content-width: 980px;
+  --shadow: 0 12px 36px rgba(31, 35, 40, 0.08);
+  --radius: 14px;
+  --reading-progress: 0%;
+}
+:root[data-theme="dark"] { --bg:#010409; --surface:#0d1117; --surface-muted:#161b22; --text:#e6edf3; --text-muted:#9da7b3; --heading:#f0f6fc; --border:#30363d; --border-soft:#21262d; --accent:#58a6ff; --accent-strong:#79c0ff; --accent-soft:#0c2d4a; --inline-code-bg:#161b22; --code-bg:#010409; --shadow:0 12px 36px rgba(0,0,0,.28); }
+:root[data-theme="sepia"] { --bg:#f4ecd8; --surface:#fffaf0; --surface-muted:#f7efd9; --text:#453b2f; --text-muted:#756858; --heading:#2f271f; --border:#d7c9ad; --border-soft:#e4d9c3; --accent:#7a4d16; --accent-strong:#5d370e; --accent-soft:#f0dfbd; --inline-code-bg:#eee2cb; --code-bg:#28231d; --code-text:#f8eedc; }
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; scroll-padding-top:calc(var(--header-height) + 24px); }
+body { margin:0; background:var(--bg); color:var(--text); font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:16px; line-height:1.7; -webkit-font-smoothing:antialiased; }
+a { color:var(--accent); text-underline-offset:3px; } a:hover { color:var(--accent-strong); } img { max-width:100%; height:auto; } button,input,select { font:inherit; }
+:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+.skip-link { position:fixed; top:8px; left:8px; z-index:1000; padding:9px 13px; border-radius:8px; background:var(--surface); color:var(--text); transform:translateY(-150%); } .skip-link:focus { transform:translateY(0); }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.site-shell { min-height:calc(100vh - var(--header-height)); }
+.content-wrap { min-width:0; padding:42px clamp(20px,5vw,64px) 32px; }
+.content-card { width:min(100%,var(--content-width)); margin:0 auto; padding:clamp(28px,5vw,58px); background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--radius); box-shadow:var(--shadow); }
+.content-prose > :first-child { margin-top:0; }
+.content-prose h1,.content-prose h2,.content-prose h3,.content-prose h4 { color:var(--heading); line-height:1.25; scroll-margin-top:calc(var(--header-height) + 24px); }
+.content-prose h1 { margin:0 0 28px; font-size:clamp(2.1rem,5vw,3.2rem); letter-spacing:-.035em; }
+.content-prose h2 { margin:48px 0 17px; padding-top:6px; font-size:clamp(1.5rem,3vw,1.95rem); }
+.content-prose h3 { margin:34px 0 13px; font-size:1.28rem; }
+.content-prose p { margin:0 0 20px; }
+.content-prose ul,.content-prose ol { margin:0 0 24px; padding-left:1.4rem; } .content-prose li { margin:6px 0; }
+.content-prose blockquote { margin:26px 0; padding:16px 20px; border-left:4px solid var(--accent); border-radius:0 10px 10px 0; background:var(--surface-muted); color:var(--text); } .content-prose blockquote > :last-child { margin-bottom:0; }
+.content-prose code { padding:.15em .38em; border-radius:6px; background:var(--inline-code-bg); font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.9em; }
+.content-prose pre,.content-prose .highlight pre { margin:26px 0; padding:20px; overflow-x:auto; border:1px solid var(--border); border-radius:12px; background:var(--code-bg); color:var(--code-text); line-height:1.55; tab-size:4; }
+.content-prose pre code,.content-prose .highlight pre code { padding:0; background:transparent; color:inherit; white-space:pre; } .content-prose .highlight { background:transparent; }
+.content-prose table { display:block; width:100%; margin:28px 0; overflow-x:auto; border-spacing:0; border-collapse:separate; border:1px solid var(--border); border-radius:10px; }
+.content-prose th,.content-prose td { padding:12px 14px; border-right:1px solid var(--border); border-bottom:1px solid var(--border); text-align:left; vertical-align:top; } .content-prose th { background:var(--surface-muted); color:var(--heading); } .content-prose tr:last-child td { border-bottom:0; } .content-prose th:last-child,.content-prose td:last-child { border-right:0; }
+.content-prose img { display:block; margin:28px auto; border-radius:12px; }
+.site-footer { width:min(100%,var(--content-width)); margin:24px auto 0; display:flex; justify-content:center; gap:8px; color:var(--text-muted); font-size:13px; } .site-footer a { color:inherit; }
+.highlight .c,.highlight .cm,.highlight .c1,.highlight .cs { color:#8b949e; font-style:italic; } .highlight .k,.highlight .kc,.highlight .kd,.highlight .kn,.highlight .kp,.highlight .kr,.highlight .kt { color:#ff7b72; } .highlight .s,.highlight .s1,.highlight .s2,.highlight .sb,.highlight .sc,.highlight .sd,.highlight .se,.highlight .sh,.highlight .si,.highlight .sx { color:#a5d6ff; } .highlight .na,.highlight .nb,.highlight .nc,.highlight .nd,.highlight .ne,.highlight .nf,.highlight .nx { color:#d2a8ff; } .highlight .m,.highlight .mf,.highlight .mh,.highlight .mi,.highlight .mo,.highlight .il { color:#79c0ff; } .highlight .o,.highlight .ow { color:#ff7b72; } .highlight .nv,.highlight .vc,.highlight .vg,.highlight .vi { color:#ffa657; } .highlight .p { color:#c9d1d9; } .highlight .gd { color:#ffa198; background:#490202; } .highlight .gi { color:#56d364; background:#0f5323; }
+@media (max-width:980px) { .content-wrap { padding:26px 16px 28px; } .content-card { padding:clamp(24px,6vw,44px); } }
+@media (max-width:640px) { :root { --header-height:62px; } .content-wrap { padding:14px 8px 24px; } .content-card { padding:22px 18px 30px; border-radius:10px; } .content-prose h1 { font-size:2rem; } .site-footer { flex-wrap:wrap; } }
+@media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *,*::before,*::after { scroll-behavior:auto !important; transition-duration:.01ms !important; animation-duration:.01ms !important; } }

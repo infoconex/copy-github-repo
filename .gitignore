@@ -1,0 +1,7 @@
+.idea/
+.vscode/
+TestResults/
+dist/
+coverage.xml
+*.log
+*.tmp

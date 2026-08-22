@@ -1,0 +1,257 @@
+name: Publish Release
+
+'on':
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Stable release tag to create, for example v0.1.0
+        required: true
+        type: string
+      confirm_publish:
+        description: Confirm that this run may create the tag and publish the stable release
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  release_context:
+    name: Validate Release Context
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      release_tag: ${{ steps.context.outputs.release_tag }}
+
+    steps:
+      - name: Check out release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Validate release source and requested tag
+        id: context
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $eventName = '${{ github.event_name }}'
+          $tag = if ($eventName -eq 'workflow_dispatch') {
+              '${{ inputs.tag }}'
+          }
+          else {
+              '${{ github.ref_name }}'
+          }
+
+          if ($eventName -eq 'workflow_dispatch') {
+              if ('${{ inputs.confirm_publish }}' -ne 'true') {
+                  throw 'Manual stable publication requires confirm_publish to be selected.'
+              }
+
+              if ('${{ github.ref }}' -cne 'refs/heads/main') {
+                  throw "Manual stable publication must be dispatched from the main branch. Current ref: '${{ github.ref }}'."
+              }
+
+              $currentMainSha = (& gh api 'repos/${{ github.repository }}/git/ref/heads/main' --jq '.object.sha').Trim()
+              if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($currentMainSha)) {
+                  throw 'Unable to resolve the current main branch SHA before manual publication.'
+              }
+              if ($currentMainSha -cne '${{ github.sha }}') {
+                  throw "Manual release commit '${{ github.sha }}' is no longer the current main SHA '$currentMainSha'. Start a new release run from the latest main branch."
+              }
+          }
+
+          ./build/Test-ReleaseReadiness.ps1 `
+              -Tag $tag `
+              -RequireEmptyUnreleased | Format-List
+
+          "release_tag=$tag" >> $env:GITHUB_OUTPUT
+
+  validate_quality:
+    name: Validate Release Commit
+    needs: release_context
+    permissions:
+      contents: read
+    uses: ./.github/workflows/validate-project-quality.yml
+
+  release:
+    name: Publish Release
+    needs:
+      - release_context
+      - validate_quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: powershell-gallery
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Validate stable release readiness
+        shell: pwsh
+        run: |
+          ./build/Test-ReleaseReadiness.ps1 `
+              -Tag '${{ needs.release_context.outputs.release_tag }}' `
+              -RequireEmptyUnreleased | Format-List
+
+      - name: Build release artifacts
+        shell: pwsh
+        run: |
+          ./build/New-ReleaseArtifact.ps1 | Format-List
+          ./build/New-PowerShellGalleryPackage.ps1 | Format-List
+
+      - name: Generate SPDX release SBOM
+        shell: pwsh
+        run: |
+          $manifest = Import-PowerShellDataFile ./src/CopyGitHubRepo/CopyGitHubRepo.psd1
+          $version = [string] $manifest.ModuleVersion
+          $artifactPath = "dist/CopyGitHubRepo-$version.zip"
+          $createdAt = [datetimeoffset] (& git show -s --format=%cI '${{ github.sha }}').Trim()
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Unable to resolve the release commit timestamp for deterministic SBOM generation.'
+          }
+
+          ./build/New-ReleaseSbom.ps1 `
+              -ArtifactPath $artifactPath `
+              -SourceCommit '${{ github.sha }}' `
+              -CreatedAt $createdAt | Format-List
+
+      - name: Attest release artifact provenance
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-path: dist/CopyGitHubRepo-*.zip
+
+      - name: Attest release SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-path: dist/CopyGitHubRepo-*.zip
+          sbom-path: dist/CopyGitHubRepo-*.spdx.json
+
+      - name: Verify PowerShell Gallery publishing commands
+        shell: pwsh
+        run: |
+          Import-Module Microsoft.PowerShell.PSResourceGet -ErrorAction Stop
+          Get-Command Find-PSResource, Publish-PSResource -ErrorAction Stop | Out-Null
+
+      - name: Reject duplicate PowerShell Gallery version
+        shell: pwsh
+        run: |
+          $manifest = Import-PowerShellDataFile ./src/CopyGitHubRepo/CopyGitHubRepo.psd1
+          $version = [string] $manifest.ModuleVersion
+          $existing = @(Find-PSResource `
+              -Name CopyGitHubRepo `
+              -Version $version `
+              -Repository PSGallery `
+              -ErrorAction Stop)
+          if ($existing.Count -gt 0) {
+              throw "CopyGitHubRepo $version already exists in PSGallery. Publication stopped because released package versions are immutable. Use a new module version and tag."
+          }
+
+      - name: Reject duplicate GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ needs.release_context.outputs.release_tag }}'
+
+          & gh release view $tag --json tagName 1>$null 2>$null
+          if ($LASTEXITCODE -eq 0) {
+              throw "Stable GitHub release '$tag' already exists. Publication stopped because stable release assets are immutable. Use a new version and tag; release repair is not part of the normal publication workflow."
+          }
+
+      - name: Ensure manual release tag
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ needs.release_context.outputs.release_tag }}'
+          $expectedCommit = '${{ github.sha }}'
+
+          & gh api "repos/${{ github.repository }}/git/ref/tags/$tag" 1>$null 2>$null
+          if ($LASTEXITCODE -eq 0) {
+              $existingCommit = (& gh api "repos/${{ github.repository }}/commits/$tag" --jq '.sha').Trim()
+              if ($LASTEXITCODE -ne 0 -or $existingCommit -cne $expectedCommit) {
+                  throw "Existing tag '$tag' does not resolve to approved release commit '$expectedCommit'. Publication stopped."
+              }
+
+              Write-Host "Tag '$tag' already resolves to approved release commit '$expectedCommit'; reusing it."
+              return
+          }
+
+          $manifest = Import-PowerShellDataFile ./src/CopyGitHubRepo/CopyGitHubRepo.psd1
+          $version = [string] $manifest.ModuleVersion
+          $tagObjectJson = & gh api `
+              --method POST `
+              "repos/${{ github.repository }}/git/tags" `
+              -f "tag=$tag" `
+              -f "message=CopyGitHubRepo $version" `
+              -f "object=$expectedCommit" `
+              -f 'type=commit'
+          if ($LASTEXITCODE -ne 0) {
+              throw "Unable to create annotated tag object '$tag' for approved release commit '$expectedCommit'."
+          }
+
+          $tagObject = $tagObjectJson | ConvertFrom-Json
+          if ([string]::IsNullOrWhiteSpace([string] $tagObject.sha)) {
+              throw "GitHub did not return an annotated tag object SHA for '$tag'."
+          }
+
+          & gh api `
+              --method POST `
+              "repos/${{ github.repository }}/git/refs" `
+              -f "ref=refs/tags/$tag" `
+              -f "sha=$($tagObject.sha)" | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+              throw "Unable to create tag ref 'refs/tags/$tag'."
+          }
+
+          $createdCommit = (& gh api "repos/${{ github.repository }}/commits/$tag" --jq '.sha').Trim()
+          if ($LASTEXITCODE -ne 0 -or $createdCommit -cne $expectedCommit) {
+              throw "Created tag '$tag' did not resolve back to approved release commit '$expectedCommit'."
+          }
+
+      - name: Publish PowerShell Gallery package
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:PSGALLERY_API_KEY)) {
+              throw 'The powershell-gallery environment must provide the PSGALLERY_API_KEY secret.'
+          }
+
+          Publish-PSResource `
+              -Path ./dist/PSGallery/CopyGitHubRepo `
+              -Repository PSGallery `
+              -ApiKey $env:PSGALLERY_API_KEY `
+              -ErrorAction Stop
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $manifest = Import-PowerShellDataFile ./src/CopyGitHubRepo/CopyGitHubRepo.psd1
+          $version = [string] $manifest.ModuleVersion
+          $tag = '${{ needs.release_context.outputs.release_tag }}'
+          $artifactPath = "dist/CopyGitHubRepo-$version.zip"
+          $checksumPath = "$artifactPath.sha256"
+          $sbomPath = "dist/CopyGitHubRepo-$version.spdx.json"
+
+          & gh release create $tag $artifactPath $checksumPath $sbomPath --title "CopyGitHubRepo $version" --generate-notes --verify-tag
+          if ($LASTEXITCODE -ne 0) {
+              throw "GitHub release publication failed for '$tag'. Existing stable release assets were not modified."
+          }

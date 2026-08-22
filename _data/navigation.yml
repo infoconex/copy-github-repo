@@ -1,0 +1,132 @@
+- title: Home
+  items:
+    - title: Overview
+      path: README.md
+    - title: Documentation
+      path: docs/README.md
+    - title: Documentation Strategy
+      path: docs/engineering/documentation-strategy.md
+    - title: Changelog
+      path: CHANGELOG.md
+
+- title: Use the Product
+  items:
+    - title: Overview
+      path: docs/user/README.md
+    - title: User Guide
+      path: docs/user/user-guide.md
+    - title: Troubleshooting & Recovery
+      path: docs/user/troubleshooting-recovery.md
+    - title: Retry & Idempotency
+      path: docs/user/retry-idempotency.md
+    - title: Interruption & Signals
+      path: docs/user/interruption-signal-handling.md
+    - title: Host Support
+      path: docs/user/host-support.md
+    - title: Support & Compatibility
+      path: docs/user/support-policy.md
+    - title: Snapshot Release Safety
+      path: docs/user/snapshot-release-safety.md
+    - title: Manual Snapshot Procedure
+      path: docs/user/manual-process.md
+
+- title: Command Reference
+  items:
+    - title: Overview
+      path: docs/reference/README.md
+    - title: Command Index
+      path: docs/reference/commands/README.md
+    - title: Start-CopyGitHubRepositoryWizard
+      path: docs/reference/commands/Start-CopyGitHubRepositoryWizard.md
+    - title: Copy-GitHubRepository
+      path: docs/reference/commands/Copy-GitHubRepository.md
+    - title: Get-GitHubRepository
+      path: docs/reference/commands/Get-GitHubRepository.md
+    - title: Test-GitHubRepositoryMigration
+      path: docs/reference/commands/Test-GitHubRepositoryMigration.md
+
+- title: Understand the Product
+  items:
+    - title: Overview
+      path: docs/product/README.md
+    - title: Product Journeys & Behavior
+      path: docs/product/product-model.md
+    - title: Product Contract
+      path: docs/product/product-contract.md
+    - title: Non-functional Requirements
+      path: docs/product/non-functional-requirements.md
+    - title: Accessibility
+      path: docs/product/accessibility.md
+    - title: Architecture
+      path: docs/product/architecture.md
+    - title: Architecture Decisions
+      path: docs/product/adr/README.md
+    - title: Command Design
+      path: docs/product/command-design.md
+    - title: Wizard Contract
+      path: docs/product/wizard-contract.md
+
+- title: Engineering & Maintenance
+  items:
+    - title: Overview
+      path: docs/engineering/README.md
+    - title: Contributing
+      path: CONTRIBUTING.md
+    - title: Governance & Ownership
+      path: docs/engineering/governance.md
+    - title: Maintainer Guide
+      path: docs/engineering/maintainer-guide.md
+    - title: Engineering Principles
+      path: docs/engineering/engineering-principles.md
+    - title: PowerShell Style Guide
+      path: docs/engineering/powershell-style-guide.md
+    - title: Source Documentation
+      path: docs/engineering/source-code-documentation.md
+    - title: Quality Strategy
+      path: docs/engineering/quality-strategy.md
+    - title: Scale Characterization
+      path: docs/engineering/scale-characterization.md
+    - title: GitHub API Retry Policy
+      path: docs/engineering/github-api-retry-policy.md
+
+- title: Security & Assurance
+  items:
+    - title: Overview
+      path: docs/security/README.md
+    - title: Software Assurance Review
+      path: docs/security/software-assurance.md
+    - title: Security Policy
+      path: SECURITY.md
+    - title: Security Architecture
+      path: docs/security/security-architecture.md
+    - title: Installation Security
+      path: docs/security/installation-security.md
+    - title: Vulnerability Applicability & VEX
+      path: docs/security/vulnerability-applicability.md
+    - title: Repository Security Baseline
+      path: docs/security/repository-security-baseline.md
+    - title: Dependency Monitoring
+      path: docs/security/dependency-monitoring.md
+    - title: Release SBOM & Attestations
+      path: docs/security/release-sbom.md
+    - title: Code of Conduct
+      path: CODE_OF_CONDUCT.md
+    - title: License
+      path: LICENSE
+
+- title: Release & Operations
+  items:
+    - title: Overview
+      path: docs/release/README.md
+    - title: Release Readiness
+      path: docs/release/release-readiness.md
+    - title: Release Runbook
+      path: docs/release/release-runbook.md
+    - title: Versioning
+      path: docs/release/versioning.md
+    - title: Publishing
+      path: docs/release/publishing.md
+    - title: GitHub Pages Deployment
+      path: docs/release/pages-deployment.md
+    - title: Incident Response
+      path: docs/release/incident-response.md

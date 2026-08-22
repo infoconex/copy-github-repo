@@ -1,0 +1,118 @@
+name: Validate Documentation
+
+'on':
+  push:
+    branches:
+      - main
+    paths:
+      - '_config.yml'
+      - '_data/**'
+      - '_layouts/**'
+      - 'assets/**'
+      - 'search-index.json'
+      - 'docs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'CODE_OF_CONDUCT.md'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      - 'LICENSE'
+      - 'build/DevelopmentDependencies.psd1'
+      - 'build/Install-DevelopmentDependencies.ps1'
+      - 'build/Test-Documentation.ps1'
+      - 'build/Test-GeneratedSite.ps1'
+      - 'tests/contract/**'
+      - '.github/workflows/validate-documentation.yml'
+      - '.github/workflows/deploy-documentation-site.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '_config.yml'
+      - '_data/**'
+      - '_layouts/**'
+      - 'assets/**'
+      - 'search-index.json'
+      - 'docs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'CODE_OF_CONDUCT.md'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      - 'LICENSE'
+      - 'build/DevelopmentDependencies.psd1'
+      - 'build/Install-DevelopmentDependencies.ps1'
+      - 'build/Test-Documentation.ps1'
+      - 'build/Test-GeneratedSite.ps1'
+      - 'tests/contract/**'
+      - '.github/workflows/validate-documentation.yml'
+      - '.github/workflows/deploy-documentation-site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-documentation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Resolve PowerShell module cache
+        id: powershell-cache
+        shell: pwsh
+        run: |
+          $modulePath = $env:PSModulePath -split [IO.Path]::PathSeparator | Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($modulePath)) {
+              throw 'Unable to resolve the current-user PowerShell module path.'
+          }
+
+          "module-path=$modulePath" >> $env:GITHUB_OUTPUT
+          "version=$($PSVersionTable.PSVersion)" >> $env:GITHUB_OUTPUT
+
+      - name: Restore development dependency cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ steps.powershell-cache.outputs.module-path }}
+          key: powershell-dev-${{ runner.os }}-${{ steps.powershell-cache.outputs.version }}-${{ hashFiles('build/DevelopmentDependencies.psd1') }}
+
+      - name: Install test dependencies
+        shell: pwsh
+        run: ./build/Install-DevelopmentDependencies.ps1
+
+      - name: Run documentation validation
+        shell: pwsh
+        run: ./build/Test-Documentation.ps1
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
+
+      - name: Build site with Jekyll
+        uses: actions/jekyll-build-pages@44a6e6beabd48582f863aeeb6cb2151cc1716697
+        with:
+          source: ./
+          destination: ./_site
+
+      - name: Validate generated site integrity
+        shell: pwsh
+        run: ./build/Test-GeneratedSite.ps1
+
+      - name: Upload test diagnostics
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: documentation-test-results
+          path: TestResults/
+          if-no-files-found: warn
+          retention-days: 14

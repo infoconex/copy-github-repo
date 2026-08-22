@@ -1,0 +1,42 @@
+title: Copy GitHub Repository
+description: Safe, testable GitHub repository migration using PowerShell.
+url: https://infoconex.github.io
+baseurl: /copy-github-repo
+repository: infoconex/copy-github-repo
+
+markdown: kramdown
+highlighter: rouge
+
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-relative-links
+
+relative_links:
+  enabled: true
+  collections: true
+
+# Apply the documentation layout to existing Markdown without requiring
+# front matter in every repository document.
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - build
+  - src
+  - tests
+  - tools
+  - install.ps1
+  - install-release.ps1
+  - install-prerelease.ps1
+  - uninstall.ps1
+  - copy-github-repo.ps1
+  - PSScriptAnalyzerSettings.psd1

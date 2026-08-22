@@ -1,0 +1,198 @@
+name: Monitor Dependencies
+
+'on':
+  schedule:
+    - cron: '17 15 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monitor-dependencies-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    name: Monitor Development Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Check PowerShell Gallery freshness and security advisories
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+
+          $dependencies = Import-PowerShellDataFile -LiteralPath ./build/DevelopmentDependencies.psd1
+          $monitoring = Import-PowerShellDataFile -LiteralPath ./build/DevelopmentDependencyMonitoring.psd1
+          $findings = [System.Collections.Generic.List[string]]::new()
+
+          foreach ($dependencyName in @($dependencies.Keys | Sort-Object)) {
+              if (-not $monitoring.ContainsKey($dependencyName)) {
+                  throw "Development dependency '$dependencyName' has no monitoring policy."
+              }
+
+              $pinnedVersionText = [string] $dependencies[$dependencyName]
+              $policy = $monitoring[$dependencyName]
+              $reviewedVersionText = [string] $policy.ReviewedLatestStableVersion
+              $pinnedVersion = [version] $pinnedVersionText
+              $reviewedVersion = [version] $reviewedVersionText
+
+              $escapedDependencyName = $dependencyName.Replace("'", "''")
+              $galleryUri = "https://www.powershellgallery.com/api/v2/FindPackagesById()?id='$escapedDependencyName'"
+              $stableVersions = [System.Collections.Generic.List[version]]::new()
+
+              while (-not [string]::IsNullOrWhiteSpace($galleryUri)) {
+                  $galleryResponse = Invoke-WebRequest -Method Get -Uri $galleryUri -UseBasicParsing -ErrorAction Stop
+                  $galleryFeed = [xml] $galleryResponse.Content
+
+                  foreach ($entry in @($galleryFeed.feed.entry)) {
+                      $isPrereleaseNode = $entry.properties.IsPrerelease
+                      $isPrereleaseText = if ($isPrereleaseNode -is [System.Xml.XmlElement]) {
+                          $isPrereleaseNode.InnerText
+                      }
+                      else {
+                          [string] $isPrereleaseNode
+                      }
+
+                      $isPrerelease = $false
+                      if (-not [bool]::TryParse($isPrereleaseText, [ref] $isPrerelease)) {
+                          throw "PowerShell Gallery entry for $dependencyName contained invalid IsPrerelease value '$isPrereleaseText'."
+                      }
+
+                      if ($isPrerelease) {
+                          continue
+                      }
+
+                      $versionNode = $entry.properties.Version
+                      $versionText = if ($versionNode -is [System.Xml.XmlElement]) {
+                          $versionNode.InnerText
+                      }
+                      else {
+                          [string] $versionNode
+                      }
+
+                      if ([string]::IsNullOrWhiteSpace($versionText)) {
+                          throw "PowerShell Gallery stable entry for $dependencyName did not contain a version."
+                      }
+
+                      try {
+                          $stableVersions.Add([version] $versionText)
+                      }
+                      catch {
+                          throw "PowerShell Gallery returned an invalid stable version '$versionText' for $dependencyName."
+                      }
+                  }
+
+                  $nextLinkNode = @(
+                      $galleryFeed.feed.link |
+                          Where-Object { [string] $_.rel -eq 'next' } |
+                          Select-Object -First 1
+                  )
+                  $galleryUri = if ($nextLinkNode.Count -eq 0) {
+                      $null
+                  }
+                  else {
+                      [string] $nextLinkNode[0].href
+                  }
+              }
+
+              if ($stableVersions.Count -eq 0) {
+                  throw "PowerShell Gallery returned no stable versions for $dependencyName."
+              }
+
+              $latestVersion = [version] ($stableVersions | Sort-Object -Descending | Select-Object -First 1)
+              Write-Host "$dependencyName freshness: pinned=$pinnedVersionText; latest-stable=$latestVersion; reviewed-latest=$reviewedVersionText"
+
+              if ($pinnedVersion -gt $latestVersion) {
+                  throw "$dependencyName is pinned to $pinnedVersionText, which is newer than the stable version returned by PowerShell Gallery ($latestVersion)."
+              }
+
+              if ($latestVersion -gt $reviewedVersion) {
+                  $findings.Add("FRESHNESS: $dependencyName has a newer stable release ($latestVersion) than the last reviewed release ($reviewedVersionText).")
+              }
+
+              $headers = @{
+                  Accept = 'application/vnd.github+json'
+                  Authorization = "Bearer $env:GITHUB_TOKEN"
+                  'X-GitHub-Api-Version' = '2022-11-28'
+                  'User-Agent' = 'CopyGitHubRepo-Dependency-Monitor'
+              }
+              $advisoryEcosystem = [string] $policy.AdvisoryEcosystem
+              $advisoryPackage = [string] $policy.AdvisoryPackage
+              if ([string]::IsNullOrWhiteSpace($advisoryEcosystem) -or [string]::IsNullOrWhiteSpace($advisoryPackage)) {
+                  throw "Development dependency '$dependencyName' has incomplete advisory lookup metadata."
+              }
+
+              $encodedEcosystem = [uri]::EscapeDataString($advisoryEcosystem)
+              $encodedPackage = [uri]::EscapeDataString($advisoryPackage)
+              $publishedAdvisories = @(
+                  foreach ($advisoryType in @('reviewed', 'unreviewed')) {
+                      $advisoryUri = "https://api.github.com/advisories?type=$advisoryType&ecosystem=$encodedEcosystem&affects=$encodedPackage&per_page=100"
+                      $advisoryResponse = Invoke-RestMethod -Method Get -Uri $advisoryUri -Headers $headers
+                      foreach ($advisoryItem in @($advisoryResponse)) {
+                          $advisoryItem
+                      }
+                  }
+              )
+              $reviewedAdvisoryIds = @($policy.ReviewedAdvisoryIds)
+              $unreviewedAdvisoryIds = @(
+                  @(
+                      foreach ($advisory in $publishedAdvisories) {
+                          if ($null -eq $advisory) {
+                              continue
+                          }
+
+                          $ghsaIdProperty = $advisory.PSObject.Properties['ghsa_id']
+                          if ($null -eq $ghsaIdProperty) {
+                              $messageProperty = $advisory.PSObject.Properties['message']
+                              $detail = if ($null -ne $messageProperty -and -not [string]::IsNullOrWhiteSpace([string] $messageProperty.Value)) {
+                                  " GitHub message: '$([string] $messageProperty.Value)'."
+                              }
+                              else {
+                                  ''
+                              }
+
+                              throw "GitHub global advisory API for '$dependencyName' returned an unexpected response without a ghsa_id property.$detail"
+                          }
+
+                          $ghsaId = [string] $ghsaIdProperty.Value
+                          if (-not [string]::IsNullOrWhiteSpace($ghsaId) -and $ghsaId -notin $reviewedAdvisoryIds) {
+                              $ghsaId
+                          }
+                      }
+                  ) | Sort-Object -Unique
+              )
+
+              if ($unreviewedAdvisoryIds.Count -gt 0) {
+                  $findings.Add("SECURITY ADVISORY: $dependencyName has unreviewed published advisory/advisories: $($unreviewedAdvisoryIds -join ', ').")
+              }
+              else {
+                  Write-Host "$dependencyName advisories: no unreviewed published advisory was returned by the GitHub Advisory Database."
+              }
+          }
+
+          $unknownPolicies = @($monitoring.Keys | Where-Object { -not $dependencies.ContainsKey($_) })
+          if ($unknownPolicies.Count -gt 0) {
+              throw "Monitoring policy contains entries that are not pinned development dependencies: $($unknownPolicies -join ', ')."
+          }
+
+          if ($findings.Count -gt 0) {
+              foreach ($finding in $findings) {
+                  Write-Warning $finding
+              }
+
+              throw 'Dependency monitoring found changes that require maintainer review.'
+          }
+
+          Write-Host 'Dependency monitoring passed.'

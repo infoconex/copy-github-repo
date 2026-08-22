@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <ViewDefinitions>
+    <View>
+      <Name>CopyGitHubRepo.MigrationVerificationResult</Name>
+      <ViewSelectedBy>
+        <TypeName>CopyGitHubRepo.MigrationVerificationResult</TypeName>
+      </ViewSelectedBy>
+      <CustomControl>
+        <CustomEntries>
+          <CustomEntry>
+            <CustomItem>
+              <ExpressionBinding>
+                <ScriptBlock><![CDATA[
+$labels = @{
+    DestinationExists = 'Destination repository exists'
+    DefaultBranchMatches = 'Default branch matches'
+    GitTreeMatches = 'Repository content matches'
+    DestinationHasOneCommit = 'Destination contains one commit'
+    DestinationCommitHasNoParents = 'Destination commit has no parents'
+    BranchAndTagTargetsMatch = 'Branch and tag targets match'
+    ReachableCommitCountMatches = 'Reachable commit count matches'
+    BranchTipTreesMatch = 'Branch-tip content matches'
+    GitLfsObjectsAvailable = 'Git LFS objects are available'
+}
+
+$useColor = [string]::IsNullOrEmpty($env:NO_COLOR) -and
+    $PSStyle.OutputRendering -ne [System.Management.Automation.OutputRendering]::PlainText
+$green = if ($useColor) { $PSStyle.Foreground.Green } else { '' }
+$red = if ($useColor) { $PSStyle.Foreground.Red } else { '' }
+$reset = if ($useColor) { $PSStyle.Reset } else { '' }
+
+$lines = [System.Collections.Generic.List[string]]::new()
+$lines.Add('Repository migration validation')
+$lines.Add('')
+$lines.Add(('Source:      {0}' -f $_.SourceRepository))
+$lines.Add(('Destination: {0}' -f $_.DestinationRepository))
+$lines.Add(('Mode:        {0}' -f $_.ContentMode))
+$lines.Add(('Branch:      {0}' -f $_.BranchName))
+$lines.Add('')
+$lines.Add('Checks')
+$lines.Add('------')
+
+foreach ($check in @($_.Checks)) {
+    $label = if ($labels.ContainsKey($check.Name)) { $labels[$check.Name] } else { $check.Name }
+    if ($check.Passed) {
+        $lines.Add(('{0}✓ PASS{1}  {2}' -f $green, $reset, $label))
+        continue
+    }
+
+    $lines.Add(('{0}✗ FAIL{1}  {2}' -f $red, $reset, $label))
+
+    $expectedValues = @($check.Expected)
+    $actualValues = @($check.Actual)
+    $expectedDisplay = if ($expectedValues.Count -gt 3) {
+        '{0} … (+{1} more)' -f (($expectedValues[0..2] | ForEach-Object { [string] $_ }) -join ', '), ($expectedValues.Count - 3)
+    }
+    else {
+        ($expectedValues | ForEach-Object { [string] $_ }) -join ', '
+    }
+    $actualDisplay = if ($actualValues.Count -gt 3) {
+        '{0} … (+{1} more)' -f (($actualValues[0..2] | ForEach-Object { [string] $_ }) -join ', '), ($actualValues.Count - 3)
+    }
+    else {
+        ($actualValues | ForEach-Object { [string] $_ }) -join ', '
+    }
+
+    $lines.Add(('        Expected: {0}' -f $expectedDisplay))
+    $lines.Add(('        Actual:   {0}' -f $actualDisplay))
+}
+
+$lines.Add('')
+if ($_.IsSuccessful) {
+    $lines.Add(('Result: {0}✓ SUCCESS{1}' -f $green, $reset))
+}
+else {
+    $lines.Add(('Result: {0}✗ FAILED{1}' -f $red, $reset))
+}
+
+$lines -join [Environment]::NewLine
+                ]]></ScriptBlock>
+              </ExpressionBinding>
+              <NewLine />
+            </CustomItem>
+          </CustomEntry>
+        </CustomEntries>
+      </CustomControl>
+    </View>
+  </ViewDefinitions>
+</Configuration>

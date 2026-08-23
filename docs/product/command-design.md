@@ -32,7 +32,7 @@ Primary parameters:
 -Verbose
 ```
 
-`-HostName` is retained for future extensibility, but version 1 supports only `github.com`, case-insensitively.
+`-HostName` is retained for future extensibility, but `v0.1.0` supports only `github.com`, case-insensitively.
 
 ### Planning
 
@@ -98,7 +98,7 @@ Restoration is differential, and every source-available supported value is read 
 
 ### Repository protection restoration
 
-Repository protection is a separate final stage after content verification and ordinary settings. Version 1 restores:
+Repository protection is a separate final stage after content verification and ordinary settings. `v0.1.0` restores:
 
 - transferable repository-level rulesets;
 - transferable legacy protection for the source default branch.

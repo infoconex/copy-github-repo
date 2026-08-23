@@ -25,7 +25,7 @@ Want to see what Snapshot automates? See [Manually Creating a Clean GitHub Repos
 - `-PlanOnly` and `-WhatIf` are non-mutating.
 - Content is verified before success is reported.
 - Failures after mutation begins retain durable recovery information instead of automatically deleting or rolling back repositories.
-- Version 1 supports GitHub.com only and fails closed for other hosts.
+- `v0.1.0` supports GitHub.com only and fails closed for other hosts.
 
 See the [Product contract](docs/product/product-contract.md) and [Architecture](docs/product/architecture.md) for the detailed safety and verification contracts.
 

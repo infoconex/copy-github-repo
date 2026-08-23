@@ -85,7 +85,11 @@ if ($RequireEmptyUnreleased) {
     $unreleasedBodyStart = $unreleasedHeading.Index + $unreleasedHeading.Length
     $unreleasedBodyLength = $releaseHeading.Index - $unreleasedBodyStart
     $unreleasedBody = $changelog.Substring($unreleasedBodyStart, $unreleasedBodyLength).Trim()
-    if (-not [string]::IsNullOrWhiteSpace($unreleasedBody)) {
+    $emptyUnreleasedSentinel = 'No unreleased product changes.'
+    $hasUnreleasedEntries = -not [string]::IsNullOrWhiteSpace($unreleasedBody) -and
+        $unreleasedBody -cne $emptyUnreleasedSentinel
+
+    if ($hasUnreleasedEntries) {
         throw "CHANGELOG.md contains Unreleased entries that would ship in '$expectedTag'. Move those entries into the '$version' release section before tagging."
     }
 }

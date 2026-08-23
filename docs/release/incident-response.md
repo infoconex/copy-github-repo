@@ -251,7 +251,7 @@ An emergency patch is still a release. Urgency changes prioritization, not ident
 7. **Run the Quality Gate.** Windows, Ubuntu, and macOS remain required; urgency does not justify silently skipping the repository quality baseline.
 8. **Run applicable live E2E evidence.** High-risk behavior affected by the incident should be live-validated when the quality/readiness model requires it.
 9. **Generate normal integrity evidence.** ZIP/checksum/SBOM/GitHub attestations and any implemented independent signing remain required according to release policy. If an exceptional control cannot be satisfied, it requires an explicit readiness exception/residual-risk decision rather than silent omission.
-10. **Publish through the normal release workflow/runbook.** Prefer `.github/workflows/release.yml`; preserve immutable version/tag rules.
+10. **Publish through the normal release workflow/runbook.** Prefer `.github/workflows/publish-release.yml`; preserve immutable version/tag rules.
 11. **Post-publication verify.** Verify GitHub Release, Gallery, clean install, exported commands, integrity evidence, and relevant incident-specific behavior.
 12. **Communicate.** State the affected version(s), fixed version, urgency, workaround/upgrade guidance, and security advisory information when applicable.
 
@@ -273,7 +273,7 @@ Avoid absolute statements such as `no users are affected`, `the artifact was nev
 
 ## Support and version implications
 
-The latest stable release is the normal supported line after first publication according to [`support-policy.md`](../user/support-policy.md). An incident may require:
+The latest published stable release is the normal supported line according to [`support-policy.md`](../user/support-policy.md). An incident may require:
 
 - rapidly publishing a replacement patch version;
 - explicitly marking an affected version unsupported/unrecommended;

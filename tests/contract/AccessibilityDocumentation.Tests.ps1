@@ -43,7 +43,21 @@ Describe 'Accessibility documentation and site contract' {
         $script:layout | Should -Match 'aria-label="Repository links"'
         $script:layout | Should -Match 'aria-label="Back to top"'
         $script:layout | Should -Match 'aria-label="Choose site theme"'
-        $script:layout | Should -Match 'class="brand__image"[^>]+alt=""'
+        $script:layout | Should -Match 'class="brand__image"[^>]+width="64"[^>]+height="64"[^>]+alt=""'
+        $script:layout | Should -Match 'aria-current="page"'
+    }
+
+    It 'protects a valid combobox and listbox search accessibility pattern' {
+        $script:layout | Should -Match 'id="site-search-input"[^>]+role="combobox"'
+        $script:layout | Should -Match 'aria-autocomplete="list"'
+        $script:layout | Should -Match 'aria-haspopup="listbox"'
+        $script:layout | Should -Match 'aria-controls="site-search-results"'
+        $script:layout | Should -Match 'id="site-search-results"[^>]+role="listbox"'
+        $script:layout | Should -Match 'id="site-search-status"[^>]+role="status"'
+        $script:siteJs | Should -Match "setAttribute\('aria-activedescendant'"
+        $script:siteJs | Should -Match "setAttribute\('aria-selected'"
+        $script:siteJs | Should -Match "setAttribute\('role', 'option'\)"
+        $script:siteJs | Should -Match "removeAttribute\('aria-activedescendant'\)"
     }
 
     It 'protects visible focus, responsive overflow, and reduced-motion behavior' {
@@ -52,15 +66,24 @@ Describe 'Accessibility documentation and site contract' {
         $script:siteCss | Should -Match 'overflow-x:auto'
         $script:siteCss | Should -Match '@media\s*\(prefers-reduced-motion:reduce\)'
         $script:layoutCss | Should -Match '@media\(prefers-reduced-motion:reduce\)'
+        $script:siteJs | Should -Match "prefers-reduced-motion: reduce"
+        $script:siteJs | Should -Match "behavior: reduceMotion \? 'auto' : 'smooth'"
     }
 
-    It 'protects keyboard handling for transient navigation and documentation search' {
+    It 'protects keyboard handling and transient-control state' {
         $script:siteJs | Should -Match "event\.key === 'Escape'"
         $script:siteJs | Should -Match "event\.key === 'ArrowDown'"
         $script:siteJs | Should -Match "event\.key === 'ArrowUp'"
         $script:siteJs | Should -Match "event\.key === 'Enter'"
-        $script:layout | Should -Match 'role="listbox"'
-        $script:siteJs | Should -Match "setAttribute\('role', 'option'\)"
+        $script:siteJs | Should -Match "aria-label', isOpen \? 'Close navigation' : 'Open navigation'"
+        $script:siteJs | Should -Match 'backToTop\.hidden = !visible'
+        $script:layout | Should -Match 'class="back-to-top"[^>]+hidden'
+    }
+
+    It 'keeps supplemental diagram rendering out of the accessibility tree' {
+        $script:layout | Should -Match "mermaidBlock\.setAttribute\('aria-hidden', 'true'\)"
+        $script:layout | Should -Match 'aria-label.*View diagram full screen'
+        $script:siteJs | Should -Match 'aria-label.*Reset diagram view'
     }
 
     It 'defines image, diagram, link, contrast, and responsive authoring expectations' {

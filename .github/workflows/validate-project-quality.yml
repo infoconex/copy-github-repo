@@ -62,6 +62,7 @@ jobs:
   test:
     name: Validate PowerShell (${{ matrix.os }})
     needs: scope
+    if: ${{ needs.scope.outputs.run-quality == 'true' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -73,20 +74,13 @@ jobs:
           - macos-latest
 
     steps:
-      - name: Record documentation-only skip
-        if: ${{ needs.scope.outputs.run-quality != 'true' }}
-        shell: pwsh
-        run: Write-Host 'Full project quality validation is not required for this documentation-only change.'
-
       - name: Check out repository
-        if: ${{ needs.scope.outputs.run-quality == 'true' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
           ref: ${{ github.sha }}
 
       - name: Resolve PowerShell module cache
-        if: ${{ needs.scope.outputs.run-quality == 'true' }}
         id: powershell-cache
         shell: pwsh
         run: |
@@ -99,29 +93,25 @@ jobs:
           "version=$($PSVersionTable.PSVersion)" >> $env:GITHUB_OUTPUT
 
       - name: Restore development dependency cache
-        if: ${{ needs.scope.outputs.run-quality == 'true' }}
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ${{ steps.powershell-cache.outputs.module-path }}
           key: powershell-dev-${{ runner.os }}-${{ steps.powershell-cache.outputs.version }}-${{ hashFiles('build/DevelopmentDependencies.psd1') }}
 
       - name: Install test dependencies
-        if: ${{ needs.scope.outputs.run-quality == 'true' }}
         shell: pwsh
         run: ./build/Install-DevelopmentDependencies.ps1
 
       - name: Validate project quality
-        if: ${{ needs.scope.outputs.run-quality == 'true' }}
         shell: pwsh
         run: ./build/Test-Project.ps1
 
       - name: Build and validate PowerShell Gallery package
-        if: ${{ needs.scope.outputs.run-quality == 'true' }}
         shell: pwsh
         run: ./build/New-PowerShellGalleryPackage.ps1 | Format-List
 
       - name: Upload test diagnostics
-        if: ${{ needs.scope.outputs.run-quality == 'true' && (failure() || cancelled()) }}
+        if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: test-results-${{ matrix.os }}

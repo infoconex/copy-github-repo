@@ -82,6 +82,8 @@ Describe 'Post-release incident and emergency maintenance documentation contract
         }
 
         $script:incident | Should -Match 'release-readiness\.md'
+        $script:incident | Should -Match '\.github/workflows/publish-release\.yml'
+        $script:incident | Should -Not -Match '\.github/workflows/release\.yml'
         $script:incident | Should -Match 'urgency does not justify silently skipping the repository quality baseline'
         $script:incident | Should -Match 'explicit readiness exception/residual-risk decision'
     }

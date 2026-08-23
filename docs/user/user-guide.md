@@ -9,11 +9,21 @@ For normative behavior, safety invariants, and supported scope, see [`product-co
 A typical user journey is:
 
 1. **Choose the outcome.** Use `Snapshot` for a clean publication whose Git history begins with one unrelated root commit, or `FullHistory` when ordinary Git history must be preserved.
-2. **Install and authenticate.** Use a supported installation path, then authenticate GitHub CLI for `github.com`.
+2. **Install and authenticate.** Install the stable module from PowerShell Gallery, then authenticate GitHub CLI for `github.com`.
 3. **Preview before mutation.** Use the guided wizard or `Copy-GitHubRepository -PlanOnly` to review the source, destination, mode, visibility, settings choices, immutable source-state evidence, and any replacement/archive plan.
 4. **Execute deliberately.** Replacement operations require the safety acknowledgements and exact confirmation defined by the product contract.
 5. **Verify the result.** Successful execution verifies content before reporting success and returns structured evidence. `Test-GitHubRepositoryMigration` is available for a separate current-state comparison.
 6. **Preserve evidence if something fails.** If mutation has started, do not assume rollback occurred. The tool preserves repositories and writes recovery evidence when possible; use the [troubleshooting and recovery guide](troubleshooting-recovery.md) for diagnosis and recovery.
+
+For normal stable installation, use PowerShell Gallery:
+
+```powershell
+Install-PSResource CopyGitHubRepo
+Import-Module CopyGitHubRepo
+gh auth login --hostname github.com
+```
+
+`Install-PSResource` installs the latest stable Gallery version by default. To deliberately pin the initial stable release, use `Install-PSResource CopyGitHubRepo -Version 0.1.0`. Environments using the older PowerShellGet commands can use `Install-Module CopyGitHubRepo -Scope CurrentUser` instead. For repository-hosted, provenance-verified, pinned-artifact, and prerelease alternatives, see [Installation security](../security/installation-security.md).
 
 For interactive use, start with:
 
@@ -39,7 +49,7 @@ Copy-GitHubRepository `
 | Preserve ordinary branches | No, only the approved default-branch tree is published | **Yes** |
 | Preserve ordinary tags | No | **Yes** |
 | Preserve signed historical commits / blame history | No | **Yes, as part of preserved Git history** |
-| Preserve required Git LFS content | Yes, for LFS objects required by the approved Snapshot tree | Yes, for reachable LFS objects required by the copied history |
+| Preserve required Git LFS content | Yes, for LFS objects required by the approved Snapshot content | Yes, for reachable LFS objects required by the copied history |
 | Restore supported repository settings | Yes, after content verification unless skipped | Yes, after content verification unless skipped |
 | Restore transferable repository protection | Yes, as the final restoration stage unless skipped | Yes, as the final restoration stage unless skipped |
 
@@ -111,7 +121,7 @@ Expected outcome:
 
 ### Replace an existing different destination
 
-Use the explicit archive-and-replace flow when the desired destination already exists. This corresponds to `UC-DEST-REPLACE`.
+Use the explicit archive-and-replace flow when the desired destination already exists. This corresponds primarily to `UC-DEST-REPLACE`.
 
 The existing destination is **not overwritten**. The operation requires the replacement safety contract, including exact confirmation. When execution proceeds, the existing destination is first renamed to an unused archive name and its repository identity continuity is checked before the replacement is created.
 
@@ -119,7 +129,7 @@ If a later stage fails, the archive is preserved. The tool does not automaticall
 
 ### Replace a repository under the same name
 
-Use same-name replacement when the source's current `owner/name` must ultimately refer to the new Snapshot or FullHistory copy. This corresponds to `UC-SAME-REPLACE`.
+Use same-name replacement when the source's current `owner/name` must ultimately refer to the new Snapshot or FullHistory copy. This corresponds primarily to `UC-SAME-REPLACE`.
 
 The original repository is first preserved under an unused archive name. Where GitHub immutable repository identity is available, the archived repository must retain the approved original identity and the replacement must receive a distinct identity before content publication proceeds.
 

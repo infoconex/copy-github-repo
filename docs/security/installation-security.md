@@ -1,9 +1,39 @@
 # Installation security
 
-Copy GitHub Repository has separate prerelease and stable-release installation paths with different trust properties.
+Copy GitHub Repository has a primary stable PowerShell Gallery installation path plus repository-hosted stable, pinned-artifact, and prerelease alternatives with different trust properties.
 
 > [!IMPORTANT]
-> Version `v0.1.0` is the initial stable release. Use the stable procedures below for normal released installations and use `install-prerelease.ps1` only when you intentionally want unreleased `main` content.
+> Version `v0.1.0` is the initial stable release. Use PowerShell Gallery for normal released installations. Use the repository-hosted or pinned procedures below only when their additional release-artifact verification properties are required, and use `install-prerelease.ps1` only when you intentionally want unreleased `main` content.
+
+## PowerShell Gallery installation
+
+PowerShell Gallery is the primary public package channel and the recommended normal installation path for stable releases:
+
+```powershell
+Install-PSResource CopyGitHubRepo
+Import-Module CopyGitHubRepo
+```
+
+`Install-PSResource` installs the latest stable version available from PSGallery by default. To deliberately install the initial stable release:
+
+```powershell
+Install-PSResource CopyGitHubRepo -Version 0.1.0
+```
+
+For environments using the older PowerShellGet command surface, the compatible alternative is:
+
+```powershell
+Install-Module CopyGitHubRepo -Scope CurrentUser
+```
+
+A Gallery installation should normally be updated and removed through the same package-management channel:
+
+```powershell
+Update-PSResource CopyGitHubRepo
+Uninstall-PSResource CopyGitHubRepo
+```
+
+PowerShell Gallery package installation and the GitHub Release artifact-verification procedures below are distinct trust paths. A normal `Install-PSResource` operation retrieves the published PSGallery package; it does not independently download the project's GitHub Release `.sha256` sidecar or run `gh attestation verify` against the GitHub Release ZIP. Organizations that require the project's checksum-and-GitHub-provenance verification contract should use the repository-hosted stable bootstrap or, for the strongest project-documented release-artifact path, the pinned release procedure below.
 
 ## Prerelease bootstrap
 
@@ -23,9 +53,9 @@ The prerelease bootstrap resolves `main` through the GitHub API, validates the r
 
 This avoids downloading a moving `main.zip` after resolution, but the bootstrap itself is fetched from mutable repository content. An unreleased source build also has no published release ZIP, matching `.sha256` asset, or stable-release provenance attestation. It is intended for deliberate development and release-candidate testing, not as the long-term stable installation path.
 
-## Stable release bootstrap
+## Repository-hosted stable bootstrap
 
-The normal stable one-line command downloads `install-release.ps1` from the repository's mutable `main` branch and executes it immediately:
+The repository-hosted stable convenience bootstrap is an alternative to the normal PowerShell Gallery install when the GitHub Release ZIP checksum and provenance verification are desired:
 
 ```powershell
 irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1 | iex
@@ -73,7 +103,7 @@ Therefore the convenience bootstrap remains inside the trust boundary even thoug
 
 ## Pinned release installation
 
-For a higher-assurance stable install, avoid executing mutable branch content. Pin a stable release and download its versioned artifact/checksum directly, then verify both checksum and GitHub artifact attestation before extraction.
+For a higher-assurance stable install using the project's GitHub Release evidence, avoid executing mutable branch content. Pin a stable release and download its versioned artifact/checksum directly, then verify both checksum and GitHub artifact attestation before extraction.
 
 The initial stable version is `v0.1.0`; the following pattern installs that release:
 
@@ -132,7 +162,13 @@ Authenticode signing may still be considered later for environments that specifi
 
 ## Uninstall behavior
 
-`uninstall.ps1` is the supported removal entry point for installations created by this project's custom installer. It is interactive by default when neither `-Version` nor `-AllVersions` is supplied.
+For a module installed from PowerShell Gallery, prefer the package manager that installed it:
+
+```powershell
+Uninstall-PSResource CopyGitHubRepo
+```
+
+`uninstall.ps1` is the supported removal entry point for installations created by this project's custom repository-hosted installer and for explicit local cleanup. It is interactive by default when neither `-Version` nor `-AllVersions` is supplied.
 
 The convenient one-line form is:
 
@@ -140,7 +176,7 @@ The convenient one-line form is:
 irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/uninstall.ps1 | iex
 ```
 
-The script resolves the same default current-user module destination used by `install.ps1`, discovers validated `CopyGitHubRepo/<version>` installations, and shows exactly what it found. With one installed version it shows the version/path and asks for confirmation. With multiple versions it lets the user remove one version, remove all validated versions, or cancel. Final destructive confirmation defaults to No, and cancellation is a successful no-change outcome.
+The script resolves the same default current-user module destination used by `install.ps1`, discovers validated `CopyGitHubRepo/<version>` installations, and shows exactly what it found. With one installed version it shows the version/path and asks for confirmation. With multiple versions it lets you remove one version, remove all validated versions, or cancel. Final destructive confirmation defaults to No, and cancellation is a successful no-change outcome.
 
 For deterministic local execution, target a specific version:
 
@@ -184,12 +220,14 @@ A matching SHA-256 value proves that the downloaded ZIP has the same bytes as th
 
 A checksum downloaded from the same release does **not**, by itself, prove who produced the artifact or protect against an attacker who can replace both the artifact and its checksum.
 
-The GitHub provenance attestation adds a cryptographically verified identity statement for the artifact. The stable installer requires the artifact to verify as produced by this repository's release workflow from the exact selected release commit. This is stronger than trusting the adjacent checksum alone, but it is still provenance—not a claim that the code is vulnerability-free or that a mutable bootstrap cannot itself be compromised.
+The GitHub provenance attestation adds a cryptographically verified identity statement for the artifact. The stable repository-hosted installer requires the artifact to verify as produced by this repository's release workflow from the exact selected release commit. This is stronger than trusting the adjacent checksum alone, but it is still provenance—not a claim that the code is vulnerability-free or that a mutable bootstrap cannot itself be compromised.
 
 ## Choosing a path
 
-Use `install-release.ps1` when ease of stable installation is the priority. The artifact is checksum- and provenance-verified, but the convenience bootstrap itself still comes from mutable `main`.
+Use **PowerShell Gallery** with `Install-PSResource CopyGitHubRepo` for normal stable installation, `Update-PSResource CopyGitHubRepo` for normal updates, and `Uninstall-PSResource CopyGitHubRepo` for removal of Gallery-managed installations.
+
+Use `install-release.ps1` when you specifically want the repository-hosted stable convenience path and its checksum/provenance verification of the GitHub Release ZIP. Remember that the convenience bootstrap itself is fetched from mutable `main` and remains inside the trust boundary.
+
+Use the pinned release procedure when you want to avoid executing mutable branch content and explicitly verify the selected GitHub Release artifact against both its checksum and cryptographic provenance before extraction.
 
 Use `install-prerelease.ps1` only when you intentionally want the current unreleased `main` build. Add `-Force` only when intentionally replacing the same installed version.
-
-Use the pinned release procedure when you want to avoid executing mutable branch content and explicitly choose the release being installed. It verifies both the artifact checksum and cryptographic provenance before extraction.

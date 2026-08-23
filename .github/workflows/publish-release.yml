@@ -183,10 +183,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = '${{ needs.release_context.outputs.release_tag }}'
+          $headers = @{
+              Authorization = "Bearer $env:GH_TOKEN"
+              Accept = 'application/vnd.github+json'
+              'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $releaseUri = "https://api.github.com/repos/${{ github.repository }}/releases/tags/$tag"
+          $response = Invoke-WebRequest `
+              -Uri $releaseUri `
+              -Headers $headers `
+              -SkipHttpErrorCheck `
+              -ErrorAction Stop
 
-          & gh release view $tag --json tagName 1>$null 2>$null
-          if ($LASTEXITCODE -eq 0) {
-              throw "Stable GitHub release '$tag' already exists. Publication stopped because stable release assets are immutable. Use a new version and tag; release repair is not part of the normal publication workflow."
+          switch ([int] $response.StatusCode) {
+              200 {
+                  throw "Stable GitHub release '$tag' already exists. Publication stopped because stable release assets are immutable. Use a new version and tag; release repair is not part of the normal publication workflow."
+              }
+              404 {
+                  Write-Host "Stable GitHub release '$tag' is not present; publication may proceed."
+              }
+              default {
+                  throw "Unable to determine whether stable GitHub release '$tag' exists. GitHub returned HTTP $([int] $response.StatusCode). Publication stopped."
+              }
           }
 
       - name: Ensure manual release tag
@@ -197,16 +215,44 @@ jobs:
         run: |
           $tag = '${{ needs.release_context.outputs.release_tag }}'
           $expectedCommit = '${{ github.sha }}'
+          $headers = @{
+              Authorization = "Bearer $env:GH_TOKEN"
+              Accept = 'application/vnd.github+json'
+              'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $tagUri = "https://api.github.com/repos/${{ github.repository }}/git/ref/tags/$tag"
+          $tagResponse = Invoke-WebRequest `
+              -Uri $tagUri `
+              -Headers $headers `
+              -SkipHttpErrorCheck `
+              -ErrorAction Stop
 
-          & gh api "repos/${{ github.repository }}/git/ref/tags/$tag" 1>$null 2>$null
-          if ($LASTEXITCODE -eq 0) {
-              $existingCommit = (& gh api "repos/${{ github.repository }}/commits/$tag" --jq '.sha').Trim()
-              if ($LASTEXITCODE -ne 0 -or $existingCommit -cne $expectedCommit) {
-                  throw "Existing tag '$tag' does not resolve to approved release commit '$expectedCommit'. Publication stopped."
+          switch ([int] $tagResponse.StatusCode) {
+              200 {
+                  $commitUri = "https://api.github.com/repos/${{ github.repository }}/commits/$tag"
+                  $commitResponse = Invoke-WebRequest `
+                      -Uri $commitUri `
+                      -Headers $headers `
+                      -SkipHttpErrorCheck `
+                      -ErrorAction Stop
+                  if ([int] $commitResponse.StatusCode -ne 200) {
+                      throw "Existing tag '$tag' could not be resolved to a commit. GitHub returned HTTP $([int] $commitResponse.StatusCode). Publication stopped."
+                  }
+
+                  $existingCommit = [string] (($commitResponse.Content | ConvertFrom-Json).sha)
+                  if ([string]::IsNullOrWhiteSpace($existingCommit) -or $existingCommit -cne $expectedCommit) {
+                      throw "Existing tag '$tag' does not resolve to approved release commit '$expectedCommit'. Publication stopped."
+                  }
+
+                  Write-Host "Tag '$tag' already resolves to approved release commit '$expectedCommit'; reusing it."
+                  return
               }
-
-              Write-Host "Tag '$tag' already resolves to approved release commit '$expectedCommit'; reusing it."
-              return
+              404 {
+                  Write-Host "Tag '$tag' is not present; creating it for approved release commit '$expectedCommit'."
+              }
+              default {
+                  throw "Unable to determine whether tag '$tag' exists. GitHub returned HTTP $([int] $tagResponse.StatusCode). Publication stopped."
+              }
           }
 
           $manifest = Import-PowerShellDataFile ./src/CopyGitHubRepo/CopyGitHubRepo.psd1
@@ -236,8 +282,18 @@ jobs:
               throw "Unable to create tag ref 'refs/tags/$tag'."
           }
 
-          $createdCommit = (& gh api "repos/${{ github.repository }}/commits/$tag" --jq '.sha').Trim()
-          if ($LASTEXITCODE -ne 0 -or $createdCommit -cne $expectedCommit) {
+          $createdCommitUri = "https://api.github.com/repos/${{ github.repository }}/commits/$tag"
+          $createdCommitResponse = Invoke-WebRequest `
+              -Uri $createdCommitUri `
+              -Headers $headers `
+              -SkipHttpErrorCheck `
+              -ErrorAction Stop
+          if ([int] $createdCommitResponse.StatusCode -ne 200) {
+              throw "Created tag '$tag' could not be resolved back to a commit. GitHub returned HTTP $([int] $createdCommitResponse.StatusCode)."
+          }
+
+          $createdCommit = [string] (($createdCommitResponse.Content | ConvertFrom-Json).sha)
+          if ([string]::IsNullOrWhiteSpace($createdCommit) -or $createdCommit -cne $expectedCommit) {
               throw "Created tag '$tag' did not resolve back to approved release commit '$expectedCommit'."
           }
 

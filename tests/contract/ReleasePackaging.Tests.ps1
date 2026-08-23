@@ -100,16 +100,21 @@ Describe 'Stable GitHub release publication' {
 
     It 'stops when the stable release already exists instead of replacing assets' {
         $content = Get-Content -LiteralPath $script:releaseWorkflowPath -Raw
-        $releaseViewIndex = $content.IndexOf('& gh release view $tag')
+        $releaseProbeIndex = $content.IndexOf('$releaseUri = "https://api.github.com/repos/${{ github.repository }}/releases/tags/$tag"')
         $immutableFailureIndex = $content.IndexOf('Stable GitHub release ''$tag'' already exists')
         $releaseCreateIndex = $content.IndexOf('& gh release create $tag')
 
         $content | Should -Not -Match 'gh release upload'
         $content | Should -Not -Match '--clobber'
-        $content | Should -Match 'stable release assets are immutable'
+        $content | Should -Not -Match 'gh release view'
+        $content | Should -Match '-SkipHttpErrorCheck'
+        $content | Should -Match 'switch \(\[int\] \$response\.StatusCode\)'
+        $content | Should -Match '(?ms)200 \{.*stable release assets are immutable'
+        $content | Should -Match '(?ms)404 \{.*publication may proceed'
+        $content | Should -Match '(?ms)default \{.*Unable to determine whether stable GitHub release.*Publication stopped'
         $content | Should -Match 'release repair is not part of the normal publication workflow'
-        $releaseViewIndex | Should -BeGreaterThan -1
-        $immutableFailureIndex | Should -BeGreaterThan $releaseViewIndex
+        $releaseProbeIndex | Should -BeGreaterThan -1
+        $immutableFailureIndex | Should -BeGreaterThan $releaseProbeIndex
         $releaseCreateIndex | Should -BeGreaterThan $immutableFailureIndex
     }
 

@@ -49,7 +49,7 @@ Copy-GitHubRepository `
 | Preserve ordinary branches | No, only the approved default-branch tree is published | **Yes** |
 | Preserve ordinary tags | No | **Yes** |
 | Preserve signed historical commits / blame history | No | **Yes, as part of preserved Git history** |
-| Preserve required Git LFS content | Yes, for LFS objects required by the approved Snapshot content | Yes, for reachable LFS objects required by the copied history |
+| Preserve required Git LFS content | Yes, for LFS objects required by the approved Snapshot tree | Yes, for reachable LFS objects required by the copied history |
 | Restore supported repository settings | Yes, after content verification unless skipped | Yes, after content verification unless skipped |
 | Restore transferable repository protection | Yes, as the final restoration stage unless skipped | Yes, as the final restoration stage unless skipped |
 
@@ -121,7 +121,7 @@ Expected outcome:
 
 ### Replace an existing different destination
 
-Use the explicit archive-and-replace flow when the desired destination already exists. This corresponds primarily to `UC-DEST-REPLACE`.
+Use the explicit archive-and-replace flow when the desired destination already exists. This corresponds to `UC-DEST-REPLACE`.
 
 The existing destination is **not overwritten**. The operation requires the replacement safety contract, including exact confirmation. When execution proceeds, the existing destination is first renamed to an unused archive name and its repository identity continuity is checked before the replacement is created.
 
@@ -129,7 +129,7 @@ If a later stage fails, the archive is preserved. The tool does not automaticall
 
 ### Replace a repository under the same name
 
-Use same-name replacement when the source's current `owner/name` must ultimately refer to the new Snapshot or FullHistory copy. This corresponds primarily to `UC-SAME-REPLACE`.
+Use same-name replacement when the source's current `owner/name` must ultimately refer to the new Snapshot or FullHistory copy. This corresponds to `UC-SAME-REPLACE`.
 
 The original repository is first preserved under an unused archive name. Where GitHub immutable repository identity is available, the archived repository must retain the approved original identity and the replacement must receive a distinct identity before content publication proceeds.
 

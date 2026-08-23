@@ -53,7 +53,7 @@ Describe 'Normative documentation consistency' {
     }
 
     It 'documents the stable release and bootstrap trust contracts consistently' {
-        $script:documents.Versioning | Should -Match 'exact tagged commit'
+        $script:documents.Versioning | Should -Match 'exact release commit'
         $script:documents.Versioning | Should -Match 'Stable release assets are immutable'
         $script:documents.Versioning | Should -Match 'does not use\s+`gh release upload`'
         $script:documents.Security | Should -Match 'bootstrap itself is part of the trust boundary'

@@ -130,6 +130,10 @@ Describe 'PowerShell Gallery release workflow contract' {
         $githubPublishIndex | Should -BeGreaterThan $galleryPublishIndex
         $script:releaseWorkflow | Should -Match 'Find-PSResource'
         $script:releaseWorkflow | Should -Match '-Version \$version'
+        $script:releaseWorkflow | Should -Match '\$existing = @\(\)'
+        $script:releaseWorkflow | Should -Match '\$expectedNotFound = "Package with name.*could not be found in repository ''PSGallery''\.'
+        $script:releaseWorkflow | Should -Match 'if \(\$_\.Exception\.Message -notlike'
+        $script:releaseWorkflow | Should -Match '(?ms)catch \{.*?if \(\$_\.Exception\.Message -notlike.*?throw.*?publication may proceed'
     }
 
     It 'publishes the validated staged module with PSResourceGet' {

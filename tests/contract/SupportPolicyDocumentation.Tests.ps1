@@ -14,16 +14,18 @@ BeforeAll {
 Describe 'Support compatibility and deprecation policy documentation contract' {
     It 'defines a conservative current support line without inventing LTS commitments' {
         $script:supportPolicy | Should -Match '^# Support, compatibility, and deprecation policy'
-        $script:supportPolicy | Should -Match 'latest published stable module version'
+        $script:supportPolicy | Should -Match 'Version `0\.1\.0` is the initial stable release'
+        $script:supportPolicy | Should -Match 'latest published stable version'
         $script:supportPolicy | Should -Match 'older stable versions are not maintained as parallel supported branches'
         $script:supportPolicy | Should -Match 'Long-term-support branches \| None currently defined'
         $script:supportPolicy | Should -Match 'does not currently promise a fixed calendar support duration'
+        $script:supportPolicy | Should -Not -Match 'has not yet published its first stable release'
     }
 
     It 'keeps security-fix support aligned with the supported version policy' {
-        $script:supportPolicy | Should -Match 'Before `v0\.1\.0`, security fixes apply to the latest default-branch commit'
-        $script:supportPolicy | Should -Match 'security fixes target the latest supported stable version'
+        $script:supportPolicy | Should -Match 'Security fixes target the latest supported stable version'
         $script:supportPolicy | Should -Match 'does not promise backports to older pre-1\.0 releases'
+        $script:supportPolicy | Should -Match 'Unreleased `main` content.*not a separately supported production line'
         $script:securityPolicy | Should -Match 'latest supported stable\s+module version under.*support-policy\.md'
         $script:securityPolicy | Should -Match 'older stable versions are not promised parallel security-fix branches'
     }

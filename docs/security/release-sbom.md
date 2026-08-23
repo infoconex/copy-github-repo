@@ -4,7 +4,7 @@ Stable CopyGitHubRepo releases publish machine-readable component evidence along
 
 ## Stable release evidence set
 
-For module version `X.Y.Z`, the stable GitHub release is expected to contain:
+For module version `X.Y.Z`, the stable GitHub release contains:
 
 - `CopyGitHubRepo-X.Y.Z.zip` — deterministic installable release archive;
 - `CopyGitHubRepo-X.Y.Z.zip.sha256` — SHA-256 integrity sidecar;
@@ -12,7 +12,7 @@ For module version `X.Y.Z`, the stable GitHub release is expected to contain:
 - GitHub artifact provenance attestation for the release ZIP;
 - GitHub SBOM attestation binding the SPDX document to the same release ZIP.
 
-Independent publisher signing remains a separate optional control for the initial stable release. A checksum, SBOM, or GitHub attestation must not be described as equivalent to an independently managed publisher-signing key.
+Independent publisher signing remains a separate optional control. A checksum, SBOM, or GitHub attestation must not be described as equivalent to an independently managed publisher-signing key.
 
 A VEX sidecar is **not** part of the routine v0.1.0 release evidence set. [`vulnerability-applicability.md`](vulnerability-applicability.md) defines the trigger-based VEX decision and the evidence required before a vulnerability applicability statement is published.
 
@@ -73,7 +73,7 @@ A successful attestation proves that GitHub's attestation service signed a state
 
 ## Retrieval and verification
 
-After a stable release exists:
+For a stable release:
 
 1. Download the versioned ZIP, checksum, and `.spdx.json` file from the same stable GitHub release.
 2. Verify the ZIP SHA-256 using the release checksum as described in [Installation & Security](installation-security.md).
@@ -82,13 +82,13 @@ After a stable release exists:
 5. Treat any digest, repository, workflow, version, or subject mismatch as a failed verification rather than falling back to an unverified install.
 6. If a release publishes VEX in response to a material vulnerability, verify its exact release/product/vulnerability identity and any associated attestation separately; absence of VEX is not evidence that no vulnerabilities apply.
 
-The first stable release has not yet been published, so this document defines the required release evidence contract; it does not claim that v0.1.0 attestation evidence already exists.
+Version `v0.1.0` is the initial stable release and uses this evidence contract.
 
 ## Reproducibility and failure behavior
 
 The ZIP builder fixes entry ordering and timestamps. The SBOM generator sorts ZIP entries and uses the release commit timestamp supplied by the workflow. Given the same release ZIP, source commit, and creation timestamp, the SBOM output is expected to be byte-stable.
 
-Once SBOM generation and attestation are part of the stable release workflow, failure to generate the SBOM or either required attestation fails the release job before GitHub release publication. The normal release path does not silently publish a stable GitHub release without the required SBOM/provenance evidence.
+Failure to generate the SBOM or either required attestation fails the release job before PowerShell Gallery or GitHub Release publication. The normal release path does not silently publish a stable release without the required SBOM/provenance evidence.
 
 Because VEX is trigger-based rather than routine release evidence, the absence of a VEX file is not a release-job failure unless a specific vulnerability response has made VEX a required artifact for that release under the documented applicability process.
 

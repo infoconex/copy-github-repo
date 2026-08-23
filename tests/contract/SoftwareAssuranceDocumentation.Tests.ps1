@@ -7,27 +7,29 @@ BeforeAll {
 }
 
 Describe 'Software assurance review package documentation contract' {
-    It 'is an evidence entry point rather than a compliance or approval claim' {
+    It 'is an evidence entry point rather than a compliance or organizational approval claim' {
         $script:assurance | Should -Match '^# Software assurance review package'
         $script:assurance | Should -Match 'evidence index and current-state summary'
         $script:assurance | Should -Match 'not a certification'
         $script:assurance | Should -Match 'does not claim regulatory compliance'
-        $script:assurance | Should -Match 'Release approval.*Not granted by this document'
+        $script:assurance | Should -Match 'organizational adoption approval remains the adopter''s decision'
         $script:assurance | Should -Match 'does not contain an approval checkbox'
     }
 
-    It 'covers product identity supported scope and current release evidence state' {
+    It 'covers product identity supported scope and current stable release evidence state' {
         foreach ($term in @(
             'Copy GitHub Repository / CopyGitHubRepo',
             'PowerShell 7.4+',
             'GitHub.com only',
             'Snapshot',
             'FullHistory',
-            'first stable release has not yet been published',
             'Exact release-candidate live evidence'
         )) {
             $script:assurance | Should -Match ([regex]::Escape($term))
         }
+
+        $script:assurance | Should -Match '`0\.1\.0` is the initial stable release'
+        $script:assurance | Should -Not -Match 'first stable release has not yet been published'
 
         foreach ($command in @(
             'Copy-GitHubRepository',
@@ -103,15 +105,13 @@ Describe 'Software assurance review package documentation contract' {
         $script:assurance | Should -Match 'not constitute an independent security assessment'
     }
 
-    It 'surfaces current residual-risk and lifecycle gaps for approval' {
-        $script:assurance | Should -Match 'Baseline documented but not yet fully satisfied'
-        $script:assurance | Should -Match 'Independent publisher signing.*Not yet implemented'
-        $script:assurance | Should -Match 'repository security baseline is \*\*not yet fully satisfied\*\*'
-        $script:assurance | Should -Match 'independent publisher signing is \*\*not yet implemented\*\*'
+    It 'surfaces current residual risk and support lifecycle for approval' {
+        $script:assurance | Should -Match 'GitHub artifact attestations are the selected v0\.1\.0 authenticity control'
+        $script:assurance | Should -Match 'Authenticode publisher signing is not implemented'
         $script:assurance | Should -Match '../user/support-policy\.md'
         $script:assurance | Should -Match 'latest published stable module version is the supported line'
         $script:assurance | Should -Match 'incident-response\.md'
-        $script:assurance | Should -Match 'exact release-candidate live GitHub evidence'
+        $script:assurance | Should -Match 'exact release-candidate live evidence'
     }
 
     It 'is integrated as the governance reviewer entry point without becoming a competing authority' {

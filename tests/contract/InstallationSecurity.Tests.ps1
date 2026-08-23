@@ -23,10 +23,12 @@ Describe 'Installer supply-chain trust documentation' {
         $script:security | Should -Match 'convenience bootstrap remains inside the trust boundary'
     }
 
-    It 'states that stable installation is not yet available before the first release' {
-        $script:readme | Should -Match 'No stable GitHub Release has been published yet'
-        $script:security | Should -Match 'No stable GitHub Release has been published yet'
-        $script:security | Should -Match 'stable and pinned procedures.*becomes usable after `v0\.1\.0`'
+    It 'documents v0.1.0 as the available initial stable release' {
+        $script:readme | Should -Match 'Version `0\.1\.0` is the initial stable release'
+        $script:security | Should -Match 'Version `v0\.1\.0` is the initial stable release'
+        $script:security | Should -Match 'Use the stable procedures below for normal released installations'
+        $script:readme | Should -Not -Match 'No stable GitHub Release has been published yet'
+        $script:security | Should -Not -Match 'No stable GitHub Release has been published yet'
     }
 
     It 'documents a pinned release path for the module version without executing main content' {
@@ -39,6 +41,7 @@ Describe 'Installer supply-chain trust documentation' {
         $pinnedSection | Should -Match 'Get-FileHash.*SHA256'
         $pinnedSection | Should -Match 'gh attestation verify'
         $pinnedSection | Should -Match '--signer-workflow'
+        $pinnedSection | Should -Match 'publish-release\.yml'
         $pinnedSection | Should -Match '--source-digest'
         $pinnedSection | Should -Match 'Expand-Archive'
         $pinnedSection | Should -Not -Match 'raw\.githubusercontent\.com'
@@ -70,6 +73,7 @@ Describe 'Installer supply-chain trust documentation' {
         $bootstrap | Should -Match '--repo \$Repository'
         $bootstrap | Should -Match '--signer-workflow \$SignerWorkflow'
         $bootstrap | Should -Match '--source-digest \$SourceCommit'
+        $bootstrap | Should -Match 'publish-release\.yml'
         $bootstrap | Should -Match 'ReleaseAttestationVerifierUnavailable'
         $bootstrap | Should -Match 'ReleaseAttestationInvalid'
     }

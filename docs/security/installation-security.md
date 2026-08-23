@@ -3,11 +3,11 @@
 Copy GitHub Repository has separate prerelease and stable-release installation paths with different trust properties.
 
 > [!IMPORTANT]
-> No stable GitHub Release has been published yet. Until the first stable release exists, `install-prerelease.ps1` is the usable repository bootstrap. The stable and pinned procedures below document the release contract that becomes usable after `v0.1.0` (or a later stable version) is published.
+> Version `v0.1.0` is the initial stable release. Use the stable procedures below for normal released installations and use `install-prerelease.ps1` only when you intentionally want unreleased `main` content.
 
 ## Prerelease bootstrap
 
-For development and release-candidate testing before a GitHub Release exists, use:
+For development and release-candidate testing of unreleased `main` content, use:
 
 ```powershell
 irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-prerelease.ps1 | iex
@@ -24,8 +24,6 @@ The prerelease bootstrap resolves `main` through the GitHub API, validates the r
 This avoids downloading a moving `main.zip` after resolution, but the bootstrap itself is fetched from mutable repository content. An unreleased source build also has no published release ZIP, matching `.sha256` asset, or stable-release provenance attestation. It is intended for deliberate development and release-candidate testing, not as the long-term stable installation path.
 
 ## Stable release bootstrap
-
-This section applies after a stable GitHub Release exists.
 
 The normal stable one-line command downloads `install-release.ps1` from the repository's mutable `main` branch and executes it immediately:
 
@@ -52,7 +50,7 @@ The stable bootstrap requires GitHub CLI (`gh`) because it performs cryptographi
 3. verifies the ZIP's SHA-256 checksum;
 4. runs `gh attestation verify` against the ZIP, requiring:
    - repository `infoconex/copy-github-repo`;
-   - signer workflow `infoconex/copy-github-repo/.github/workflows/release.yml`; and
+   - signer workflow `infoconex/copy-github-repo/.github/workflows/publish-release.yml`; and
    - the exact source commit resolved from the selected release tag;
 5. fails closed if GitHub CLI is unavailable, no matching provenance attestation exists, or cryptographic verification fails; and
 6. only after both checksum and provenance verification succeed, extracts the ZIP and invokes packaged `install.ps1`.
@@ -75,11 +73,9 @@ Therefore the convenience bootstrap remains inside the trust boundary even thoug
 
 ## Pinned release installation
 
-This section also applies only after the selected stable release exists.
-
 For a higher-assurance stable install, avoid executing mutable branch content. Pin a stable release and download its versioned artifact/checksum directly, then verify both checksum and GitHub artifact attestation before extraction.
 
-The planned initial stable version is `v0.1.0`; after publication, the following pattern installs that release:
+The initial stable version is `v0.1.0`; the following pattern installs that release:
 
 ```powershell
 $version = '0.1.0'
@@ -110,7 +106,7 @@ if ($releaseCommit -notmatch '^[a-fA-F0-9]{40}$') {
 
 gh attestation verify $artifact `
     --repo $repository `
-    --signer-workflow "$repository/.github/workflows/release.yml" `
+    --signer-workflow "$repository/.github/workflows/publish-release.yml" `
     --source-digest $releaseCommit
 if ($LASTEXITCODE -ne 0) {
     throw 'Release artifact provenance verification failed.'
@@ -192,8 +188,8 @@ The GitHub provenance attestation adds a cryptographically verified identity sta
 
 ## Choosing a path
 
-Before the first stable release exists, use `install-prerelease.ps1` only when you intentionally want the current unreleased `main` build. Add `-Force` only when intentionally replacing the same installed version.
+Use `install-release.ps1` when ease of stable installation is the priority. The artifact is checksum- and provenance-verified, but the convenience bootstrap itself still comes from mutable `main`.
 
-After a stable release exists, use `install-release.ps1` when ease of stable installation is the priority. The artifact is checksum- and provenance-verified, but the convenience bootstrap itself still comes from mutable `main`.
+Use `install-prerelease.ps1` only when you intentionally want the current unreleased `main` build. Add `-Force` only when intentionally replacing the same installed version.
 
 Use the pinned release procedure when you want to avoid executing mutable branch content and explicitly choose the release being installed. It verifies both the artifact checksum and cryptographic provenance before extraction.

@@ -39,6 +39,7 @@ Describe 'Capability release readiness documentation contract' {
 
         $script:readiness | Should -Match 'planning baseline, not a go/no-go record'
         $script:readiness | Should -Match 'mutable `main`-branch matrix is planning evidence only'
+        $script:readiness | Should -Match 'exact candidate evidence belongs to immutable workflow, qualification, tag, and release records'
     }
 
     It 'binds a go/no-go decision to one exact immutable release candidate' {
@@ -56,7 +57,7 @@ Describe 'Capability release readiness documentation contract' {
         $script:readiness | Should -Match '`GO`, `NO-GO`, or `PENDING`'
     }
 
-    It 'makes current cross-cutting readiness concerns visible without issue-number dependencies' {
+    It 'makes cross-cutting readiness concerns visible without stale pre-release status' {
         foreach ($term in @(
             'Repository security baseline',
             'Independent publisher signing',
@@ -70,6 +71,8 @@ Describe 'Capability release readiness documentation contract' {
             $script:readiness | Should -Match ([regex]::Escape($term))
         }
 
+        $script:readiness | Should -Match 'Performed as part of v0\.1\.0 qualification'
+        $script:readiness | Should -Match 'Completed as the v0\.1\.0 clean-publication boundary'
         $script:readiness | Should -Match 'planning or tracking artifact is not automatically a release blocker'
         $script:readiness | Should -Match 'undispositioned release blocker'
     }
@@ -109,11 +112,11 @@ Describe 'Capability release readiness documentation contract' {
         $script:readiness | Should -Match 'Do not convert it into an exception simply to obtain a `GO` result'
     }
 
-    It 'defines the clean Snapshot as a release qualification boundary' {
+    It 'defines the clean Snapshot as the v0.1.0 release qualification boundary' {
         $script:readiness | Should -Match 'Clean Snapshot release boundary'
         $script:readiness | Should -Match 'unrelated clean root commit'
         $script:readiness | Should -Match 'historical repository must not be used as the source of the first stable tag'
-        $script:readiness | Should -Match 'create `v0\.1\.0` only on that clean replacement commit'
+        $script:readiness | Should -Match '`v0\.1\.0` is created only on the final qualified clean replacement commit'
     }
 
     It 'aligns decision authority with governance without claiming independent review' {

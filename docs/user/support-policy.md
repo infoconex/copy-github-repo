@@ -6,15 +6,13 @@ The policy is intentionally conservative. It does not create long-term-support c
 
 ## Current support status
 
-The project has not yet published its first stable release. Until `v0.1.0` is published, support applies to the latest commit on the default branch and is intended for development/release-candidate evaluation rather than production version support.
-
-After the first stable release, the project supports the **latest published stable module version**. Before `1.0.0`, older stable versions are not maintained as parallel supported branches unless a release note explicitly says otherwise.
+Version `0.1.0` is the initial stable release and the current supported stable module version. Before `1.0.0`, older stable versions are not maintained as parallel supported branches unless a release note explicitly says otherwise.
 
 | Item | Support position |
 | --- | --- |
-| Module version | Latest published stable version; before first stable release, latest default-branch commit only |
+| Module version | Latest published stable version; currently `0.1.0` |
 | Long-term-support branches | None currently defined |
-| Security fixes | Applied to the currently supported version/branch; older versions may require upgrading to receive a fix |
+| Security fixes | Applied to the currently supported stable version; older versions may require upgrading to receive a fix |
 | Prerelease/unreleased builds | Development and release-candidate evaluation only; not a separately supported production line |
 | GitHub host | GitHub.com only for v0.1.0 |
 | PowerShell | PowerShell 7.4+ / Core edition |
@@ -26,7 +24,7 @@ The exact released version is identified by the module manifest, Git tag, change
 
 `SECURITY.md` is authoritative for vulnerability reporting and the currently security-supported version/branch.
 
-Before `v0.1.0`, security fixes apply to the latest default-branch commit. After stable publication, security fixes target the latest supported stable version. The project does not promise backports to older pre-1.0 releases.
+Security fixes target the latest supported stable version. The project does not promise backports to older pre-1.0 releases. Unreleased `main` content may contain future fixes or changes, but it is not a separately supported production line.
 
 A vulnerability may therefore require users of an older release to upgrade to the fixed supported release. If an exceptional backport or extended-support decision is made, it must be announced explicitly in release notes and reflected in `SECURITY.md`.
 

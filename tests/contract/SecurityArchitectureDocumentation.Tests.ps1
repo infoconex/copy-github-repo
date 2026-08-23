@@ -61,9 +61,10 @@ Describe 'Security architecture documentation contract' {
         $script:securityArchitecture | Should -Match 'language `actions`'
         $script:securityArchitecture | Should -Match 'does not analyze the project''s PowerShell source'
         $script:securityArchitecture | Should -Match 'dependency-monitoring\.md'
-        $script:securityArchitecture | Should -Match 'baseline currently not fully satisfied'
+        $script:securityArchitecture | Should -Match 'required v0\.1\.0 baseline restored and verified during release qualification'
         $script:securityArchitecture | Should -Match 'Independent release authenticity/signing'
-        $script:securityArchitecture | Should -Match 'Planned / open; must be explicitly dispositioned for release'
+        $script:securityArchitecture | Should -Match 'Implemented for v0\.1\.0 with GitHub artifact attestations'
+        $script:securityArchitecture | Should -Match 'Authenticode publisher signing remains optional/not implemented'
         $script:securityArchitecture | Should -Match 'New-ReleaseSbom\.ps1'
         $script:securityArchitecture | Should -Match 'release-sbom\.md'
         $script:securityArchitecture | Should -Match 'SPDX 2\.3 JSON'
@@ -77,7 +78,8 @@ Describe 'Security architecture documentation contract' {
         $script:releaseSbom | Should -Match 'GitHub SBOM attestation'
         $script:releaseSbom | Should -Match 'Independent publisher signing remains a separate optional control'
         $script:securityArchitecture | Should -Match '\[`release-sbom\.md`\]\(release-sbom\.md\)'
-        $script:securityArchitecture | Should -Match 'does not replace independent publisher signing'
+        $script:securityArchitecture | Should -Match 'GitHub artifact attestation is the selected independent release-authenticity mechanism'
+        $script:securityArchitecture | Should -Match 'not Authenticode publisher signing'
     }
 
     It 'documents how to run the focused security static-analysis policy locally' {
@@ -91,8 +93,8 @@ Describe 'Security architecture documentation contract' {
         $script:securityArchitecture | Should -Match 'not comprehensive SAST'
         $script:securityArchitecture | Should -Match 'not proof that the software is vulnerability-free'
         $script:securityArchitecture | Should -Match 'E2E-capable also does not mean a specific release candidate was live-validated'
-        $script:securityArchitecture | Should -Match 'does not independently authenticate publisher|does not independently authenticate a separately managed publisher key'
-        $script:securityArchitecture | Should -Match 'does not replace independent publisher signing'
+        $script:securityArchitecture | Should -Match 'checksum alone does not authenticate publisher'
+        $script:securityArchitecture | Should -Match 'does not prove vulnerability absence'
     }
 
     It 'is discoverable from the security policy navigation and authority map' {

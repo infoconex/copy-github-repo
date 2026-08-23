@@ -155,11 +155,24 @@ jobs:
         run: |
           $manifest = Import-PowerShellDataFile ./src/CopyGitHubRepo/CopyGitHubRepo.psd1
           $version = [string] $manifest.ModuleVersion
-          $existing = @(Find-PSResource `
-              -Name CopyGitHubRepo `
-              -Version $version `
-              -Repository PSGallery `
-              -ErrorAction Stop)
+          $existing = @()
+
+          try {
+              $existing = @(Find-PSResource `
+                  -Name CopyGitHubRepo `
+                  -Version $version `
+                  -Repository PSGallery `
+                  -ErrorAction Stop)
+          }
+          catch {
+              $expectedNotFound = "Package with name 'CopyGitHubRepo', version '$version' could not be found in repository 'PSGallery'."
+              if ($_.Exception.Message -notlike "$expectedNotFound*") {
+                  throw
+              }
+
+              Write-Host "CopyGitHubRepo $version is not present in PSGallery; publication may proceed."
+          }
+
           if ($existing.Count -gt 0) {
               throw "CopyGitHubRepo $version already exists in PSGallery. Publication stopped because released package versions are immutable. Use a new module version and tag."
           }

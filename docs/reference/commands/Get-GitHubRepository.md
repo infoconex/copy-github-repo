@@ -1,4 +1,4 @@
-# `Get-GitHubRepository`
+# Get-GitHubRepository
 
 Returns structured GitHub repository metadata. The command is read-only.
 

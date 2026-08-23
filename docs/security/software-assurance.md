@@ -2,22 +2,22 @@
 
 This page is the organizational review entry point for Copy GitHub Repository. It is designed for Governance / Compliance, security, architecture, quality, and release reviewers who need one place to begin an approval decision without creating a second copy of the project's authoritative engineering contracts.
 
-The package is an **evidence index and current-state summary**, not a certification. It does not claim regulatory compliance, independent assessment, penetration testing, formal certification, or release approval that has not occurred. Where a fact is owned elsewhere, this page links to the authoritative source.
+The package is an **evidence index and current-state summary**, not a certification. It does not claim regulatory compliance, independent assessment, penetration testing, formal certification, or organizational approval. Where a fact is owned elsewhere, this page links to the authoritative source.
 
 ## Review status and decision boundary
 
 | Review item | Current state | Authority / evidence |
 | --- | --- | --- |
-| Product version under review | Module manifest is `0.1.0`; first stable release has not yet been published | [Repository module manifest](https://github.com/infoconex/copy-github-repo/blob/main/src/CopyGitHubRepo/CopyGitHubRepo.psd1), [`versioning.md`](../release/versioning.md) |
+| Product version under review | `0.1.0` is the initial stable release | [Repository module manifest](https://github.com/infoconex/copy-github-repo/blob/main/src/CopyGitHubRepo/CopyGitHubRepo.psd1), [`versioning.md`](../release/versioning.md) |
 | Product behavior and supported scope | Implemented/documented contract | [`product-contract.md`](../product/product-contract.md) |
-| Support/compatibility lifecycle | Implemented/documented policy; latest stable is the supported line after first release | [`support-policy.md`](../user/support-policy.md) |
+| Support/compatibility lifecycle | Implemented/documented policy; latest published stable version is the supported line | [`support-policy.md`](../user/support-policy.md) |
 | Automated quality evidence | Cross-platform Quality Gate, Pester, PSScriptAnalyzer, package validation | [`quality-strategy.md`](../engineering/quality-strategy.md) |
-| Exact release-candidate live evidence | Not yet recorded for a published `v0.1.0` release candidate | [`quality-strategy.md`](../engineering/quality-strategy.md) |
+| Exact release-candidate live evidence | Recorded through the release qualification process for the exact v0.1.0 candidate | [`quality-strategy.md`](../engineering/quality-strategy.md) |
 | Security architecture/control evidence | Implemented/documented, with explicit residual risk | [`security-architecture.md`](security-architecture.md) |
-| Repository security hardening | Baseline documented but not yet fully satisfied; live owner-side ruleset/security-setting verification remains | [`repository-security-baseline.md`](repository-security-baseline.md) |
-| Release SBOM/provenance contract | Implemented and automatically verified; first stable release evidence does not exist until publication | [`release-sbom.md`](release-sbom.md) |
-| Independent publisher signing | Not yet implemented; GitHub attestations/checksums are not represented as independent code signing | [`security-architecture.md`](security-architecture.md), [`release-readiness.md`](../release/release-readiness.md) |
-| Release approval | Not granted by this document; governed by the exact-candidate release-readiness decision process | [`release-readiness.md`](../release/release-readiness.md) |
+| Repository security hardening | Main-branch rules, required checks, secret scanning, push protection, and release controls are enabled; residual platform limitations remain documented | [`repository-security-baseline.md`](repository-security-baseline.md) |
+| Release SBOM/provenance contract | Implemented in the stable release workflow with deterministic ZIP/checksum, SPDX SBOM, build provenance, and SBOM attestation | [`release-sbom.md`](release-sbom.md) |
+| Independent publisher signing | Authenticode signing is not implemented; GitHub artifact attestations are the selected v0.1.0 authenticity control | [`security-architecture.md`](security-architecture.md), [`release-readiness.md`](../release/release-readiness.md) |
+| Release approval | Project release approval is governed by the exact-candidate release-readiness process; organizational adoption approval remains the adopter's decision | [`release-readiness.md`](../release/release-readiness.md) |
 
 An organization adopting the tool should make its own approval decision based on its risk tolerance, GitHub governance model, prerequisite software policy, and the exact release evidence available at adoption time.
 
@@ -128,16 +128,16 @@ These controls are evidence of the checks that exist. They are **not** proof tha
 
 The stable-release contract requires the exact tagged commit to pass the reusable Windows, Ubuntu, and macOS Quality Gate before release publication. Stable release evidence includes the deterministic versioned ZIP, SHA-256 checksum, SPDX 2.3 JSON SBOM, GitHub build-provenance attestation, and GitHub SBOM attestation.
 
-`install-release.ps1` validates the selected ZIP against the published checksum before extraction. The higher-assurance pinned procedure avoids executing mutable branch bootstrap content. Details are in [`installation-security.md`](installation-security.md).
+`install-release.ps1` verifies the selected ZIP against the published checksum and GitHub artifact provenance before extraction. The higher-assurance pinned procedure avoids executing mutable branch bootstrap content. Details are in [`installation-security.md`](installation-security.md).
 
-GitHub attestations add repository/workflow provenance evidence, but the checksum, SBOM, and GitHub attestations are **not represented as independently managed publisher code signing**. Independent publisher signing is not yet implemented and must be explicitly dispositioned for a release under [`release-readiness.md`](../release/release-readiness.md).
+GitHub attestations add repository/workflow provenance evidence, but the checksum, SBOM, and GitHub attestations are **not represented as Authenticode publisher signing**. For v0.1.0, GitHub artifact attestations are the selected independent release-authenticity mechanism; Authenticode may be added later for environments that require it.
 
-The first stable release has not yet been published, so this package describes the implemented and tested release contract rather than claiming release-specific `v0.1.0` signatures/attestations already exist. See [`release-sbom.md`](release-sbom.md), [`publishing.md`](../release/publishing.md), and [`versioning.md`](../release/versioning.md).
+Version `v0.1.0` is the initial stable release and uses the documented ZIP/checksum/SBOM/attestation evidence contract. See [`release-sbom.md`](release-sbom.md), [`publishing.md`](../release/publishing.md), and [`versioning.md`](../release/versioning.md).
 
 ## Vulnerability reporting, maintenance, and support
 
 - Vulnerabilities must be reported privately according to [`SECURITY.md`](../../SECURITY.md); private vulnerability reporting was verified enabled on 2026-08-16.
-- Before the first stable release, security fixes apply to the latest default-branch commit. After stable publication, the latest published stable module version is the supported line unless an explicit exception is announced.
+- The latest published stable module version is the supported line unless an explicit exception is announced; unreleased `main` content is not a separately supported production line.
 - Supported module versions, PowerShell/platform/prerequisite compatibility, deprecation, breaking-change notice, and end-of-support rules are authoritative in [`support-policy.md`](../user/support-policy.md).
 - The GitHub.com-only host boundary is described in [`host-support.md`](../user/host-support.md).
 - Dependency freshness/advisory monitoring is described in [`dependency-monitoring.md`](dependency-monitoring.md).
@@ -154,9 +154,7 @@ The concise approval-relevant limitations are:
 - secret-bearing repository configuration such as GitHub secrets, webhook secrets, private deploy-key material, and GitHub App credentials is unsupported and intentionally excluded;
 - no automatic destructive rollback/delete is attempted after partial mutation; preservation and explicit recovery evidence take priority;
 - resource exhaustion, timeout/cancellation, retry/throttling, interruption, and scale behavior retain documented limits and accepted boundaries under the non-functional model;
-- the repository security baseline is **not yet fully satisfied**; live owner-side ruleset/security-setting verification remains;
-- independent publisher signing is **not yet implemented** and remains a release-readiness disposition;
-- exact release-candidate live GitHub evidence is not implied by automated or E2E-capable tests and must be recorded for the release decision;
+- Authenticode publisher signing is not implemented; v0.1.0 instead relies on GitHub artifact attestations plus checksum verification for release authenticity/integrity;
 - quality/static-analysis/security controls do not prove absence of defects or vulnerabilities.
 
 See [`non-functional-requirements.md`](../product/non-functional-requirements.md), [`security-architecture.md`](security-architecture.md), [`repository-security-baseline.md`](repository-security-baseline.md), [`support-policy.md`](../user/support-policy.md), and [`quality-strategy.md`](../engineering/quality-strategy.md) for the detailed authorities.
@@ -181,10 +179,10 @@ See [`non-functional-requirements.md`](../product/non-functional-requirements.md
 | How is a release artifact identified and verified? | [`release-sbom.md`](release-sbom.md), [`installation-security.md`](installation-security.md) |
 | How are vulnerabilities reported? | [`SECURITY.md`](../../SECURITY.md) |
 | How is the module released/published? | [`publishing.md`](../release/publishing.md), [`versioning.md`](../release/versioning.md) |
-| What is still open before organizational/release approval? | This page's review-status/limitations sections plus the repository-security baseline, independent-signing disposition, exact-candidate live evidence, and release-readiness decision |
+| What should an organization review before approval? | This page's review-status/limitations sections plus the exact release evidence and applicable organizational policy |
 
 ## Approval record guidance
 
 An organizational approval record should identify the **exact version/tag/artifact** reviewed, review date, organizational owner/approver, accepted limitations, and conditions on use. It should link immutable or release-specific evidence where available rather than treating this mutable `main`-branch page as the approval artifact itself.
 
-This page intentionally does not contain an approval checkbox or assertion that the software is approved. The decision belongs to the adopting organization and, for project release, to the explicit release-readiness process.
+This page intentionally does not contain an approval checkbox or assertion that the software is approved for a particular organization. The decision belongs to the adopting organization; project release qualification is governed separately by the release-readiness process.

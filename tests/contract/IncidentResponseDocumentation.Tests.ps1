@@ -114,7 +114,7 @@ Describe 'Post-release incident and emergency maintenance documentation contract
         $script:incident | Should -Match '\[`release-readiness\.md`\]\(release-readiness\.md\)'
         $script:incident | Should -Match '\[`release-runbook\.md`\]\(release-runbook\.md\)'
         $script:incident | Should -Match '\[`governance\.md`\]\(\.\./engineering/governance\.md\)'
-        $script:support | Should -Match 'latest published stable module version'
+        $script:support | Should -Match 'current supported stable module version|latest published stable version'
         $script:readiness | Should -Match 'exact release candidate'
         $script:runbook | Should -Match 'incident-response\.md'
     }

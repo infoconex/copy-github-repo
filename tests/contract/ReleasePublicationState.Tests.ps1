@@ -1,5 +1,5 @@
 BeforeAll {
-    $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    $repositoryRoot = Split-Path -Parent $PSScriptRoot
     $script:releaseWorkflowPath = Join-Path $repositoryRoot '.github/workflows/publish-release.yml'
     $script:releaseWorkflow = (Get-Content -LiteralPath $script:releaseWorkflowPath -Raw) -replace "`r`n?", "`n"
 }

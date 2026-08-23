@@ -4,23 +4,9 @@ name: Analyze Code Security
   push:
     branches:
       - main
-    paths:
-      - 'src/**'
-      - 'build/**'
-      - 'tests/**'
-      - '*.ps1'
-      - 'PSScriptAnalyzerSecuritySettings.psd1'
-      - '.github/workflows/analyze-code-security.yml'
   pull_request:
     branches:
       - main
-    paths:
-      - 'src/**'
-      - 'build/**'
-      - 'tests/**'
-      - '*.ps1'
-      - 'PSScriptAnalyzerSecuritySettings.psd1'
-      - '.github/workflows/analyze-code-security.yml'
   workflow_dispatch:
 
 permissions:
@@ -31,8 +17,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  scope:
+    name: Determine Security Scope
+    runs-on: ubuntu-latest
+    outputs:
+      run-security: ${{ steps.scope.outputs.run-security }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Determine whether security analysis is required
+        id: scope
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+              'run-security=true' >> $env:GITHUB_OUTPUT
+              exit 0
+          }
+
+          if ('${{ github.event_name }}' -eq 'pull_request') {
+              $baseSha = '${{ github.event.pull_request.base.sha }}'
+              $headSha = '${{ github.event.pull_request.head.sha }}'
+          }
+          else {
+              $baseSha = '${{ github.event.before }}'
+              $headSha = '${{ github.sha }}'
+          }
+
+          $changedFiles = @(git diff --name-only $baseSha $headSha)
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Unable to determine changed files for security-scope evaluation.'
+          }
+
+          $securityPattern = '^(?:src/|build/|tests/|[^/]+\.ps1$|PSScriptAnalyzerSecuritySettings\.psd1$|\.github/workflows/analyze-code-security\.yml$)'
+          $requiresSecurity = @($changedFiles | Where-Object { $_ -match $securityPattern }).Count -gt 0
+          "run-security=$($requiresSecurity.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
   analyze:
     name: Analyze PowerShell Code Security
+    needs: scope
+    if: ${{ needs.scope.outputs.run-security == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

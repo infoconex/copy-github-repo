@@ -9,37 +9,37 @@ Describe 'Validate Project Quality workflow contract' {
         $script:workflow | Should -Match '(?m)^name: Validate Project Quality$'
     }
 
-    It 'runs for pushes and pull requests targeting main' {
-        $script:workflow | Should -Match '(?ms)^  push:\s+branches:\s+- main(?:\s+paths-ignore:.*?)?(?=^  pull_request:)'
-        $script:workflow | Should -Match '(?ms)^  pull_request:\s+branches:\s+- main(?:\s+paths-ignore:.*?)?(?=^  workflow_dispatch:)'
+    It 'always appears for pushes and pull requests targeting main' {
+        $script:workflow | Should -Match '(?ms)^  push:\s+branches:\s+- main\s*(?=^  pull_request:)'
+        $script:workflow | Should -Match '(?ms)^  pull_request:\s+branches:\s+- main\s*(?=^  workflow_dispatch:)'
+        $script:workflow | Should -Not -Match '(?m)^\s+paths-ignore:'
     }
 
-    It 'skips the cross-platform matrix for site-only changes' {
-        $siteOnlyPaths = @(
-            '_config.yml',
-            '_data/**',
-            '_layouts/**',
-            'assets/**',
-            'docs/**',
-            'README.md',
-            'CHANGELOG.md',
-            'CODE_OF_CONDUCT.md',
-            'CONTRIBUTING.md',
-            'SECURITY.md',
-            'LICENSE',
-            '.github/workflows/deploy-documentation-site.yml',
-            '.github/workflows/validate-documentation.yml'
-        )
-
-        foreach ($path in $siteOnlyPaths) {
-            $escapedPath = [regex]::Escape($path)
-            [regex]::Matches($script:workflow, "(?m)^      - '$escapedPath'$" ).Count | Should -Be 2
+    It 'uses an internal scope decision to skip the expensive matrix for site-only changes' {
+        foreach ($term in @(
+            'Determine Quality Scope',
+            'run-quality',
+            '_config\\.yml',
+            '_data/',
+            '_layouts/',
+            'assets/',
+            'docs/',
+            'README\\.md',
+            'CHANGELOG\\.md',
+            'SECURITY\\.md',
+            'deploy-documentation-site',
+            'validate-documentation'
+        )) {
+            $script:workflow | Should -Match $term
         }
+
+        $script:workflow | Should -Match "(?m)^    if: \$\{\{ needs\.scope\.outputs\.run-quality == 'true' \}\}$"
     }
 
     It 'preserves reusable and manual workflow entry points' {
         $script:workflow | Should -Match '(?m)^  workflow_dispatch:$'
         $script:workflow | Should -Match '(?m)^  workflow_call:$'
+        $script:workflow | Should -Match "workflow_dispatch', 'workflow_call"
     }
 
     It 'keeps pull request validation read-only and fork safe' {
@@ -49,7 +49,7 @@ Describe 'Validate Project Quality workflow contract' {
         $script:workflow | Should -Match '(?ms)persist-credentials: false'
     }
 
-    It 'runs the same quality gate on all supported runner platforms' {
+    It 'runs the same quality gate on all supported runner platforms when required' {
         foreach ($runner in @('windows-latest', 'ubuntu-latest', 'macos-latest')) {
             $script:workflow | Should -Match ([regex]::Escape("- $runner"))
         }

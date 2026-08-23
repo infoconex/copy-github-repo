@@ -4,37 +4,9 @@ name: Validate Project Quality
   push:
     branches:
       - main
-    paths-ignore:
-      - '_config.yml'
-      - '_data/**'
-      - '_layouts/**'
-      - 'assets/**'
-      - 'docs/**'
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'CODE_OF_CONDUCT.md'
-      - 'CONTRIBUTING.md'
-      - 'SECURITY.md'
-      - 'LICENSE'
-      - '.github/workflows/deploy-documentation-site.yml'
-      - '.github/workflows/validate-documentation.yml'
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - '_config.yml'
-      - '_data/**'
-      - '_layouts/**'
-      - 'assets/**'
-      - 'docs/**'
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'CODE_OF_CONDUCT.md'
-      - 'CONTRIBUTING.md'
-      - 'SECURITY.md'
-      - 'LICENSE'
-      - '.github/workflows/deploy-documentation-site.yml'
-      - '.github/workflows/validate-documentation.yml'
   workflow_dispatch:
   workflow_call:
 
@@ -46,8 +18,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  scope:
+    name: Determine Quality Scope
+    runs-on: ubuntu-latest
+    outputs:
+      run-quality: ${{ steps.scope.outputs.run-quality }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Determine whether full quality validation is required
+        id: scope
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -in @('workflow_dispatch', 'workflow_call')) {
+              'run-quality=true' >> $env:GITHUB_OUTPUT
+              exit 0
+          }
+
+          if ('${{ github.event_name }}' -eq 'pull_request') {
+              $baseSha = '${{ github.event.pull_request.base.sha }}'
+              $headSha = '${{ github.event.pull_request.head.sha }}'
+          }
+          else {
+              $baseSha = '${{ github.event.before }}'
+              $headSha = '${{ github.sha }}'
+          }
+
+          $changedFiles = @(git diff --name-only $baseSha $headSha)
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Unable to determine changed files for quality-scope evaluation.'
+          }
+
+          $siteOnlyPattern = '^(?:_config\.yml|_data/|_layouts/|assets/|docs/|README\.md$|CHANGELOG\.md$|CODE_OF_CONDUCT\.md$|CONTRIBUTING\.md$|SECURITY\.md$|LICENSE$|\.github/workflows/(?:deploy-documentation-site|validate-documentation)\.yml$)'
+          $requiresQuality = @($changedFiles | Where-Object { $_ -notmatch $siteOnlyPattern }).Count -gt 0
+          "run-quality=$($requiresQuality.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
   test:
     name: Validate PowerShell (${{ matrix.os }})
+    needs: scope
+    if: ${{ needs.scope.outputs.run-quality == 'true' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:

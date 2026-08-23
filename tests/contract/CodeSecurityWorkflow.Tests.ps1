@@ -7,15 +7,17 @@ BeforeAll {
 }
 
 Describe 'Analyze Code Security workflow contract' {
-    It 'runs for relevant executable and security-evidence changes' {
+    It 'always appears for main pushes and pull requests and scopes expensive work internally' {
         $script:workflow | Should -Match '(?m)^name: Analyze Code Security$'
-        $script:workflow | Should -Match '(?m)^  push:$'
-        $script:workflow | Should -Match '(?m)^  pull_request:$'
-        $script:workflow | Should -Match "(?m)^      - 'src/\*\*'$"
-        $script:workflow | Should -Match "(?m)^      - 'build/\*\*'$"
-        $script:workflow | Should -Match "(?m)^      - 'tests/\*\*'$"
-        $script:workflow | Should -Match "(?m)^      - 'PSScriptAnalyzerSecuritySettings\.psd1'$"
-        $script:workflow | Should -Match "(?m)^      - '\.github/workflows/analyze-code-security\.yml'$"
+        $script:workflow | Should -Match '(?ms)^  push:\s+branches:\s+- main\s*(?=^  pull_request:)'
+        $script:workflow | Should -Match '(?ms)^  pull_request:\s+branches:\s+- main\s*(?=^  workflow_dispatch:)'
+        $script:workflow | Should -Not -Match '(?m)^\s+paths:'
+        $script:workflow | Should -Match 'Determine Security Scope'
+        $script:workflow | Should -Match 'run-security'
+        foreach ($term in @('src/', 'build/', 'tests/', 'PSScriptAnalyzerSecuritySettings', 'analyze-code-security')) {
+            $script:workflow | Should -Match ([regex]::Escape($term))
+        }
+        $script:workflow | Should -Match "(?m)^    if: \$\{\{ needs\.scope\.outputs\.run-security == 'true' \}\}$"
         $script:workflow | Should -Match '(?m)^  workflow_dispatch:$'
     }
 

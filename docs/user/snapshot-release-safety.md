@@ -19,7 +19,7 @@ For same-name Snapshot replacement, the original repository is renamed to the se
 
 The clean replacement is a distinct GitHub repository. Historical tags and Releases are not recreated there because doing so would reconnect or misrepresent the history that Snapshot is intentionally removing.
 
-## First stable release ordering
+## Initial stable release ordering
 
 Do not create a stable release tag on the historical repository before performing a clean same-name replacement. A tag created before replacement remains associated with the archived history rather than the new clean root commit.
 
@@ -33,7 +33,7 @@ clean Snapshot replacement
 -> publish release artifacts and the PowerShell Gallery package
 ```
 
-For the initial release, `v0.1.0` must point to the final clean replacement commit.
+The initial `v0.1.0` release followed this ordering: its stable tag was created on the final qualified clean replacement commit, after the historical repository had been archived and the replacement repository verified.
 
 ## Planning and wizard behavior
 

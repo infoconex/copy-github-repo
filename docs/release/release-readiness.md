@@ -42,31 +42,31 @@ Keep these states distinct:
 
 ## v0.1.0 capability scope
 
-The stable capability IDs below come from [`product-model.md`](../product/product-model.md). This table is the current **planning baseline, not a go/no-go record** for a release candidate.
+The stable capability IDs below come from [`product-model.md`](../product/product-model.md). This table is the durable v0.1.0 **planning baseline, not a go/no-go record**; exact candidate evidence belongs to immutable workflow, qualification, tag, and release records rather than this mutable page.
 
-| Capability | v0.1.0 scope | Current repository evidence | RC live evidence | Current readiness treatment |
-| --- | --- | --- | --- | --- |
-| `CAP-DISC` Repository discovery/authentication | Required | Implemented; automated discovery/auth/host contracts | Pending exact-RC decision/evidence | Pending RC evidence |
-| `CAP-PLAN` Immutable source-state planning/preview | Required | Implemented; automated stale-state and no-mutation contracts | Pending exact-RC decision/evidence | Pending RC evidence |
-| `CAP-SNAP` Snapshot clean publication | Required | Implemented; automated tests; live Snapshot E2E harness | Not yet recorded for an exact RC | Pending RC live evidence |
-| `CAP-HIST` FullHistory copy | Required | Implemented; automated tests; live FullHistory E2E harness | Not yet recorded for an exact RC | Pending RC live evidence |
-| `CAP-DEST` Destination/archive-and-replace safety | Required | Implemented; automated safety/recovery coverage | Not yet recorded for an exact RC | Pending RC evidence |
-| `CAP-SAME` Same-name archive-and-replace | Required | Implemented; automated tests; live same-name E2E harnesses | Not yet recorded for an exact RC | Pending RC live evidence |
-| `CAP-LFS` Git LFS handling | Required when approved content requires LFS | Implemented; automated tests; live LFS E2E harness | Not yet recorded for an exact RC | Pending RC live evidence when applicable |
-| `CAP-SET` Supported settings restoration | Required | Implemented; automated tests; live settings E2E harness | Not yet recorded for an exact RC | Pending RC live evidence |
-| `CAP-PROT` Protection restoration/skipped semantics | Required | Implemented; automated protection/status coverage | Pending exact-RC decision/evidence | Pending RC evidence |
-| `CAP-WIZ` Guided wizard | Required | Implemented; extensive unit/integration/presentation contracts | Pending exact-RC decision/evidence | Pending RC evidence |
-| `CAP-AUTO` Scripted/non-interactive operation | Required | Implemented; automated public/safety contracts | Pending exact-RC decision/evidence | Pending RC evidence |
-| `CAP-VERIFY` Standalone/integrated verification | Required | Implemented; automated Snapshot/FullHistory verification | Pending exact-RC decision/evidence | Pending RC evidence |
-| `CAP-EVID` Provenance/reporting/recovery evidence | Required | Implemented; automated report/recovery/provenance coverage | Pending exact-RC decision/evidence | Pending RC evidence |
-| `CAP-DIST` Install/update/uninstall/distribution | Required | Implemented install/release/uninstall/package contracts | Post-publication verification cannot exist before release | Pending release/publication evidence |
-| `CAP-REL` Packaging/publication integrity | Required | Packaging/checksum/SPDX SBOM/GitHub attestation contracts implemented; independent publisher signing is optional for the initial stable release | Post-publication evidence pending | Pending release execution |
+| Capability | v0.1.0 scope | Repository evidence | Release-qualification treatment |
+| --- | --- | --- | --- |
+| `CAP-DISC` Repository discovery/authentication | Required | Implemented; automated discovery/auth/host contracts | Exact-candidate deterministic evidence required |
+| `CAP-PLAN` Immutable source-state planning/preview | Required | Implemented; automated stale-state and no-mutation contracts | Exact-candidate deterministic evidence required |
+| `CAP-SNAP` Snapshot clean publication | Required | Implemented; automated tests; live Snapshot E2E harness | Live-validated for RC where required by the quality strategy |
+| `CAP-HIST` FullHistory copy | Required | Implemented; automated tests; live FullHistory E2E harness | Live-validated for RC where required by the quality strategy |
+| `CAP-DEST` Destination/archive-and-replace safety | Required | Implemented; automated safety/recovery coverage | Exact-candidate evidence required |
+| `CAP-SAME` Same-name archive-and-replace | Required | Implemented; automated tests; live same-name E2E harnesses | Live-validated for RC where required by the quality strategy |
+| `CAP-LFS` Git LFS handling | Required when approved content requires LFS | Implemented; automated tests; live LFS E2E harness | Live evidence required when the approved release scenario includes LFS |
+| `CAP-SET` Supported settings restoration | Required | Implemented; automated tests; live settings E2E harness | Live-validated for RC where required by the quality strategy |
+| `CAP-PROT` Protection restoration/skipped semantics | Required | Implemented; automated protection/status coverage | Exact-candidate evidence and repository read-back required as applicable |
+| `CAP-WIZ` Guided wizard | Required | Implemented; extensive unit/integration/presentation contracts | Exact-candidate deterministic evidence required |
+| `CAP-AUTO` Scripted/non-interactive operation | Required | Implemented; automated public/safety contracts | Exact-candidate deterministic evidence required |
+| `CAP-VERIFY` Standalone/integrated verification | Required | Implemented; automated Snapshot/FullHistory verification | Exact-candidate deterministic evidence required |
+| `CAP-EVID` Provenance/reporting/recovery evidence | Required | Implemented; automated report/recovery/provenance coverage | Exact-candidate deterministic and applicable live evidence required |
+| `CAP-DIST` Install/update/uninstall/distribution | Required | Implemented install/release/uninstall/package contracts | Pre-publication package/install rehearsal plus post-publication distribution verification required |
+| `CAP-REL` Packaging/publication integrity | Required | Packaging/checksum/SPDX SBOM/GitHub attestation contracts implemented | Exact-candidate workflow evidence plus post-publication verification required |
 
 The matrix does not claim that every `Required` capability needs an independent live E2E script. The release decision applies the live-evidence rules in [`quality-strategy.md`](../engineering/quality-strategy.md) and must explain when automated evidence is sufficient versus when real GitHub evidence is required.
 
 ## v0.1.0 non-functional disposition
 
-The current non-functional controls and limitations are stated directly rather than through historical work-tracking references.
+The non-functional controls and limitations for v0.1.0 are stated directly rather than through historical work-tracking references.
 
 | Area | v0.1.0 disposition | Evidence / rationale | Residual limitation | Blocking treatment |
 | --- | --- | --- | --- | --- |
@@ -79,20 +79,20 @@ The current non-functional controls and limitations are stated directly rather t
 
 The accepted limitations above do not authorize broader claims. In particular, v0.1.0 does not promise a finite universal native-command timeout, a supported hard repository-size maximum, a fixed completion-time SLA, guaranteed recovery-file creation after hard termination, or automatic rollback/replay after ambiguous mutation.
 
-## Current cross-cutting v0.1.0 readiness items
+## Cross-cutting v0.1.0 readiness items
 
-The following durable concerns must remain visible before a `GO` decision:
+These durable concerns were part of v0.1.0 qualification and remain requirements for future release decisions where applicable:
 
-| Item | Current state | Required readiness treatment |
+| Item | v0.1.0 disposition | Ongoing readiness treatment |
 | --- | --- | --- |
-| Repository security baseline | Live owner-side hardening/verification remains until the required baseline is confirmed | Must be satisfied or explicitly accepted with release-specific residual risk; the release must not claim a fully hardened repository without live evidence. |
-| Independent publisher signing | Optional for the initial stable release | Do not describe checksum/SBOM/GitHub attestations as independent code signing. |
-| Non-functional resilience controls | Implemented with the accepted limitations above | Exact-RC automated evidence is still required. |
-| Product scenario traceability | Required before final qualification | Required scenarios must map to deterministic evidence and applicable live E2E evidence through durable scenario identifiers. |
-| Release/deployment runbook | Implemented in [`release-runbook.md`](release-runbook.md) | Must remain aligned with the release workflow and publication contract. |
-| Repository-hosted installation rehearsal | Required before the clean Snapshot publication | A real supported workstation must install, use, uninstall, and reinstall through the documented repository/release path. |
-| Clean Snapshot qualification | Required before the first stable release | Historical repository must not be tagged/published as `v0.1.0`; the clean replacement must be independently qualified. |
-| Exact release-candidate evidence | Not yet applicable on mutable `main` | Required for the actual go/no-go record. |
+| Repository security baseline | Required repository settings, main rules, required checks, secret scanning, push protection, and release controls were restored/verified during clean-repository qualification | Reverify live owner-side state for a future candidate when repository configuration may have changed |
+| Independent publisher signing | Authenticode was optional for v0.1.0; GitHub artifact attestations are the selected release-authenticity control | Do not describe checksum/SBOM alone as publisher authentication; reconsider Authenticode if requirements change |
+| Non-functional resilience controls | Implemented with the accepted limitations above | Exact-RC automated evidence remains required |
+| Product scenario traceability | Required for qualification | Required scenarios must map to deterministic evidence and applicable live E2E evidence through durable scenario identifiers |
+| Release/deployment runbook | Implemented in [`release-runbook.md`](release-runbook.md) | Must remain aligned with the release workflow and publication contract |
+| Repository-hosted installation rehearsal | Performed as part of v0.1.0 qualification | Repeat when the installation/release trust contract materially changes |
+| Clean Snapshot qualification | Completed as the v0.1.0 clean-publication boundary | Historical repository remains archived; later releases qualify the current repository normally |
+| Exact release-candidate evidence | Release-specific and immutable by design | Never infer exact-candidate approval from this mutable page or from a generic previous CI run |
 
 A planning or tracking artifact is not automatically a release blocker. The release decision is based on the durable requirement/control itself and its evidence. No undispositioned release blocker may remain for a `GO` decision.
 
@@ -151,7 +151,7 @@ The decision applies only to the recorded candidate. **A later commit requires a
 
 ## Release decision algorithm
 
-A v0.1.0 decision can be `GO` only when:
+A release decision can be `GO` only when:
 
 1. every `Required` capability is implemented and documented;
 2. automated evidence required by the quality strategy passes for the exact candidate;
@@ -166,18 +166,18 @@ Otherwise the correct result is `PENDING` or `NO-GO`, not an optimistic partial-
 
 ## Clean Snapshot release boundary
 
-For the first stable release, the same-name Snapshot replacement is part of release qualification:
+For v0.1.0, the same-name Snapshot replacement was part of release qualification:
 
-1. finish all required pre-Snapshot repository, documentation, security, workflow, test, and installation-readiness work on the historical repository;
-2. run the approved same-name Snapshot replacement;
-3. verify the replacement repository has the intended unrelated clean root commit and approved tree;
-4. reapply/verify required repository security/settings and validate workflows/documentation deployment;
-5. rerun required cross-platform automated and live evidence from the replacement repository;
-6. designate one exact clean replacement commit as the release candidate;
-7. create `v0.1.0` only on that clean replacement commit; and
-8. publish through the controlled release workflow.
+1. required pre-Snapshot repository, documentation, security, workflow, test, and installation-readiness work was completed on the historical repository;
+2. the approved same-name Snapshot replacement was run;
+3. the replacement repository was verified to have the intended unrelated clean root commit and approved tree;
+4. required repository security/settings, workflows, and documentation deployment were restored and verified;
+5. required cross-platform automated and applicable live evidence was rerun from the replacement repository;
+6. an exact clean replacement commit was designated and repeatedly requalified when release-content changes produced later candidate SHAs;
+7. `v0.1.0` is created only on the final qualified clean replacement commit; and
+8. publication occurs through the controlled release workflow.
 
-The historical repository must not be used as the source of the first stable tag, GitHub Release, or PowerShell Gallery publication.
+The historical repository must not be used as the source of the first stable tag, GitHub Release, or PowerShell Gallery publication. It remains the archive of pre-Snapshot history rather than the stable release source.
 
 ## Relationship to release execution
 

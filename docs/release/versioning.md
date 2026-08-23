@@ -64,10 +64,12 @@ Authenticode signing is optional and was not a `v0.1.0` blocker. The v0.1.0 rele
 
 ## Installer trust
 
-The packaged installer is validated by the cross-platform quality gate using an isolated module root, including overwrite refusal and explicit forced replacement.
+PowerShell Gallery is the primary stable package channel and normal user installation path. Install the latest stable version with `Install-PSResource CopyGitHubRepo`; package-manager updates and removals should normally use `Update-PSResource` and `Uninstall-PSResource` respectively.
 
-The convenience `install-release.ps1` bootstrap installs the latest stable GitHub release by default or an exact stable release when `-Version X.Y.Z` is supplied. It downloads the selected release ZIP and checksum, verifies SHA-256 and GitHub artifact provenance before extraction, and then invokes the packaged installer. When that bootstrap is fetched from mutable `main`, the bootstrap itself is part of the trust boundary.
+The convenience `install-release.ps1` bootstrap is a repository-hosted stable alternative. It installs the latest stable GitHub release by default or an exact stable release when `-Version X.Y.Z` is supplied. It downloads the selected release ZIP and checksum, verifies SHA-256 and GitHub artifact provenance before extraction, and then invokes the packaged installer. When that bootstrap is fetched from mutable `main`, the bootstrap itself is part of the trust boundary.
 
 The separate `install-prerelease.ps1` bootstrap is intended for development and release-candidate testing of unreleased `main` content. It resolves `main` to an exact Git commit SHA and downloads the source archive for that commit before invoking the same repository `install.ps1`. Because that unreleased source build does not have its own immutable stable release artifact and matching checksum, the prerelease path does not provide the stable release artifact contract.
 
-The documented pinned installation path avoids executing `main` by downloading a specific stable release ZIP and checksum directly. A matching SHA-256 proves that the ZIP matches the compared checksum; GitHub artifact attestation additionally binds the artifact digest to the expected repository/workflow/source identity. See `docs/security/installation-security.md` for the complete trust model.
+The documented pinned installation path avoids executing `main` by downloading a specific stable release ZIP and checksum directly. A matching SHA-256 proves that the ZIP matches the compared checksum; GitHub artifact attestation additionally binds the artifact digest to the expected repository/workflow/source identity.
+
+A normal PowerShell Gallery install does not independently perform the GitHub Release ZIP checksum/attestation procedure. Users or organizations that require that project-provided provenance verification should select the repository-hosted or pinned GitHub Release path deliberately. See `docs/security/installation-security.md` for the complete trust model.

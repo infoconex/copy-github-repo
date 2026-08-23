@@ -19,21 +19,24 @@ Use this order for the first stable publication:
 
 ```text
 clean same-name Snapshot replacement
--> verify the clean replacement and root commit
--> create the stable tag on the clean replacement commit
--> create/publish the GitHub Release
--> publish release artifacts and PowerShell Gallery package
+-> verify the clean replacement and exact candidate commit
+-> run release readiness and cross-platform quality validation
+-> build release artifacts, SBOM, and attestations
+-> verify PowerShell Gallery and GitHub Release do not already contain the version
+-> create the stable tag on the approved replacement commit
+-> publish the PowerShell Gallery package
+-> create/publish the GitHub Release and release assets
 ```
 
-For `v0.1.0`, the `v0.1.0` tag must therefore resolve to the final clean replacement commit, not to a commit in the archived historical repository. Existing historical tags/releases stay with the archive and are not automatically recreated on the replacement.
+For `v0.1.0`, the `v0.1.0` tag must therefore resolve to the final qualified clean replacement commit, not to a commit in the archived historical repository. Existing historical tags/releases stay with the archive and are not automatically recreated on the replacement.
 
 Before any release artifacts are built, `build/Test-ReleaseReadiness.ps1` validates the stable-release metadata contract. It requires the tag to match the manifest version exactly, requires a dated changelog entry for that version, requires the `Unreleased` section to be empty, validates the module manifest, and confirms the release-critical build, installer, uninstaller, workflow, and publishing files exist.
 
 For manual dispatch, the workflow additionally requires that the run is started from `main` and that the workflow's exact commit SHA is still the current `main` SHA. This prevents a stale browser tab or an older branch revision from becoming the release source. The exact commit then passes the same reusable cross-platform **Validate Project Quality** workflow used elsewhere in CI.
 
-The publication workflow builds the deterministic GitHub release ZIP and checksum, stages a clean Gallery package under `dist/PSGallery/CopyGitHubRepo`, validates the packaged manifest and exports, checks both PSGallery and GitHub for an existing version, ensures the stable tag resolves to the approved release commit, publishes the Gallery package, and then creates the GitHub Release.
+The publication workflow builds the deterministic GitHub release ZIP and checksum, stages a clean Gallery package under `dist/PSGallery/CopyGitHubRepo`, validates the packaged manifest and exports, generates the SPDX SBOM and GitHub attestations, checks both PSGallery and GitHub for an existing version, ensures the stable tag resolves to the approved release commit, publishes the Gallery package, and then creates the GitHub Release.
 
-A manual run creates an annotated tag only after project-quality validation, release-readiness validation, artifact creation, and duplicate destination checks have succeeded. If that tag already exists, the workflow reuses it only when it resolves to the exact approved release commit; otherwise publication stops. This makes a safe rerun possible after a failure that occurred after tag creation but before publication.
+A manual run creates an annotated tag only after project-quality validation, release-readiness validation, artifact creation, attestation, and duplicate destination checks have succeeded. If that tag already exists, the workflow reuses it only when it resolves to the exact approved release commit; otherwise publication stops. This makes a safe rerun possible after a failure that occurred after tag creation but before publication.
 
 The workflow does not publish from ordinary branch pushes or pull requests. It does not change versions automatically.
 
@@ -132,7 +135,7 @@ Publish-PSResource `
     -WhatIf
 ```
 
-Replace `0.1.0` and `v0.1.0` with the manifest version and tag being released. If `Find-PSResource` returns that exact version, stop; released versions are treated as immutable and must not be overwritten.
+Replace `0.1.0` and `v0.1.0` with the manifest version and tag being released. If `Find-PSResource` returns that exact version, stop; released versions are treated as immutable and must not be overwritten. If `Find-PSResource` reports that the exact package/version cannot be found, that is the expected pre-publication state. Other lookup errors should be investigated rather than treated as proof that the version is absent.
 
 When the dry run and all validation are satisfactory, rerun `Publish-PSResource` without `-WhatIf`. Keep the API key in memory or a secure secret store and do not echo it. The legacy PowerShellGet compatibility command is `Publish-Module`, but new project automation uses `Publish-PSResource` from `Microsoft.PowerShell.PSResourceGet`.
 

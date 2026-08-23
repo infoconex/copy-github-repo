@@ -28,7 +28,7 @@ Describe 'Installer supply-chain trust documentation' {
 
     It 'distinguishes Gallery package installation from GitHub Release provenance verification' {
         $script:security | Should -Match 'does not independently download the project''s GitHub Release `\.sha256` sidecar'
-        $script:security | Should -Match 'does not independently perform the GitHub Release ZIP checksum/attestation procedure'
+        $script:security | Should -Match 'run `gh attestation verify` against the GitHub Release ZIP'
         $script:security | Should -Match 'require the project''s checksum-and-GitHub-provenance verification contract'
     }
 

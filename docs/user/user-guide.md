@@ -9,11 +9,21 @@ For normative behavior, safety invariants, and supported scope, see [`product-co
 A typical user journey is:
 
 1. **Choose the outcome.** Use `Snapshot` for a clean publication whose Git history begins with one unrelated root commit, or `FullHistory` when ordinary Git history must be preserved.
-2. **Install and authenticate.** Use a supported installation path, then authenticate GitHub CLI for `github.com`.
+2. **Install and authenticate.** Install the stable module from PowerShell Gallery, then authenticate GitHub CLI for `github.com`.
 3. **Preview before mutation.** Use the guided wizard or `Copy-GitHubRepository -PlanOnly` to review the source, destination, mode, visibility, settings choices, immutable source-state evidence, and any replacement/archive plan.
 4. **Execute deliberately.** Replacement operations require the safety acknowledgements and exact confirmation defined by the product contract.
 5. **Verify the result.** Successful execution verifies content before reporting success and returns structured evidence. `Test-GitHubRepositoryMigration` is available for a separate current-state comparison.
 6. **Preserve evidence if something fails.** If mutation has started, do not assume rollback occurred. The tool preserves repositories and writes recovery evidence when possible; use the [troubleshooting and recovery guide](troubleshooting-recovery.md) for diagnosis and recovery.
+
+For normal stable installation, use PowerShell Gallery:
+
+```powershell
+Install-PSResource CopyGitHubRepo
+Import-Module CopyGitHubRepo
+gh auth login --hostname github.com
+```
+
+`Install-PSResource` installs the latest stable Gallery version by default. To deliberately pin the initial stable release, use `Install-PSResource CopyGitHubRepo -Version 0.1.0`. Environments using the older PowerShellGet commands can use `Install-Module CopyGitHubRepo -Scope CurrentUser` instead. For repository-hosted, provenance-verified, pinned-artifact, and prerelease alternatives, see [Installation security](../security/installation-security.md).
 
 For interactive use, start with:
 

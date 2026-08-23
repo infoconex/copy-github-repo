@@ -49,9 +49,22 @@
     navToggle?.setAttribute('aria-expanded', 'false');
   };
 
+  const scrollActiveNavigationIntoView = () => {
+    if (!sidebar || !window.matchMedia('(max-width: 980px)').matches) return;
+    const activeLink = sidebar.querySelector('.docs-nav a.is-active');
+    if (!activeLink) return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    activeLink.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'center'
+    });
+  };
+
   navToggle?.addEventListener('click', () => {
     const isOpen = body.classList.toggle('nav-open');
     navToggle.setAttribute('aria-expanded', String(isOpen));
+    if (isOpen) requestAnimationFrame(scrollActiveNavigationIntoView);
   });
   navClose?.addEventListener('click', closeNavigation);
   document.addEventListener('keydown', (event) => {

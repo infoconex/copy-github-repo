@@ -73,7 +73,7 @@ Normal cancellation before mutation is a structured no-change outcome. `ShouldPr
 - Source and destination are explicit `owner/name` values.
 - A new destination must be unused.
 - An existing different destination is never silently overwritten.
-- Version 1 does not delete repositories.
+- `v0.1.0` does not delete repositories.
 - Any visibility change requires explicit `-Force` acknowledgement for mutation.
 - Non-interactive mutation requires `-Force`.
 - `-Force` and `-Confirm:$false` never bypass exact replacement confirmation.
@@ -91,7 +91,7 @@ Exact confirmations remain case-sensitive and name the identities involved:
 
 After successful content verification, ordinary supported repository settings are restored differentially and read back. Supported values include description, homepage, Issues/Projects/Wiki/Discussions states, merge options, delete-branch-on-merge, update-branch allowance, web commit signoff, and topics.
 
-Repository protection is a separate final stage. Version 1 restores transferable repository-level rulesets and transferable legacy default-branch protection. Security semantics are never silently weakened to make them portable. Identity-bound, deployment-bound, integration-bound, or inherited organization policy is reported as skipped/unsupported when it cannot be reproduced safely.
+Repository protection is a separate final stage. `v0.1.0` restores transferable repository-level rulesets and transferable legacy default-branch protection. Security semantics are never silently weakened to make them portable. Identity-bound, deployment-bound, integration-bound, or inherited organization policy is reported as skipped/unsupported when it cannot be reproduced safely.
 
 `-SkipSettings` skips both ordinary settings and repository-protection restoration.
 
@@ -150,7 +150,7 @@ v0.1.0 supports only `github.com`, case-insensitively. Other hosts fail closed b
 
 Stable publication is tag-only. The tag must equal `v<ModuleVersion>` and the exact tagged commit must pass the reusable Windows, Ubuntu, and macOS quality gate before release publication. Stable release assets are not silently replaced.
 
-## Exclusions from version 1
+## Exclusions from v0.1.0
 
 - repository deletion
 - silent destination overwrite

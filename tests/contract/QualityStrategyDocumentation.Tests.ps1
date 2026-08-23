@@ -34,10 +34,12 @@ Describe 'Quality strategy documentation contract' {
         }
     }
 
-    It 'does not claim unperformed v0.1.0 live validation' {
+    It 'keeps v0.1.0 live-run claims bound to immutable release evidence' {
         $content = Get-Content -LiteralPath $script:qualityStrategyPath -Raw
-        $content | Should -Match 'Not yet recorded for v0\.1\.0 release candidate'
-        $content | Should -Match 'does not claim that the exact release candidate has been run'
+        $content | Should -Match 'immutable `v0\.1\.0` qualification evidence'
+        $content | Should -Match 'rather than reconstructing that historical record'
+        $content | Should -Not -Match 'Not yet recorded for v0\.1\.0 release candidate'
+        $content | Should -Match '`v0\.1\.0` publication, package discovery/install/import, release assets, checksum, SBOM, and attestations were completed and verified'
     }
 
     It 'defines decision-oriented release evidence fields' {

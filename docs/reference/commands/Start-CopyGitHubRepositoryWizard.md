@@ -16,7 +16,7 @@ Use the wizard when a person wants to choose a source and migration options inte
 
 | Parameter | Type | Required | Default | Accepted values / format | Description |
 | --- | --- | --- | --- | --- | --- |
-| `HostName` | `String` | No | `github.com` | `github.com` in version 1 | GitHub host used by discovery and migration operations. Unsupported hosts fail closed. |
+| `HostName` | `String` | No | `github.com` | `github.com` in `v0.1.0` | GitHub host used by discovery and migration operations. Unsupported hosts fail closed. |
 
 Because the command supports `ShouldProcess`, PowerShell also provides `-WhatIf` and `-Confirm`. Standard common parameters are available as well.
 

@@ -4,41 +4,43 @@ This document records the repository-level GitHub security baseline for `infocon
 
 A feature is never described as enabled merely because GitHub may enable it by default for some public repositories. Owner-side verification performed in the GitHub web UI is recorded explicitly as such and is not represented as API evidence.
 
+The initial `v0.1.0` clean-repository qualification is complete. Historical verification dates remain useful evidence, but future releases and security-relevant repository changes must verify the resulting live state again rather than treating August 2026 observations as permanent platform guarantees.
+
 ## Baseline status
 
 | Control | Required state | Evidence | Status |
 | --- | --- | --- | --- |
-| Private vulnerability reporting | Enabled | GitHub API returned `{"enabled":true}` on 2026-08-16; repository owner also confirmed the live security settings in the GitHub web UI on 2026-08-19 | Verified enabled |
-| GitHub Actions CodeQL analysis | Enabled and running | Initial CodeQL workflow execution completed successfully | Verified enabled for GitHub Actions workflow analysis |
+| Private vulnerability reporting | Enabled | GitHub API returned `{"enabled":true}` on 2026-08-16; repository owner also confirmed the live security settings in the GitHub web UI on 2026-08-19; the baseline was restored/reverified during the clean-repository `v0.1.0` qualification | Verified enabled for the qualified `v0.1.0` repository state |
+| GitHub Actions CodeQL analysis | Enabled and running | CodeQL workflow execution completed successfully during qualification and continues to be repository-controlled | Verified enabled for GitHub Actions workflow analysis |
 | PowerShell code security analysis | Dedicated repository-owned gate | `Analyze Code Security` uses a security-only PSScriptAnalyzer profile plus targeted security behavior tests | Implemented in repository configuration; workflow evidence is release-specific |
-| Repository ruleset for `main` | Active | Repository owner created and configured an active branch ruleset named `main` in the GitHub web UI on 2026-08-19, including the required `main` protections | Owner verified |
+| Repository ruleset for `main` | Active | Repository owner created and configured an active branch ruleset named `main` in the GitHub web UI on 2026-08-19; required protection behavior was restored/reverified for the clean repository during release qualification | Owner verified for the qualified `v0.1.0` repository state |
 | Dependabot configuration for GitHub Actions | Weekly update monitoring | `.github/dependabot.yml` schedules weekly GitHub Actions updates | Implemented in repository configuration |
-| Dependabot alerts | Enabled | Repository owner confirmed the live Advanced Security settings in the GitHub web UI on 2026-08-19 | Owner verified enabled |
-| Dependabot security updates | Enabled | Repository owner confirmed the live Advanced Security settings in the GitHub web UI on 2026-08-19 | Owner verified enabled |
-| Secret scanning | Enabled where GitHub exposes the setting | Repository owner confirmed the live Advanced Security settings in the GitHub web UI on 2026-08-19 | Owner verified enabled/available configuration |
-| Push protection for secrets | Enabled where available | Repository owner confirmed the live Advanced Security settings in the GitHub web UI on 2026-08-19 | Owner verified enabled/available configuration |
-| Code scanning alert state | Reviewable with no unaccepted blocker for release | GitHub Actions CodeQL analysis uploads successfully; connected integration receives HTTP 403 when listing code-scanning alerts | Live alert review required for the exact release candidate |
-| Default GitHub Actions workflow permissions | Read-only by default unless a workflow declares narrower/required permissions | Repository owner confirmed the repository Actions workflow-permission setting in the GitHub web UI on 2026-08-19 | Owner verified |
+| Dependabot alerts | Enabled | Repository owner confirmed the live Advanced Security settings in the GitHub web UI on 2026-08-19; baseline restoration/reverification was part of clean-repository qualification | Owner verified enabled for the qualified `v0.1.0` repository state |
+| Dependabot security updates | Enabled | Repository owner confirmed the live Advanced Security settings in the GitHub web UI on 2026-08-19; baseline restoration/reverification was part of clean-repository qualification | Owner verified enabled for the qualified `v0.1.0` repository state |
+| Secret scanning | Enabled where GitHub exposes the setting | Repository owner confirmed the live Advanced Security settings in the GitHub web UI on 2026-08-19; baseline restoration/reverification was part of clean-repository qualification | Owner verified enabled/available configuration for the qualified `v0.1.0` state |
+| Push protection for secrets | Enabled where available | Repository owner confirmed the live Advanced Security settings in the GitHub web UI on 2026-08-19; baseline restoration/reverification was part of clean-repository qualification | Owner verified enabled/available configuration for the qualified `v0.1.0` state |
+| Code scanning alert state | Reviewable with no unaccepted release blocker | GitHub Actions CodeQL analysis uploads successfully; the connected integration has historically received HTTP 403 when listing code-scanning alerts | Live verification required for each release decision where alert state could have changed |
+| Default GitHub Actions workflow permissions | Read-only by default unless a workflow declares narrower/required permissions | Repository owner confirmed the repository Actions workflow-permission setting in the GitHub web UI on 2026-08-19; baseline restoration/reverification was part of clean-repository qualification | Owner verified for the qualified `v0.1.0` repository state |
 | Classic `main` branch protection | Superseded by or compatible with the required active ruleset | Active `main` ruleset is the repository's intended protection mechanism | Satisfied by ruleset; classic protection is not independently required |
 
 ## Required `main` ruleset
 
-Before the repository is treated as release-ready, maintain an **active branch ruleset targeting the default branch (`main`)**. The intended minimum is:
+Maintain an **active branch ruleset targeting the default branch (`main`)**. The intended minimum is:
 
 - block branch deletion;
 - block force pushes;
 - require changes to arrive through a pull request for normal contributor changes;
 - require required status checks before merge;
-- include **Validate Project Quality** as a required check once GitHub offers the exact observed check context for selection;
-- include **Analyze Code Security** as a required check for executable/security-relevant changes when the exact observed check context is available;
+- include **Validate Project Quality** as a required check using the exact observed check context selected in GitHub;
+- include **Analyze Code Security** as a required check using the exact observed check context selected in GitHub;
 - include CodeQL/code-scanning requirements when the repository plan and GitHub UI expose an appropriate rule without creating a circular or unusable workflow;
 - do not grant broad bypass access merely to make the rule convenient.
 
-Workflow and job names are part of the observable status-check surface. When workflow/job names change, verify any configured required-check context against the newly observed check names before treating the ruleset as satisfied.
+Workflow and job names are part of the observable status-check surface. When workflow/job names or trigger behavior change, verify configured required-check contexts against the newly observed checks before treating the ruleset as satisfied. Required workflows should still produce a successful/skipped check for documentation-only pull requests rather than disappearing entirely and leaving branch protection waiting for an `expected` check.
 
 The live repository uses an active ruleset named `main`. The ruleset name itself is not part of the security contract; the target, enforcement state, required checks, and protection behavior are what must be verified.
 
-This project may require a controlled administrative path during the same-name Snapshot replacement. Any temporary bypass must be explicit and removed or narrowed before the final release-readiness decision.
+A future same-name Snapshot replacement may require a controlled administrative path. Any temporary bypass must be explicit and removed or narrowed before the resulting repository is considered qualified.
 
 ### Configure or reconfigure the ruleset
 
@@ -50,7 +52,7 @@ This project may require a controlled administrative path during the same-name S
 6. Target the default branch.
 7. Enable the minimum protections listed above.
 8. Save the ruleset.
-9. Re-run the verification steps in this document and record the result in the release evidence.
+9. Re-run the verification steps in this document and record the result in the relevant release/security evidence.
 
 ## Advanced Security settings to verify
 
@@ -62,15 +64,15 @@ Open **Settings** → **Security** → **Advanced Security** and verify these co
 - **Push protection:** enabled when available.
 - **Private vulnerability reporting:** enabled.
 
-The repository owner verified these live settings in the GitHub web UI on 2026-08-19. That verification establishes the current historical-repository baseline but does not replace the required post-Snapshot verification of the clean replacement repository.
+The repository owner verified these settings in the GitHub web UI on 2026-08-19 during pre-Snapshot preparation. The required baseline was subsequently restored and reverified for the clean repository as part of `v0.1.0` qualification. Those observations are release evidence, not a substitute for fresh verification after a future repository replacement or security-relevant configuration change.
 
-Do not infer the state of these toggles from repository visibility or GitHub defaults. Capture the actual setting state during release readiness.
+Do not infer the state of these toggles from repository visibility or GitHub defaults. Capture the actual setting state during release readiness when live state may have changed.
 
 ## Code scanning review
 
 The repository-owned `.github/workflows/analyze-github-actions-security.yml` analyzes GitHub Actions workflow code with CodeQL. Successful workflow execution proves the configured analysis ran and uploaded its result; it does not by itself prove there are zero open code-scanning alerts.
 
-Before stable release:
+For a stable release or material security-sensitive change:
 
 1. Open **Security** → **Code scanning**.
 2. Review open alerts for the repository.
@@ -83,7 +85,7 @@ PowerShell source is not represented as CodeQL-covered. `.github/workflows/analy
 
 Open **Settings** → **Actions** → **General** → **Workflow permissions** and verify the repository default is **Read repository contents and packages permissions** rather than a broad read/write default. Do not enable Actions to create or approve pull requests unless a documented workflow requirement justifies it.
 
-The repository owner verified the live workflow-permission setting in the GitHub web UI on 2026-08-19.
+The repository owner verified the live workflow-permission setting in the GitHub web UI on 2026-08-19, and the required baseline was restored/reverified during clean-repository release qualification.
 
 Individual workflows must continue declaring explicit permissions appropriate to their jobs. Repository defaults are a backstop, not a substitute for workflow-level least privilege.
 
@@ -111,7 +113,7 @@ The product's supported settings/protection restoration is useful migration beha
 
 ### Required post-Snapshot security qualification
 
-Before the clean replacement repository can become the first stable release candidate:
+The following qualification was completed for the clean `v0.1.0` repository and is required again after any future same-name Snapshot replacement:
 
 1. Confirm the replacement repository is the intended same-name repository and `main` is the default branch.
 2. Confirm the approved Snapshot tree contains `.github/dependabot.yml` and all required security/quality workflows.
@@ -124,7 +126,7 @@ Before the clean replacement repository can become the first stable release cand
 9. Review code-scanning alerts and disposition any release blocker.
 10. Record any unavailable platform feature as a release-specific limitation with the platform/account constraint and compensating control; do not silently mark it satisfied.
 
-A pre-Snapshot verification result does not carry forward as evidence for the replacement repository. The clean repository must be qualified independently before `v0.1.0` is tagged or published.
+A pre-Snapshot verification result does not carry forward as evidence for a replacement repository. For `v0.1.0`, the clean repository was qualified independently before the stable tag and publication. The same rule applies to any future replacement.
 
 ## Evidence classification
 
@@ -136,4 +138,4 @@ Use these terms consistently:
 - **Live verification required** — the current evidence does not prove the setting or release-specific state.
 - **Not satisfied** — live evidence proves the intended baseline is currently missing.
 
-A permissions limitation in the verification integration is not evidence that a control is either enabled or disabled. Owner-side verification must be labeled distinctly from API evidence, and the replacement repository must be verified independently after the Snapshot migration.
+A permissions limitation in the verification integration is not evidence that a control is either enabled or disabled. Owner-side verification must be labeled distinctly from API evidence, and any future replacement repository must be verified independently after the Snapshot migration.

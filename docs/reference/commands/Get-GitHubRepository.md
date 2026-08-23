@@ -24,7 +24,7 @@ Use this command to inspect one repository by exact identity or search repositor
 | `Name` | `String` | No | — | Text | Filters Search results by repository name. |
 | `Visibility` | `String` | No | — | `public`, `private`, `internal` | Filters Search results by visibility. |
 | `Archived` | `Nullable[Boolean]` | No | — | `$true`, `$false` | Filters Search results by archived state. |
-| `HostName` | `String` | No | `github.com` | `github.com` in version 1 | GitHub host for discovery and authentication. |
+| `HostName` | `String` | No | `github.com` | `github.com` in `v0.1.0` | GitHub host for discovery and authentication. |
 
 Standard PowerShell common parameters are also available.
 

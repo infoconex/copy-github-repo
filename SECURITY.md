@@ -2,14 +2,15 @@
 
 ## Supported versions
 
-The project has not published its first stable release. Security fixes currently
-apply to the latest commit on the default branch until `v0.1.0` is published.
-
-After the first stable release, security fixes target the latest supported stable
+Version `0.1.0` is the initial stable release and the current supported stable
+module version. Security fixes target the latest supported stable
 module version under [`docs/user/support-policy.md`](docs/user/support-policy.md). Before
 `1.0.0`, older stable versions are not promised parallel security-fix branches
 unless an exceptional backport or extended-support decision is announced
 explicitly.
+
+Unreleased `main` content may contain future fixes or changes, but it is not a
+separately supported production line.
 
 ## Reporting a vulnerability
 
@@ -48,7 +49,7 @@ display, copy, or persist token values. GitHub secrets, webhook secrets, private
 deploy-key material, and GitHub App credentials are outside the migration
 contract.
 
-Version 1 supports GitHub.com only. Public commands reject unsupported hosts
+Version `0.1.0` supports GitHub.com only. Public commands reject unsupported hosts
 before prerequisites, discovery, planning, verification, or mutation. HTTPS Git
 operations use GitHub CLI credentials through command-scoped Git configuration;
 interactive Git credential prompting is disabled.
@@ -66,14 +67,15 @@ not inferred defaults. The repository security baseline records which settings
 were verified directly and which were verified by the repository owner in the
 GitHub web UI when the connected integration could not independently read them.
 
-The historical repository now has an active branch ruleset named `main` targeting
-the default branch with the required protection behavior configured by the
-repository owner. Dependabot alerts and security updates, secret scanning and push
-protection where available, private vulnerability reporting, and least-privilege
-default GitHub Actions workflow permissions were also verified in the GitHub web
-UI on 2026-08-19. These observations establish the current repository baseline;
-they do not carry forward automatically to the clean same-name Snapshot
-replacement repository, which must be independently re-verified before release.
+The pre-Snapshot historical repository had the required `main` ruleset and
+Advanced Security settings verified during release preparation. After the clean
+same-name Snapshot replacement, the required repository security baseline was
+restored and re-verified as part of `v0.1.0` release qualification. The clean
+repository uses an active branch ruleset named `main` targeting the default branch
+with the required protection behavior. Future repository replacements or
+security-relevant configuration changes require fresh live verification; the
+historical August 2026 observations are evidence, not a permanent guarantee of
+current platform state.
 
 ## Release and installer trust boundaries
 

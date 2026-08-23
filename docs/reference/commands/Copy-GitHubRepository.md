@@ -56,7 +56,7 @@ For an interactive guided experience, use [`Start-CopyGitHubRepositoryWizard`](S
 | `NonInteractive` | `Switch` | No | `$false` | Switch | Prevents prompts. Mutating non-interactive execution also requires `-Force`. |
 | `OutputMode` | `String` | No | `Interactive` | `Interactive`, `Plain`, `Json` | Controls plan rendering. |
 | `ReportPath` | `String` | No | — | File path | Writes plan/execution evidence and is the preferred recovery-report location after mutation begins. |
-| `HostName` | `String` | No | `github.com` | `github.com` in version 1 | GitHub host. Other hosts fail closed. |
+| `HostName` | `String` | No | `github.com` | `github.com` in `v0.1.0` | GitHub host. Other hosts fail closed. |
 | `Force` | `Switch` | No | `$false` | Switch | Acknowledges non-interactive mutation and intentional visibility changes; never bypasses exact replacement confirmations. |
 
 The command supports native `ShouldProcess`, so `-WhatIf` and `-Confirm` are available.

@@ -46,7 +46,7 @@ gh auth login --hostname github.com
 
 ## Install
 
-After the first stable release is published to PowerShell Gallery, the recommended normal installation path is:
+The recommended normal installation path is PowerShell Gallery:
 
 ```powershell
 Install-PSResource CopyGitHubRepo
@@ -74,7 +74,7 @@ To remove a Gallery installation:
 Uninstall-PSResource CopyGitHubRepo
 ```
 
-No stable GitHub Release has been published yet, and no stable Gallery package has been published yet. Until `v0.1.0` is actually released, use the prerelease workflow below for deliberate development or release-candidate testing.
+Version `0.1.0` is the initial stable release. Use the prerelease workflow below only for deliberate development or release-candidate testing of unreleased `main` content.
 
 ## Install the current prerelease build
 
@@ -90,7 +90,7 @@ The prerelease bootstrap resolves `main` to an exact commit SHA before downloadi
 
 ## Repository-hosted stable installation
 
-After a stable GitHub Release exists, the repository-hosted stable convenience bootstrap remains available as an alternative to PSGallery. It resolves the latest stable release (or an explicitly requested version), verifies the release ZIP against its published SHA-256 file, and invokes the packaged installer:
+The repository-hosted stable convenience bootstrap is available as an alternative to PSGallery. It resolves the latest stable release (or an explicitly requested version), verifies the release ZIP against its published SHA-256 file and GitHub artifact provenance, and invokes the packaged installer:
 
 ```powershell
 irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1 | iex
@@ -99,9 +99,9 @@ Start-CopyGitHubRepositoryWizard
 ```
 
 > [!IMPORTANT]
-> The stable convenience command downloads `install-release.ps1` from mutable `main` and executes it before a release checksum can be verified. The bootstrap is therefore part of the trust boundary. SHA-256 protects the downloaded release ZIP against a mismatched checksum but does not independently authenticate the publisher.
+> The stable convenience command downloads `install-release.ps1` from mutable `main` and executes it before release artifact verification can protect the bootstrap itself. The bootstrap is therefore part of the trust boundary. The downloaded release ZIP is verified by checksum and GitHub artifact provenance before extraction.
 
-For pinned-release installation, checksum limitations, `-Force` replacement behavior, and the complete trust model, see [Installation security](docs/security/installation-security.md). The planned initial stable release is `v0.1.0`; those stable procedures become usable only after that release is actually published.
+For pinned-release installation, checksum limitations, provenance verification, `-Force` replacement behavior, and the complete trust model, see [Installation security](docs/security/installation-security.md). The initial stable release is `v0.1.0`, and the stable procedures apply to that release and later stable versions.
 
 ## Uninstall
 

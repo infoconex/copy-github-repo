@@ -23,12 +23,12 @@ Describe 'Software assurance review package documentation contract' {
             'GitHub.com only',
             'Snapshot',
             'FullHistory',
-            '0.1.0 is the initial stable release',
             'Exact release-candidate live evidence'
         )) {
             $script:assurance | Should -Match ([regex]::Escape($term))
         }
 
+        $script:assurance | Should -Match '`0\.1\.0` is the initial stable release'
         $script:assurance | Should -Not -Match 'first stable release has not yet been published'
 
         foreach ($command in @(

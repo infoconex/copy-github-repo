@@ -2,6 +2,15 @@
 
 User and operator guidance for installing, planning, executing, verifying, and recovering repository copies.
 
+For a normal stable installation, install the module from PowerShell Gallery:
+
+```powershell
+Install-PSResource CopyGitHubRepo
+Import-Module CopyGitHubRepo
+```
+
+See [Installation security](../security/installation-security.md) for PowerShell Gallery, repository-hosted, pinned-release, and prerelease trust choices.
+
 - [User guide](user-guide.md)
 - [Manual Snapshot procedure](manual-process.md)
 - [Troubleshooting and recovery](troubleshooting-recovery.md)

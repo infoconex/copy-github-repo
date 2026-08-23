@@ -25,7 +25,7 @@ Describe 'Stable release readiness validation' {
             Should -Throw -ExpectedMessage '*does not match module version*'
     }
 
-    It 'keeps the Unreleased section empty at the stable publication boundary' {
+    It 'treats the explicit no-unreleased-changes sentinel as empty at the stable publication boundary' {
         $changelog = Get-Content -LiteralPath $script:changelogPath -Raw
         $unreleased = [regex]::Match(
             $changelog,
@@ -33,7 +33,15 @@ Describe 'Stable release readiness validation' {
         )
 
         $unreleased.Success | Should -BeTrue
-        $unreleased.Groups['Body'].Value.Trim() | Should -BeNullOrEmpty
+        $unreleased.Groups['Body'].Value.Trim() | Should -BeExactly 'No unreleased product changes.'
+    }
+
+    It 'keeps real Unreleased entries blocked by release readiness' {
+        $readiness = Get-Content -LiteralPath $script:releaseReadinessPath -Raw
+
+        $readiness | Should -Match '\$emptyUnreleasedSentinel = ''No unreleased product changes\.''' 
+        $readiness | Should -Match '\$unreleasedBody -cne \$emptyUnreleasedSentinel'
+        $readiness | Should -Match 'contains Unreleased entries that would ship'
     }
 
     It 'routes tag and changelog validation through the release-readiness script before packaging' {

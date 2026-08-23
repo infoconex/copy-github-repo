@@ -4,6 +4,7 @@ name: Deploy Documentation Site
   push:
     branches:
       - main
+      - ui-ux-improvements
     paths:
       - '_config.yml'
       - '_data/**'

@@ -20,6 +20,15 @@ Describe 'User capabilities and scenario documentation' {
         }
     }
 
+    It 'provides the normal stable Gallery installation path' {
+        $script:userGuide | Should -Match 'For normal stable installation, use PowerShell Gallery'
+        $script:userGuide | Should -Match 'Install-PSResource CopyGitHubRepo'
+        $script:userGuide | Should -Match 'Import-Module CopyGitHubRepo'
+        $script:userGuide | Should -Match 'gh auth login --hostname github\.com'
+        $script:userGuide | Should -Match 'Install-PSResource CopyGitHubRepo -Version 0\.1\.0'
+        $script:userGuide | Should -Match 'installation-security\.md'
+    }
+
     It 'defines one Snapshot versus FullHistory decision matrix' {
         $script:userGuide | Should -Match '## Choose Snapshot or FullHistory'
         $script:userGuide | Should -Match 'Publish the current default-branch contents as a clean repository'

@@ -14,11 +14,29 @@ BeforeAll {
 }
 
 Describe 'Installer supply-chain trust documentation' {
+    It 'identifies PowerShell Gallery as the normal stable installation path' {
+        $script:readme | Should -Match 'recommended normal installation path is PowerShell Gallery'
+        $script:readme | Should -Match 'Install-PSResource CopyGitHubRepo'
+        $script:security | Should -Match '## PowerShell Gallery installation'
+        $script:security | Should -Match 'recommended normal installation path for stable releases'
+        $script:security | Should -Match 'Install-PSResource CopyGitHubRepo'
+        $script:security | Should -Match 'Update-PSResource CopyGitHubRepo'
+        $script:security | Should -Match 'Uninstall-PSResource CopyGitHubRepo'
+        $script:security | Should -Match 'repository-hosted stable convenience bootstrap is an alternative'
+        $script:security | Should -Not -Match 'The normal stable one-line command downloads `install-release\.ps1`'
+    }
+
+    It 'distinguishes Gallery package installation from GitHub Release provenance verification' {
+        $script:security | Should -Match 'does not independently download the project''s GitHub Release `\.sha256` sidecar'
+        $script:security | Should -Match 'does not independently perform the GitHub Release ZIP checksum/attestation procedure'
+        $script:security | Should -Match 'require the project''s checksum-and-GitHub-provenance verification contract'
+    }
+
     It 'identifies mutable main bootstraps as explicit trust boundaries' {
         $script:readme | Should -Match 'mutable `main`'
         $script:normalizedReadme | Should -Match 'bootstrap is therefore part of the trust boundary'
         $script:readme | Should -Match 'docs/security/installation-security\.md'
-        $script:security | Should -Match 'mutable `main` branch'
+        $script:security | Should -Match 'mutable `main`'
         $script:security | Should -Match 'bootstrap itself is fetched from mutable repository content'
         $script:security | Should -Match 'convenience bootstrap remains inside the trust boundary'
     }
@@ -26,7 +44,7 @@ Describe 'Installer supply-chain trust documentation' {
     It 'documents v0.1.0 as the available initial stable release' {
         $script:readme | Should -Match 'Version `0\.1\.0` is the initial stable release'
         $script:security | Should -Match 'Version `v0\.1\.0` is the initial stable release'
-        $script:security | Should -Match 'Use the stable procedures below for normal released installations'
+        $script:security | Should -Match 'Use PowerShell Gallery for normal released installations'
         $script:readme | Should -Not -Match 'No stable GitHub Release has been published yet'
         $script:security | Should -Not -Match 'No stable GitHub Release has been published yet'
     }

@@ -39,7 +39,7 @@ Describe 'Stable release readiness validation' {
     It 'keeps real Unreleased entries blocked by release readiness' {
         $readiness = Get-Content -LiteralPath $script:releaseReadinessPath -Raw
 
-        $readiness | Should -Match "\$emptyUnreleasedSentinel = 'No unreleased product changes\.'"
+        $readiness | Should -Match '\$emptyUnreleasedSentinel = ''No unreleased product changes\.''' 
         $readiness | Should -Match '\$unreleasedBody -cne \$emptyUnreleasedSentinel'
         $readiness | Should -Match 'contains Unreleased entries that would ship'
     }

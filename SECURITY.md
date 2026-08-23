@@ -70,10 +70,12 @@ GitHub web UI when the connected integration could not independently read them.
 The pre-Snapshot historical repository had the required `main` ruleset and
 Advanced Security settings verified during release preparation. After the clean
 same-name Snapshot replacement, the required repository security baseline was
-restored and re-verified as part of `v0.1.0` release qualification. Future
-repository replacements or security-relevant configuration changes require fresh
-live verification; the historical August 2026 observations are evidence, not a
-permanent guarantee of current platform state.
+restored and re-verified as part of `v0.1.0` release qualification. The clean
+repository uses an active branch ruleset named `main` targeting the default branch
+with the required protection behavior. Future repository replacements or
+security-relevant configuration changes require fresh live verification; the
+historical August 2026 observations are evidence, not a permanent guarantee of
+current platform state.
 
 ## Release and installer trust boundaries
 

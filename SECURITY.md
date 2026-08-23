@@ -3,8 +3,8 @@
 ## Supported versions
 
 Version `0.1.0` is the initial stable release and the current supported stable
-module version. Security fixes target the latest supported stable module version
-under [`docs/user/support-policy.md`](docs/user/support-policy.md). Before
+module version. Security fixes target the latest supported stable
+module version under [`docs/user/support-policy.md`](docs/user/support-policy.md). Before
 `1.0.0`, older stable versions are not promised parallel security-fix branches
 unless an exceptional backport or extended-support decision is announced
 explicitly.

@@ -1,4 +1,4 @@
-# `Start-CopyGitHubRepositoryWizard`
+# Start-CopyGitHubRepositoryWizard
 
 Starts the guided, human-facing repository-copy workflow. The wizard handles interaction and delegates repository discovery to `Get-GitHubRepository` and planning/execution to `Copy-GitHubRepository`.
 
@@ -85,7 +85,7 @@ Unexpected internal defects are not converted into friendly application errors. 
 
 ## Output
 
-Pre-mutation cancellation returns `CopyGitHubRepo.WizardResult` with `Status = 'Cancelled'` and `MutatedGitHub = $false`. A known pre-mutation application failure returns `CopyGitHubRepo.WizardResult` with `Status = 'ApplicationError'`, `MutatedGitHub = $false`, and the stable `ErrorId`. Confirmed execution is rendered as a concise human-facing completion summary; use `Copy-GitHubRepository` directly when automation requires the raw structured migration result.
+Pre-mutation cancellation returns `CopyGitHubRepo.WizardResult` with `Status = 'Cancelled'` and `MutatedGitHub = $false`. A known pre-mutation application failure returns `CopyGitHubRepo.WizardResult` with `Status = 'ApplicationError'`, `MutatedGitHub = $false`, and the stable application `ErrorId`. Confirmed execution is rendered as a concise human-facing completion summary; use `Copy-GitHubRepository` directly when automation requires the raw structured migration result.
 
 ## Important failure conditions
 

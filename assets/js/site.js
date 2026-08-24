@@ -50,6 +50,13 @@
     window.addEventListener('pagehide', saveSidebarPosition);
   }
 
+  const isCompactNavigation = () => window.matchMedia('(max-width: 980px)').matches;
+  const getNavigationFocusables = () => {
+    if (!navToggle || !sidebar) return [];
+    const sidebarFocusables = Array.from(sidebar.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'));
+    return [navToggle, ...sidebarFocusables].filter((element) => !element.hidden && element.getClientRects().length > 0);
+  };
+
   const closeNavigation = (restoreFocus = false) => {
     const wasOpen = body.classList.contains('nav-open');
     body.classList.remove('nav-open');
@@ -59,7 +66,7 @@
   };
 
   const scrollActiveNavigationIntoView = () => {
-    if (!sidebar || !window.matchMedia('(max-width: 980px)').matches) return;
+    if (!sidebar || !isCompactNavigation()) return;
     const activeLink = sidebar.querySelector('.docs-nav a.is-active');
     if (!activeLink) return;
 
@@ -74,9 +81,15 @@
     const isOpen = body.classList.toggle('nav-open');
     navToggle.setAttribute('aria-expanded', String(isOpen));
     navToggle.setAttribute('aria-label', isOpen ? 'Close navigation' : 'Open navigation');
-    if (isOpen) requestAnimationFrame(scrollActiveNavigationIntoView);
+    if (isOpen) {
+      requestAnimationFrame(() => {
+        scrollActiveNavigationIntoView();
+        const activeLink = sidebar?.querySelector('.docs-nav a.is-active');
+        (activeLink || sidebar?.querySelector('.docs-nav a[href]'))?.focus();
+      });
+    }
   });
-  navClose?.addEventListener('click', () => closeNavigation(false));
+  navClose?.addEventListener('click', () => closeNavigation(true));
 
   const closeSearch = () => {
     if (!searchResults || !searchInput) return;
@@ -90,7 +103,28 @@
       const navigationWasOpen = body.classList.contains('nav-open');
       closeNavigation(navigationWasOpen);
       closeSearch();
+      return;
     }
+
+    if (event.key === 'Tab' && body.classList.contains('nav-open') && isCompactNavigation()) {
+      const focusables = getNavigationFocusables();
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && (active === first || !focusables.includes(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (!isCompactNavigation() && body.classList.contains('nav-open')) closeNavigation(false);
   });
 
   if (themePicker) {

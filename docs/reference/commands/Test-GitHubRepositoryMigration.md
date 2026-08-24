@@ -1,4 +1,4 @@
-# `Test-GitHubRepositoryMigration`
+# Test-GitHubRepositoryMigration
 
 Performs read-only verification of migrated Git content. Use the same content mode that was used for the migration.
 

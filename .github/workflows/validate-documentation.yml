@@ -108,6 +108,15 @@ jobs:
         shell: pwsh
         run: ./build/Test-GeneratedSite.ps1
 
+      - name: Upload rendered PR preview
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: documentation-preview-pr-${{ github.event.pull_request.number }}
+          path: _site/
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload test diagnostics
         if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

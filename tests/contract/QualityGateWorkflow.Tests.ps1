@@ -28,15 +28,14 @@ Describe 'Validate Project Quality workflow contract' {
             'CHANGELOG\\.md',
             'SECURITY\\.md',
             'deploy-documentation-site',
-            'validate-documentation',
-            'Record documentation-only skip'
+            'validate-documentation'
         )) {
             $script:workflow | Should -Match $term
         }
 
-        $script:workflow | Should -Not -Match "(?m)^    if: \$\{\{ needs\.scope\.outputs\.run-quality == 'true' \}\}$"
-        $script:workflow | Should -Match "(?m)^        if: \$\{\{ needs\.scope\.outputs\.run-quality != 'true' \}\}$"
-        $script:workflow | Should -Match "(?m)^        if: \$\{\{ needs\.scope\.outputs\.run-quality == 'true' \}\}$"
+        $script:workflow | Should -Match "(?m)^    if: \$\{\{ needs\.scope\.outputs\.run-quality == 'true' \}\}$"
+        $script:workflow | Should -Not -Match "(?m)^        if: \$\{\{ needs\.scope\.outputs\.run-quality (?:==|!=) 'true' \}\}$"
+        $script:workflow | Should -Not -Match 'Record documentation-only skip'
     }
 
     It 'preserves reusable and manual workflow entry points' {

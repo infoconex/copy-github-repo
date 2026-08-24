@@ -70,8 +70,21 @@ function Resolve-GeneratedReference {
     return $resolved
 }
 
+function Add-GeneratedSiteFailure {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Source,
+        [Parameter(Mandatory)]
+        [string]$Message
+    )
+
+    $failures.Add("$Source -> $Message")
+}
+
 foreach ($htmlFile in $htmlFiles) {
     $html = Get-Content -LiteralPath $htmlFile.FullName -Raw
+    $relativeSource = [System.IO.Path]::GetRelativePath($siteRoot, $htmlFile.FullName)
+
     foreach ($match in [regex]::Matches($html, $referencePattern)) {
         $reference = $match.Groups['value'].Value
         $target = Resolve-GeneratedReference -Reference $reference -SourceDirectory $htmlFile.DirectoryName
@@ -90,15 +103,60 @@ foreach ($htmlFile in $htmlFiles) {
         }
 
         if (-not $exists) {
-            $relativeSource = [System.IO.Path]::GetRelativePath($siteRoot, $htmlFile.FullName)
-            $failures.Add("$relativeSource -> $reference")
+            Add-GeneratedSiteFailure -Source $relativeSource -Message "unresolved reference: $reference"
+        }
+    }
+
+    $idMatches = [regex]::Matches($html, '(?i)\bid\s*=\s*["''](?<id>[^"'']+)["'']')
+    $ids = @($idMatches | ForEach-Object { $_.Groups['id'].Value })
+    foreach ($duplicateId in @($ids | Group-Object | Where-Object Count -gt 1 | Select-Object -ExpandProperty Name)) {
+        Add-GeneratedSiteFailure -Source $relativeSource -Message "duplicate id: $duplicateId"
+    }
+
+    $idSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($id in $ids) {
+        [void]$idSet.Add($id)
+    }
+
+    foreach ($match in [regex]::Matches($html, '(?is)<[^>]+\baria-controls\s*=\s*["''](?<targets>[^"'']+)["''][^>]*>')) {
+        foreach ($targetId in @($match.Groups['targets'].Value -split '\s+' | Where-Object { $_ })) {
+            if (-not $idSet.Contains($targetId)) {
+                Add-GeneratedSiteFailure -Source $relativeSource -Message "aria-controls references missing id: $targetId"
+            }
+        }
+    }
+
+    foreach ($imageMatch in [regex]::Matches($html, '(?is)<img\b[^>]*>')) {
+        if ($imageMatch.Value -notmatch '(?i)\balt\s*=') {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message 'image missing alt attribute'
+        }
+    }
+
+    $headingMatches = @([regex]::Matches($html, '(?is)<h(?<level>[1-6])\b[^>]*>'))
+    $h1Count = @($headingMatches | Where-Object { $_.Groups['level'].Value -eq '1' }).Count
+    if ($h1Count -ne 1) {
+        Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one h1, found $h1Count"
+    }
+
+    $previousHeadingLevel = 0
+    foreach ($headingMatch in $headingMatches) {
+        $headingLevel = [int]$headingMatch.Groups['level'].Value
+        if ($previousHeadingLevel -gt 0 -and $headingLevel -gt ($previousHeadingLevel + 1)) {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message "heading hierarchy skips from h$previousHeadingLevel to h$headingLevel"
+        }
+        $previousHeadingLevel = $headingLevel
+    }
+
+    foreach ($inputMatch in [regex]::Matches($html, '(?is)<input\b[^>]*\baria-expanded\s*=\s*["''][^"'']+["''][^>]*>')) {
+        if ($inputMatch.Value -notmatch '(?i)\brole\s*=\s*["'']combobox["'']') {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message 'input uses aria-expanded without role="combobox"'
         }
     }
 }
 
 if ($failures.Count -gt 0) {
     $details = $failures | Sort-Object -Unique | ForEach-Object { " - $_" }
-    throw "Generated site contains $($failures.Count) unresolved internal reference(s):`n$($details -join "`n")"
+    throw "Generated site contains $($failures.Count) integrity/accessibility issue(s):`n$($details -join "`n")"
 }
 
-Write-Output "Validated $($htmlFiles.Count) generated HTML page(s); all internal page and asset references resolve."
+Write-Output "Validated $($htmlFiles.Count) generated HTML page(s); internal references and deterministic accessibility semantics passed."

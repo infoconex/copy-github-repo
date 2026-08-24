@@ -3,6 +3,7 @@ description: Safe, testable GitHub repository migration using PowerShell.
 url: https://infoconex.github.io
 baseurl: /copy-github-repo
 repository: infoconex/copy-github-repo
+google_analytics: G-N3DS7SRG3K
 
 markdown: kramdown
 highlighter: rouge

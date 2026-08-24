@@ -15,7 +15,7 @@ Describe 'Validate Project Quality workflow contract' {
         $script:workflow | Should -Not -Match '(?m)^\s+paths-ignore:'
     }
 
-    It 'uses an internal scope decision while preserving matrix check contexts for site-only changes' {
+    It 'uses an internal scope decision while preserving the required Windows check for site-only changes' {
         foreach ($term in @(
             'Determine Quality Scope',
             'run-quality',
@@ -28,14 +28,16 @@ Describe 'Validate Project Quality workflow contract' {
             'CHANGELOG\\.md',
             'SECURITY\\.md',
             'deploy-documentation-site',
-            'validate-documentation'
+            'validate-documentation',
+            'Record documentation-only validation'
         )) {
             $script:workflow | Should -Match $term
         }
 
-        $script:workflow | Should -Match "(?m)^    if: \$\{\{ needs\.scope\.outputs\.run-quality == 'true' \}\}$"
-        $script:workflow | Should -Not -Match "(?m)^        if: \$\{\{ needs\.scope\.outputs\.run-quality (?:==|!=) 'true' \}\}$"
-        $script:workflow | Should -Not -Match 'Record documentation-only skip'
+        $script:workflow | Should -Match '(?m)^  windows:$'
+        $script:workflow | Should -Match '(?m)^    name: Validate PowerShell \(windows-latest\)$'
+        $script:workflow | Should -Match "(?m)^        if: \$\{\{ needs\.scope\.outputs\.run-quality != 'true' \}\}$"
+        $script:workflow | Should -Match "(?m)^  other-platforms:\n    name: Validate PowerShell \(\$\{\{ matrix\.os \}\}\)\n    needs: scope\n    if: \$\{\{ needs\.scope\.outputs\.run-quality == 'true' \}\}$"
     }
 
     It 'preserves reusable and manual workflow entry points' {
@@ -53,7 +55,7 @@ Describe 'Validate Project Quality workflow contract' {
 
     It 'runs the same quality gate on all supported runner platforms when required' {
         foreach ($runner in @('windows-latest', 'ubuntu-latest', 'macos-latest')) {
-            $script:workflow | Should -Match ([regex]::Escape("- $runner"))
+            $script:workflow | Should -Match ([regex]::Escape($runner))
         }
 
         $script:workflow | Should -Match '(?m)^\s+fail-fast: false$'

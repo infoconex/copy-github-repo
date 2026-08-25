@@ -20,7 +20,18 @@
     AliasesToExport = @()
     PrivateData = @{
         PSData = @{
-            Tags = @('GitHub', 'Git', 'Repository', 'Copy', 'Migration', 'PowerShell')
+            Tags = @(
+                'GitHub'
+                'Git'
+                'Repository'
+                'Copy'
+                'Migration'
+                'PowerShell'
+                'PSEdition_Core'
+                'Windows'
+                'Linux'
+                'MacOS'
+            )
             LicenseUri = 'https://github.com/infoconex/copy-github-repo/blob/main/LICENSE'
             ProjectUri = 'https://github.com/infoconex/copy-github-repo'
             ReleaseNotes = 'https://github.com/infoconex/copy-github-repo/releases'

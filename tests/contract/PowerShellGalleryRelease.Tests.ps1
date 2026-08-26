@@ -1,6 +1,7 @@
 BeforeAll {
     $repositoryRoot = Split-Path -Parent $PSScriptRoot
     $script:manifestPath = Join-Path $repositoryRoot 'src/CopyGitHubRepo/CopyGitHubRepo.psd1'
+    $script:changelogPath = Join-Path $repositoryRoot 'CHANGELOG.md'
     $script:packageScriptPath = Join-Path $repositoryRoot 'build/New-PowerShellGalleryPackage.ps1'
     $script:releaseReadinessPath = Join-Path $repositoryRoot 'build/Test-ReleaseReadiness.ps1'
     $script:releaseWorkflowPath = Join-Path $repositoryRoot '.github/workflows/publish-release.yml'
@@ -12,6 +13,20 @@ BeforeAll {
         'Start-CopyGitHubRepositoryWizard'
         'Test-GitHubRepositoryMigration'
     ) | Sort-Object
+
+    $sourceManifest = Import-PowerShellDataFile -LiteralPath $script:manifestPath
+    $script:expectedPackageVersion = [string] $sourceManifest.ModuleVersion
+    $normalizedChangelog = (Get-Content -LiteralPath $script:changelogPath -Raw) -replace "`r`n?", "`n"
+    $escapedVersion = [regex]::Escape($script:expectedPackageVersion)
+    $releaseMatch = [regex]::Match(
+        $normalizedChangelog,
+        "(?ms)^## \[$escapedVersion\] - \d{4}-\d{2}-\d{2}\n(?<Body>.*?)(?=^## \[|\z)"
+    )
+    if (-not $releaseMatch.Success) {
+        throw "CHANGELOG.md does not contain release notes for module version '$($script:expectedPackageVersion)'."
+    }
+
+    $script:expectedGalleryReleaseNotes = $releaseMatch.Groups['Body'].Value.Trim()
 }
 
 Describe 'PowerShell Gallery package' {
@@ -19,13 +34,13 @@ Describe 'PowerShell Gallery package' {
         $outputDirectory = Join-Path $TestDrive 'PSGallery'
         $package = & $script:packageScriptPath -OutputDirectory $outputDirectory
 
-        $package.Version | Should -Be '0.1.0'
+        $package.Version | Should -Be $script:expectedPackageVersion
         Test-Path -LiteralPath $package.ManifestPath -PathType Leaf | Should -BeTrue
         Test-ModuleManifest -Path $package.ManifestPath -ErrorAction Stop | Should -Not -BeNullOrEmpty
         @($package.ExportedFunctions | Sort-Object) | Should -Be $script:expectedCommands
 
         $packagedManifest = Import-PowerShellDataFile -LiteralPath $package.ManifestPath
-        $packagedManifest.PrivateData.PSData.ReleaseNotes | Should -Match 'Initial public stable release'
+        $packagedManifest.PrivateData.PSData.ReleaseNotes | Should -Be $script:expectedGalleryReleaseNotes
         $packagedManifest.PrivateData.PSData.ReleaseNotes | Should -Not -Be 'https://github.com/infoconex/copy-github-repo/releases'
 
         foreach ($unexpectedName in @('.github', 'build', 'docs', 'tests')) {

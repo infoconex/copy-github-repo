@@ -47,10 +47,15 @@ if ([string]::IsNullOrWhiteSpace($releaseNotes)) {
     throw "CHANGELOG.md release section for version '$version' does not contain release notes."
 }
 
+# Canonicalize line endings before writing the PSD1 value. Git may check out Markdown
+# with CRLF on Windows, while the encoded PowerShell data-file string round-trips with
+# LF line breaks. Normalizing here keeps staged release notes identical on every OS.
+$releaseNotes = $releaseNotes.Replace("`r`n", "`n").Replace("`r", "`n")
+
 # Store the notes in a double-quoted data-file string. Escape expandable-string
 # characters and encode line breaks so arbitrary Markdown remains valid PSD1 data.
 $escapedReleaseNotes = $releaseNotes.Replace('`', '``').Replace('$', '`$').Replace('"', '`"')
-$escapedReleaseNotes = $escapedReleaseNotes.Replace("`r`n", '`n').Replace("`n", '`n')
+$escapedReleaseNotes = $escapedReleaseNotes.Replace("`n", '`n')
 
 $manifestText = Get-Content -LiteralPath $ManifestPath -Raw
 $releaseNotesPattern = '(?m)^(?<Indent>\s*)ReleaseNotes\s*=\s*.*$'

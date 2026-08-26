@@ -33,7 +33,8 @@
                 'MacOS'
             )
             LicenseUri = 'https://github.com/infoconex/copy-github-repo/blob/main/LICENSE'
-            ProjectUri = 'https://github.com/infoconex/copy-github-repo'
+            ProjectUri = 'https://infoconex.github.io/copy-github-repo/'
+            IconUri = 'https://infoconex.github.io/copy-github-repo/assets/images/gallery-icon.png'
             ReleaseNotes = 'https://github.com/infoconex/copy-github-repo/releases'
         }
     }

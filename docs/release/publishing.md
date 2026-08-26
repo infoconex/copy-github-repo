@@ -101,6 +101,8 @@ The package is staged at:
 dist/PSGallery/CopyGitHubRepo
 ```
 
+During staging, `build/Set-PowerShellGalleryReleaseNotes.ps1` extracts the matching dated version section from `CHANGELOG.md` and writes that text into the staged manifest's `PSData.ReleaseNotes`. The source manifest keeps a stable releases-page fallback, while every immutable PowerShell Gallery version receives its own version-specific release notes automatically. Packaging fails if the current module version has no matching non-empty changelog section or if the injected `ReleaseNotes` value cannot be parsed back exactly.
+
 The build fails if `Test-ModuleManifest` fails, if the manifest export surface differs from the public command contract, if aliases, variables, or cmdlets are unexpectedly exported, if a declared formatting file is absent, if common development directories appear in the package, or if the staged module cannot be imported with the expected command surface.
 
 Package validation also launches a fresh `pwsh -NoProfile -NonInteractive` process and imports the staged manifest there. This isolated smoke test prevents a source-tree import or an already-loaded development module from masking a packaging defect.

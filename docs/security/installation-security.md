@@ -61,16 +61,16 @@ The repository-hosted stable convenience bootstrap is an alternative to the norm
 irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1 | iex
 ```
 
-Without parameters, the bootstrap resolves the latest stable GitHub release. A specific stable version can be requested from the same bootstrap:
+Without parameters, the bootstrap resolves the latest stable GitHub release. A specific stable version can be requested from the same bootstrap; for example, after `v0.1.1` is published:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1))) -Version 0.1.0
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1))) -Version 0.1.1
 ```
 
 If the selected version is already installed and intentional replacement is required, supply `-Force`:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1))) -Version 0.1.0 -Force
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1))) -Version 0.1.1 -Force
 ```
 
 The stable bootstrap requires GitHub CLI (`gh`) because it performs cryptographic provenance verification before extraction. It:
@@ -105,10 +105,10 @@ Therefore the convenience bootstrap remains inside the trust boundary even thoug
 
 For a higher-assurance stable install using the project's GitHub Release evidence, avoid executing mutable branch content. Pin a stable release and download its versioned artifact/checksum directly, then verify both checksum and GitHub artifact attestation before extraction.
 
-The initial stable version is `v0.1.0`; the following pattern installs that release:
+The initial stable version is `v0.1.0`; the following pattern pins version `v0.1.1` after that release is published:
 
 ```powershell
-$version = '0.1.0'
+$version = '0.1.1'
 $repository = 'infoconex/copy-github-repo'
 $tag = "v$version"
 $releaseBase = "https://github.com/$repository/releases/download/$tag"
@@ -178,10 +178,10 @@ irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/uninstall.
 
 The script resolves the same default current-user module destination used by `install.ps1`, discovers validated `CopyGitHubRepo/<version>` installations, and shows exactly what it found. With one installed version it shows the version/path and asks for confirmation. With multiple versions it lets you remove one version, remove all validated versions, or cancel. Final destructive confirmation defaults to No, and cancellation is a successful no-change outcome.
 
-For deterministic local execution, target a specific version:
+For deterministic local execution, replace `X.Y.Z` with the installed version and target it explicitly:
 
 ```powershell
-./uninstall.ps1 -Version 0.1.0
+./uninstall.ps1 -Version 'X.Y.Z'
 ```
 
 To remove every validated installed version under the resolved module root:
@@ -193,19 +193,19 @@ To remove every validated installed version under the resolved module root:
 A custom install root is removed by supplying the same destination root used during installation:
 
 ```powershell
-./uninstall.ps1 -Version 0.1.0 -DestinationRoot D:\PowerShell\Modules
+./uninstall.ps1 -Version 'X.Y.Z' -DestinationRoot D:\PowerShell\Modules
 ```
 
 Preview the exact removal with standard PowerShell `ShouldProcess` behavior:
 
 ```powershell
-./uninstall.ps1 -Version 0.1.0 -WhatIf
+./uninstall.ps1 -Version 'X.Y.Z' -WhatIf
 ```
 
 For deliberate non-interactive automation, explicitly target a version or all versions and suppress PowerShell confirmation:
 
 ```powershell
-./uninstall.ps1 -Version 0.1.0 -Confirm:$false
+./uninstall.ps1 -Version 'X.Y.Z' -Confirm:$false
 ```
 
 `-Version` and `-AllVersions` are mutually exclusive. Explicit targeting bypasses interactive selection, but it never bypasses module-identity, path-containment, or reparse-point checks. The script validates the expected manifest GUID, root module, and version before recursive deletion, unloads a matching loaded module when practical, and never removes sibling modules. If a requested version is already absent, it reports a no-change result rather than treating that as an exceptional failure.

@@ -1,6 +1,7 @@
 BeforeAll {
     $repositoryRoot = Split-Path -Parent $PSScriptRoot
     $script:manifestPath = Join-Path $repositoryRoot 'src/CopyGitHubRepo/CopyGitHubRepo.psd1'
+    $script:changelogPath = Join-Path $repositoryRoot 'CHANGELOG.md'
     $script:packageScriptPath = Join-Path $repositoryRoot 'build/New-PowerShellGalleryPackage.ps1'
     $script:releaseReadinessPath = Join-Path $repositoryRoot 'build/Test-ReleaseReadiness.ps1'
     $script:releaseWorkflowPath = Join-Path $repositoryRoot '.github/workflows/publish-release.yml'
@@ -12,6 +13,20 @@ BeforeAll {
         'Start-CopyGitHubRepositoryWizard'
         'Test-GitHubRepositoryMigration'
     ) | Sort-Object
+
+    $sourceManifest = Import-PowerShellDataFile -LiteralPath $script:manifestPath
+    $script:expectedPackageVersion = [string] $sourceManifest.ModuleVersion
+    $normalizedChangelog = (Get-Content -LiteralPath $script:changelogPath -Raw) -replace "`r`n?", "`n"
+    $escapedVersion = [regex]::Escape($script:expectedPackageVersion)
+    $releaseMatch = [regex]::Match(
+        $normalizedChangelog,
+        "(?ms)^## \[$escapedVersion\] - \d{4}-\d{2}-\d{2}\n(?<Body>.*?)(?=^## \[|\z)"
+    )
+    if (-not $releaseMatch.Success) {
+        throw "CHANGELOG.md does not contain release notes for module version '$($script:expectedPackageVersion)'."
+    }
+
+    $script:expectedGalleryReleaseNotes = $releaseMatch.Groups['Body'].Value.Trim()
 }
 
 Describe 'PowerShell Gallery package' {
@@ -19,10 +34,14 @@ Describe 'PowerShell Gallery package' {
         $outputDirectory = Join-Path $TestDrive 'PSGallery'
         $package = & $script:packageScriptPath -OutputDirectory $outputDirectory
 
-        $package.Version | Should -Be '0.1.0'
+        $package.Version | Should -Be $script:expectedPackageVersion
         Test-Path -LiteralPath $package.ManifestPath -PathType Leaf | Should -BeTrue
         Test-ModuleManifest -Path $package.ManifestPath -ErrorAction Stop | Should -Not -BeNullOrEmpty
         @($package.ExportedFunctions | Sort-Object) | Should -Be $script:expectedCommands
+
+        $packagedManifest = Import-PowerShellDataFile -LiteralPath $package.ManifestPath
+        $packagedManifest.PrivateData.PSData.ReleaseNotes | Should -Be $script:expectedGalleryReleaseNotes
+        $packagedManifest.PrivateData.PSData.ReleaseNotes | Should -Not -Be 'https://github.com/infoconex/copy-github-repo/releases'
 
         foreach ($unexpectedName in @('.github', 'build', 'docs', 'tests')) {
             Test-Path -LiteralPath (Join-Path $package.PackagePath $unexpectedName) | Should -BeFalse
@@ -51,11 +70,15 @@ Describe 'PowerShell Gallery package' {
         $manifest.Author | Should -Not -BeNullOrEmpty
         $manifest.CompanyName | Should -Not -BeNullOrEmpty
         $manifest.Copyright | Should -Not -BeNullOrEmpty
-        $manifest.Description | Should -Not -BeNullOrEmpty
+        $manifest.Description | Should -Match 'PowerShell module.*copying.*migrating.*GitHub repositories'
         $manifest.PrivateData.PSData.LicenseUri | Should -Match '^https://github\.com/infoconex/copy-github-repo/'
-        $manifest.PrivateData.PSData.ProjectUri | Should -Be 'https://github.com/infoconex/copy-github-repo'
+        $manifest.PrivateData.PSData.ProjectUri | Should -Be 'https://infoconex.github.io/copy-github-repo/'
+        $manifest.PrivateData.PSData.IconUri | Should -Be 'https://infoconex.github.io/copy-github-repo/assets/images/gallery-icon.png'
         $manifest.PrivateData.PSData.ReleaseNotes | Should -Be 'https://github.com/infoconex/copy-github-repo/releases'
-        @($manifest.PrivateData.PSData.Tags) | Should -Contain 'PowerShell'
+
+        foreach ($tag in @('PowerShell', 'Automation', 'DevOps', 'PSEdition_Core', 'Windows', 'Linux', 'MacOS')) {
+            @($manifest.PrivateData.PSData.Tags) | Should -Contain $tag
+        }
     }
 }
 
@@ -63,6 +86,15 @@ Describe 'PowerShell Gallery release workflow contract' {
     BeforeAll {
         $script:releaseWorkflow = (Get-Content -LiteralPath $script:releaseWorkflowPath -Raw) -replace "`r`n?", "`n"
         $script:releaseReadiness = (Get-Content -LiteralPath $script:releaseReadinessPath -Raw) -replace "`r`n?", "`n"
+    }
+
+    It 'passes the stable release-readiness boundary for the current module version' {
+        $expectedTag = "v$($script:expectedPackageVersion)"
+        $readiness = & $script:releaseReadinessPath -Tag $expectedTag -RequireEmptyUnreleased
+
+        $readiness.IsReady | Should -BeTrue
+        $readiness.Version | Should -Be $script:expectedPackageVersion
+        $readiness.ExpectedTag | Should -Be $expectedTag
     }
 
     It 'supports version-tag pushes and guarded manual dispatch through one release workflow' {
@@ -152,6 +184,9 @@ Describe 'PowerShell Gallery documentation contract' {
         $readme | Should -Match 'Install-Module CopyGitHubRepo'
         $readme | Should -Match 'Update-PSResource CopyGitHubRepo'
         $readme | Should -Match 'Uninstall-PSResource CopyGitHubRepo'
+        $readme | Should -Match 'img\.shields\.io/powershellgallery/v/CopyGitHubRepo'
+        $readme | Should -Match 'img\.shields\.io/powershellgallery/dt/CopyGitHubRepo'
+        $readme | Should -Match 'validate-project-quality\.yml/badge\.svg'
     }
 
     It 'documents protected publishing credentials manual release path fallback prerelease policy and signing policy' {
@@ -165,5 +200,6 @@ Describe 'PowerShell Gallery documentation contract' {
         $publishingDocumentation | Should -Match '-WhatIf'
         $publishingDocumentation | Should -Match 'Prerelease Gallery publication is intentionally not enabled'
         $publishingDocumentation | Should -Match 'Authenticode signing is optional'
+        $publishingDocumentation | Should -Match 'CHANGELOG\.md.*ReleaseNotes'
     }
 }

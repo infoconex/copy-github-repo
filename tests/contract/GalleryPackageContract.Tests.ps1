@@ -10,7 +10,7 @@ Describe 'PowerShell Gallery manifest contract' {
     }
 
     It 'uses product terminology suitable for Gallery discovery' {
-        $script:manifestData.Description | Should -Match 'copy, publish, and verify GitHub repositories'
+        $script:manifestData.Description | Should -Match 'copying and migrating GitHub repositories'
         $script:manifestData.Description | Should -Match 'Snapshot'
         $script:manifestData.Description | Should -Match 'FullHistory'
 
@@ -20,7 +20,13 @@ Describe 'PowerShell Gallery manifest contract' {
         $tags | Should -Contain 'Repository'
         $tags | Should -Contain 'Copy'
         $tags | Should -Contain 'Migration'
+        $tags | Should -Contain 'Automation'
+        $tags | Should -Contain 'DevOps'
         $tags | Should -Contain 'PowerShell'
+        $tags | Should -Contain 'PSEdition_Core'
+        $tags | Should -Contain 'Windows'
+        $tags | Should -Contain 'Linux'
+        $tags | Should -Contain 'MacOS'
     }
 
     It 'exports only the approved public function surface' {
@@ -44,7 +50,8 @@ Describe 'PowerShell Gallery manifest contract' {
         $script:manifestData.PowerShellVersion | Should -Be '7.4'
         @($script:manifestData.CompatiblePSEditions) | Should -Contain 'Core'
         $script:manifestData.PrivateData.PSData.LicenseUri | Should -Be 'https://github.com/infoconex/copy-github-repo/blob/main/LICENSE'
-        $script:manifestData.PrivateData.PSData.ProjectUri | Should -Be 'https://github.com/infoconex/copy-github-repo'
+        $script:manifestData.PrivateData.PSData.ProjectUri | Should -Be 'https://infoconex.github.io/copy-github-repo/'
+        $script:manifestData.PrivateData.PSData.IconUri | Should -Be 'https://infoconex.github.io/copy-github-repo/assets/images/gallery-icon.png'
         $script:manifestData.PrivateData.PSData.ReleaseNotes | Should -Be 'https://github.com/infoconex/copy-github-repo/releases'
     }
 

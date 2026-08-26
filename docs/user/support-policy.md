@@ -6,15 +6,15 @@ The policy is intentionally conservative. It does not create long-term-support c
 
 ## Current support status
 
-Version `0.1.0` is the initial stable release and the current supported stable module version. Before `1.0.0`, older stable versions are not maintained as parallel supported branches unless a release note explicitly says otherwise.
+Version `0.1.0` is the initial stable release. The latest published stable module version is the supported stable version. Before `1.0.0`, older stable versions are not maintained as parallel supported branches unless a release note explicitly says otherwise.
 
 | Item | Support position |
 | --- | --- |
-| Module version | Latest published stable version; currently `0.1.0` |
+| Module version | Latest published stable version |
 | Long-term-support branches | None currently defined |
 | Security fixes | Applied to the currently supported stable version; older versions may require upgrading to receive a fix |
 | Prerelease/unreleased builds | Development and release-candidate evaluation only; not a separately supported production line |
-| GitHub host | GitHub.com only for v0.1.0 |
+| GitHub host | GitHub.com only for the current `0.1.x` release line |
 | PowerShell | PowerShell 7.4+ / Core edition |
 | Operating systems | Windows, Ubuntu/Linux, and macOS families represented by the cross-platform release Quality Gate; exact historical OS versions are not separately guaranteed |
 
@@ -75,7 +75,7 @@ A platform family may be removed from support only through an announced compatib
 
 ## GitHub host compatibility
 
-Version `0.1.0` supports **GitHub.com only**. GitHub Enterprise Server and other hosts are unsupported/deferred and fail closed through the public host guard.
+The current `0.1.x` release line supports **GitHub.com only**. GitHub Enterprise Server and other hosts are unsupported/deferred and fail closed through the public host guard.
 
 The detailed host contract is in [GitHub host support](host-support.md). Adding another host is a product capability change that requires explicit design, verification, and documentation; it is not inferred from the presence of the `-HostName` parameter.
 

@@ -26,7 +26,7 @@ Describe 'Support compatibility and deprecation policy documentation contract' {
         $script:supportPolicy | Should -Match 'Security fixes target the latest supported stable version'
         $script:supportPolicy | Should -Match 'does not promise backports to older pre-1\.0 releases'
         $script:supportPolicy | Should -Match 'Unreleased `main` content.*not a separately supported production line'
-        $script:securityPolicy | Should -Match 'latest supported stable\s+module version under.*support-policy\.md'
+        $script:securityPolicy | Should -Match '(?s)latest\s+supported\s+stable\s+module\s+version\s+under.*support-policy\.md'
         $script:securityPolicy | Should -Match 'older stable versions are not promised parallel security-fix branches'
     }
 
@@ -43,8 +43,9 @@ Describe 'Support compatibility and deprecation policy documentation contract' {
     It 'defines the PowerShell prerequisite and host baselines precisely' {
         $script:supportPolicy | Should -Match 'current normative minimum is \*\*PowerShell 7\.4\*\*'
         $script:supportPolicy | Should -Match 'does not imply Windows PowerShell 5\.1 support'
-        $script:supportPolicy | Should -Match 'Version `0\.1\.0` supports \*\*GitHub\.com only\*\*'
+        $script:supportPolicy | Should -Match 'current `0\.1\.x` release line supports \*\*GitHub\.com only\*\*'
         $script:manifest.PowerShellVersion | Should -Be '7.4'
+        $script:hostSupport | Should -Match 'current `0\.1\.x` release line supports GitHub\.com only'
         $script:hostSupport | Should -Match 'support-policy\.md'
     }
 

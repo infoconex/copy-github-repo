@@ -7,11 +7,11 @@ BeforeAll {
 }
 
 Describe 'Stable release readiness validation' {
-    It 'accepts the current manifest version when release metadata is aligned' {
+    It 'accepts the current manifest version when versioned release metadata is aligned' {
         $manifest = Import-PowerShellDataFile -LiteralPath $script:manifestPath
         $version = [string] $manifest.ModuleVersion
 
-        $result = & $script:releaseReadinessPath -Tag "v$version" -RequireEmptyUnreleased
+        $result = & $script:releaseReadinessPath -Tag "v$version"
 
         $result.PSTypeNames[0] | Should -Be 'CopyGitHubRepo.ReleaseReadiness'
         $result.Version | Should -Be $version
@@ -25,7 +25,7 @@ Describe 'Stable release readiness validation' {
             Should -Throw -ExpectedMessage '*does not match module version*'
     }
 
-    It 'treats the explicit no-unreleased-changes sentinel as empty at the stable publication boundary' {
+    It 'keeps an Unreleased section available for normal development and release preparation' {
         $changelog = Get-Content -LiteralPath $script:changelogPath -Raw
         $unreleased = [regex]::Match(
             $changelog,
@@ -33,7 +33,14 @@ Describe 'Stable release readiness validation' {
         )
 
         $unreleased.Success | Should -BeTrue
-        $unreleased.Groups['Body'].Value.Trim() | Should -BeExactly 'No unreleased product changes.'
+    }
+
+    It 'accepts an empty Unreleased section at the stable publication boundary' {
+        $manifest = Import-PowerShellDataFile -LiteralPath $script:manifestPath
+        $version = [string] $manifest.ModuleVersion
+
+        { & $script:releaseReadinessPath -Tag "v$version" } | Should -Not -Throw
+        { & $script:releaseReadinessPath -Tag "v$version" -RequireEmptyUnreleased } | Should -Not -Throw
     }
 
     It 'keeps real Unreleased entries blocked by release readiness' {

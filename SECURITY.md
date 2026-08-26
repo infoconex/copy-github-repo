@@ -2,12 +2,11 @@
 
 ## Supported versions
 
-Version `0.1.0` is the initial stable release and the current supported stable
-module version. Security fixes target the latest supported stable
-module version under [`docs/user/support-policy.md`](docs/user/support-policy.md). Before
-`1.0.0`, older stable versions are not promised parallel security-fix branches
-unless an exceptional backport or extended-support decision is announced
-explicitly.
+Version `0.1.0` is the initial stable release. Security fixes target the latest
+supported stable module version under
+[`docs/user/support-policy.md`](docs/user/support-policy.md). Before `1.0.0`,
+older stable versions are not promised parallel security-fix branches unless an
+exceptional backport or extended-support decision is announced explicitly.
 
 Unreleased `main` content may contain future fixes or changes, but it is not a
 separately supported production line.
@@ -49,10 +48,10 @@ display, copy, or persist token values. GitHub secrets, webhook secrets, private
 deploy-key material, and GitHub App credentials are outside the migration
 contract.
 
-Version `0.1.0` supports GitHub.com only. Public commands reject unsupported hosts
-before prerequisites, discovery, planning, verification, or mutation. HTTPS Git
-operations use GitHub CLI credentials through command-scoped Git configuration;
-interactive Git credential prompting is disabled.
+The current `0.1.x` release line supports GitHub.com only. Public commands reject
+unsupported hosts before prerequisites, discovery, planning, verification, or
+mutation. HTTPS Git operations use GitHub CLI credentials through command-scoped
+Git configuration; interactive Git credential prompting is disabled.
 
 The tool does not automatically delete repositories or overwrite an existing
 destination. Same-name replacement first preserves the source under an archive

@@ -7,7 +7,15 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
-No unreleased product changes.
+## [0.1.1] - 2026-08-25
+
+### Changed
+
+- Improved PowerShell Gallery discovery metadata with Windows, Linux, macOS, PowerShell Core, Automation, and DevOps tags plus a more search-friendly package description.
+- Pointed the Gallery project and icon metadata at the GitHub Pages documentation site and added an exact 85x85 Gallery icon.
+- Added PowerShell Gallery version/download, project-quality, PowerShell-version, and platform badges to the README and improved the documentation site's SEO description.
+- Updated Gallery packaging so each staged release automatically receives version-specific `ReleaseNotes` from its matching `CHANGELOG.md` release section.
+- Made current-version support and GitHub-host documentation release-line based so future patch releases do not require unnecessary version-number edits.
 
 ## [0.1.0] - 2026-08-22
 

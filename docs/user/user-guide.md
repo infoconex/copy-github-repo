@@ -57,7 +57,7 @@ If preserving ancestry, branches, or tags matters, choose `FullHistory`. If the 
 
 ## What gets copied?
 
-This matrix is the user-facing support summary for v0.1.0. The product contract remains authoritative if a detail requires normative interpretation.
+This matrix is the user-facing support summary for the current `0.1.x` release line. The product contract remains authoritative if a detail requires normative interpretation.
 
 | GitHub state | Snapshot | FullHistory | Notes |
 | --- | --- | --- | --- |
@@ -75,17 +75,17 @@ This matrix is the user-facing support summary for v0.1.0. The product contract 
 | Topics | **Restored** | **Restored** | Supported ordinary repository setting. |
 | Transferable repository-level rulesets | **Restored when safely transferable** | **Restored when safely transferable** | Security semantics are not weakened merely to make policy portable. |
 | Transferable legacy default-branch protection | **Restored when safely transferable** | **Restored when safely transferable** | Non-transferable/inherited/identity-bound policy is reported as skipped/unsupported. |
-| Pull requests | **Not copied** | **Not copied** | Historical/operational GitHub records are outside v0.1.0 scope. |
+| Pull requests | **Not copied** | **Not copied** | Historical/operational GitHub records are outside the current `0.1.x` scope. |
 | Issues and issue history | **Not copied** | **Not copied** | Only the Issues enabled/disabled setting can be restored. |
 | Discussion content/history | **Not copied** | **Not copied** | Only the Discussions enabled/disabled setting can be restored. |
 | GitHub Releases / release history | **Not copied** | **Not copied** | Git tags may be preserved in FullHistory; GitHub Release objects are separate and not copied. |
-| GitHub Actions configuration/activation | **Not restored** | **Not restored** | `-EnableActionsAfterMigration` is not implemented for mutating execution in v0.1.0. Workflow files are ordinary repository files when present in copied Git content, but Actions activation/configuration/history is not restored. |
+| GitHub Actions configuration/activation | **Not restored** | **Not restored** | `-EnableActionsAfterMigration` is not implemented for mutating execution in the current `0.1.x` release line. Workflow files are ordinary repository files when present in copied Git content, but Actions activation/configuration/history is not restored. |
 | GitHub Actions workflow-run history | **Not copied** | **Not copied** | Historical operational state is outside scope. |
-| GitHub Pages configuration | **Not restored** | **Not restored** | `-RestorePages` is not implemented for mutating execution in v0.1.0. |
+| GitHub Pages configuration | **Not restored** | **Not restored** | `-RestorePages` is not implemented for mutating execution in the current `0.1.x` release line. |
 | Secret values | **Never copied or requested** | **Never copied or requested** | Secret values are deliberately excluded. |
-| Webhooks / deploy keys / environments | **Not copied** | **Not copied** | Outside v0.1.0 restoration scope. |
-| Collaborator/team access | **Not copied** | **Not copied** | Outside v0.1.0 restoration scope. |
-| Packages / deployments | **Not copied** | **Not copied** | Outside v0.1.0 restoration scope. |
+| Webhooks / deploy keys / environments | **Not copied** | **Not copied** | Outside the current `0.1.x` restoration scope. |
+| Collaborator/team access | **Not copied** | **Not copied** | Outside the current `0.1.x` restoration scope. |
+| Packages / deployments | **Not copied** | **Not copied** | Outside the current `0.1.x` restoration scope. |
 | Stars / watchers / forks / traffic history | **Not copied** | **Not copied** | Historical/operational GitHub state is outside scope. |
 
 `-SkipSettings` skips both ordinary settings and repository-protection restoration.

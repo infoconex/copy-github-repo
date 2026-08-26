@@ -31,7 +31,7 @@ Want to see what Snapshot automates? See [Manually Creating a Clean GitHub Repos
 - `-PlanOnly` and `-WhatIf` are non-mutating.
 - Content is verified before success is reported.
 - Failures after mutation begins retain durable recovery information instead of automatically deleting or rolling back repositories.
-- `v0.1.0` supports GitHub.com only and fails closed for other hosts.
+- The current `0.1.x` release line supports GitHub.com only and fails closed for other hosts.
 
 See the [Product contract](docs/product/product-contract.md) and [Architecture](docs/product/architecture.md) for the detailed safety and verification contracts.
 
@@ -125,14 +125,14 @@ irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/uninstall.
 
 If multiple versions are installed, the script lets you remove one version, remove all validated versions, or cancel. Destructive confirmation defaults to No.
 
-For deterministic local or automated removal, use the packaged/repository script directly:
+For deterministic local or automated removal, replace `X.Y.Z` with the installed module version and use the packaged/repository script directly:
 
 ```powershell
-./uninstall.ps1 -Version 0.1.0
+./uninstall.ps1 -Version 'X.Y.Z'
 ./uninstall.ps1 -AllVersions
-./uninstall.ps1 -Version 0.1.0 -DestinationRoot D:\PowerShell\Modules
-./uninstall.ps1 -Version 0.1.0 -WhatIf
-./uninstall.ps1 -Version 0.1.0 -Confirm:$false
+./uninstall.ps1 -Version 'X.Y.Z' -DestinationRoot D:\PowerShell\Modules
+./uninstall.ps1 -Version 'X.Y.Z' -WhatIf
+./uninstall.ps1 -Version 'X.Y.Z' -Confirm:$false
 ```
 
 `-Version` and `-AllVersions` are mutually exclusive. The uninstaller validates module identity and path containment before recursive deletion, does not remove neighboring modules, and does not require network access when run locally. The one-line command above executes mutable `main`, so it has the same bootstrap trust-boundary consideration as the convenience installers. See [Installation security](docs/security/installation-security.md) for details.

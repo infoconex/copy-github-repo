@@ -1,6 +1,6 @@
 @{
     RootModule = 'CopyGitHubRepo.psm1'
-    ModuleVersion = '0.1.0'
+    ModuleVersion = '0.1.1'
     GUID = 'c428210d-c7a4-49db-81d1-830606e16fa6'
     Author = 'infoconex'
     CompanyName = 'infoconex'

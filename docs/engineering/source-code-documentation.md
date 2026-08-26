@@ -112,6 +112,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `build/New-ReleaseArtifact.ps1` | Produces release artifacts from validated source rather than ad-hoc working-tree content. |
 | `build/New-ReleaseSbom.ps1` | Generates the deterministic SPDX 2.3 JSON SBOM from the completed release ZIP, binds it to the exact source commit, and keeps development/CI dependencies outside the shipped runtime graph. |
 | `build/New-ScaleCharacterizationFixture.ps1` | Generates deterministic local Git fixtures used by the scale-characterization harness without claiming a production support limit. |
+| `build/Set-PowerShellGalleryReleaseNotes.ps1` | Extracts the current version's dated `CHANGELOG.md` section and injects it into the staged Gallery manifest so each immutable package carries version-specific release notes. |
 | `build/Test-Documentation.ps1` | Runs the narrow documentation validation path used for documentation-only changes. |
 | `build/Test-GeneratedSite.ps1` | Validates generated GitHub Pages content and site-link assumptions. |
 | `build/Test-Project.ps1` | Canonical local/CI quality gate: analyzer, classified Pester suites, and aggregate coverage for `All`. |

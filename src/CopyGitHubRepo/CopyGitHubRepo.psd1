@@ -5,7 +5,7 @@
     Author = 'infoconex'
     CompanyName = 'infoconex'
     Copyright = '(c) 2026 infoconex. Licensed under the MIT License.'
-    Description = 'Safely copy, publish, and verify GitHub repositories using clean Snapshot or history-preserving FullHistory modes.'
+    Description = 'PowerShell module for safely copying and migrating GitHub repositories with clean Snapshot or history-preserving FullHistory modes.'
     PowerShellVersion = '7.4'
     CompatiblePSEditions = @('Core')
     FormatsToProcess = @('CopyGitHubRepo.format.ps1xml')
@@ -26,6 +26,8 @@
                 'Repository'
                 'Copy'
                 'Migration'
+                'Automation'
+                'DevOps'
                 'PowerShell'
                 'PSEdition_Core'
                 'Windows'

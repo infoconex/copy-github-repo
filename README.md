@@ -2,6 +2,12 @@
 
 # Copy GitHub Repository
 
+[![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/CopyGitHubRepo?label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/CopyGitHubRepo)
+[![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/CopyGitHubRepo?label=Downloads)](https://www.powershellgallery.com/packages/CopyGitHubRepo)
+[![Validate Project Quality](https://github.com/infoconex/copy-github-repo/actions/workflows/validate-project-quality.yml/badge.svg)](https://github.com/infoconex/copy-github-repo/actions/workflows/validate-project-quality.yml)
+![PowerShell 7.4+](https://img.shields.io/badge/PowerShell-7.4%2B-informational)
+![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-informational)
+
 Copy GitHub Repository is a PowerShell utility for safely publishing or copying GitHub repositories. Its default `Snapshot` mode is designed for **clean publication**: it copies the current source default-branch state into one unrelated root commit, intentionally leaving prior Git history, old branches/tags, pull requests, issues, milestones, and other historical GitHub records behind. The explicit `FullHistory` mode is the history-preserving alternative and keeps ordinary Git history, branches, tags, and reachable Git LFS objects.
 
 The project prioritizes preservation, explicit human authority, verification, and recoverability. It never automatically deletes a repository or overwrites an existing destination.

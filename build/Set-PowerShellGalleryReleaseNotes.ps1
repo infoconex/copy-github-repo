@@ -65,8 +65,7 @@ $manifestText = [regex]::Replace(
     {
         param($match)
         return "$($match.Groups['Indent'].Value)ReleaseNotes = `"$escapedReleaseNotes`""
-    },
-    1
+    }
 )
 
 Set-Content -LiteralPath $ManifestPath -Value $manifestText -Encoding utf8NoBOM

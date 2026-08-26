@@ -26,7 +26,7 @@ Describe 'Support compatibility and deprecation policy documentation contract' {
         $script:supportPolicy | Should -Match 'Security fixes target the latest supported stable version'
         $script:supportPolicy | Should -Match 'does not promise backports to older pre-1\.0 releases'
         $script:supportPolicy | Should -Match 'Unreleased `main` content.*not a separately supported production line'
-        $script:securityPolicy | Should -Match 'latest supported stable\s+module version under.*support-policy\.md'
+        $script:securityPolicy | Should -Match '(?s)latest supported stable\s+module version under.*support-policy\.md'
         $script:securityPolicy | Should -Match 'older stable versions are not promised parallel security-fix branches'
     }
 

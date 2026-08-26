@@ -24,6 +24,10 @@ Describe 'PowerShell Gallery package' {
         Test-ModuleManifest -Path $package.ManifestPath -ErrorAction Stop | Should -Not -BeNullOrEmpty
         @($package.ExportedFunctions | Sort-Object) | Should -Be $script:expectedCommands
 
+        $packagedManifest = Import-PowerShellDataFile -LiteralPath $package.ManifestPath
+        $packagedManifest.PrivateData.PSData.ReleaseNotes | Should -Match 'Initial public stable release'
+        $packagedManifest.PrivateData.PSData.ReleaseNotes | Should -Not -Be 'https://github.com/infoconex/copy-github-repo/releases'
+
         foreach ($unexpectedName in @('.github', 'build', 'docs', 'tests')) {
             Test-Path -LiteralPath (Join-Path $package.PackagePath $unexpectedName) | Should -BeFalse
         }
@@ -51,11 +55,15 @@ Describe 'PowerShell Gallery package' {
         $manifest.Author | Should -Not -BeNullOrEmpty
         $manifest.CompanyName | Should -Not -BeNullOrEmpty
         $manifest.Copyright | Should -Not -BeNullOrEmpty
-        $manifest.Description | Should -Not -BeNullOrEmpty
+        $manifest.Description | Should -Match 'PowerShell module.*copying.*migrating.*GitHub repositories'
         $manifest.PrivateData.PSData.LicenseUri | Should -Match '^https://github\.com/infoconex/copy-github-repo/'
-        $manifest.PrivateData.PSData.ProjectUri | Should -Be 'https://github.com/infoconex/copy-github-repo'
+        $manifest.PrivateData.PSData.ProjectUri | Should -Be 'https://infoconex.github.io/copy-github-repo/'
+        $manifest.PrivateData.PSData.IconUri | Should -Be 'https://infoconex.github.io/copy-github-repo/assets/images/gallery-icon.png'
         $manifest.PrivateData.PSData.ReleaseNotes | Should -Be 'https://github.com/infoconex/copy-github-repo/releases'
-        @($manifest.PrivateData.PSData.Tags) | Should -Contain 'PowerShell'
+
+        foreach ($tag in @('PowerShell', 'Automation', 'DevOps', 'PSEdition_Core', 'Windows', 'Linux', 'MacOS')) {
+            @($manifest.PrivateData.PSData.Tags) | Should -Contain $tag
+        }
     }
 }
 
@@ -152,6 +160,9 @@ Describe 'PowerShell Gallery documentation contract' {
         $readme | Should -Match 'Install-Module CopyGitHubRepo'
         $readme | Should -Match 'Update-PSResource CopyGitHubRepo'
         $readme | Should -Match 'Uninstall-PSResource CopyGitHubRepo'
+        $readme | Should -Match 'img\.shields\.io/powershellgallery/v/CopyGitHubRepo'
+        $readme | Should -Match 'img\.shields\.io/powershellgallery/dt/CopyGitHubRepo'
+        $readme | Should -Match 'validate-project-quality\.yml/badge\.svg'
     }
 
     It 'documents protected publishing credentials manual release path fallback prerelease policy and signing policy' {
@@ -165,5 +176,6 @@ Describe 'PowerShell Gallery documentation contract' {
         $publishingDocumentation | Should -Match '-WhatIf'
         $publishingDocumentation | Should -Match 'Prerelease Gallery publication is intentionally not enabled'
         $publishingDocumentation | Should -Match 'Authenticode signing is optional'
+        $publishingDocumentation | Should -Match 'CHANGELOG\.md.*ReleaseNotes'
     }
 }

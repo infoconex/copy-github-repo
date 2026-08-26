@@ -7,11 +7,11 @@ BeforeAll {
 }
 
 Describe 'Stable release readiness validation' {
-    It 'accepts the current manifest version when release metadata is aligned' {
+    It 'accepts the current manifest version when versioned release metadata is aligned' {
         $manifest = Import-PowerShellDataFile -LiteralPath $script:manifestPath
         $version = [string] $manifest.ModuleVersion
 
-        $result = & $script:releaseReadinessPath -Tag "v$version" -RequireEmptyUnreleased
+        $result = & $script:releaseReadinessPath -Tag "v$version"
 
         $result.PSTypeNames[0] | Should -Be 'CopyGitHubRepo.ReleaseReadiness'
         $result.Version | Should -Be $version
@@ -25,7 +25,7 @@ Describe 'Stable release readiness validation' {
             Should -Throw -ExpectedMessage '*does not match module version*'
     }
 
-    It 'treats the explicit no-unreleased-changes sentinel as empty at the stable publication boundary' {
+    It 'keeps an Unreleased section available for normal development' {
         $changelog = Get-Content -LiteralPath $script:changelogPath -Raw
         $unreleased = [regex]::Match(
             $changelog,
@@ -33,7 +33,28 @@ Describe 'Stable release readiness validation' {
         )
 
         $unreleased.Success | Should -BeTrue
-        $unreleased.Groups['Body'].Value.Trim() | Should -BeExactly 'No unreleased product changes.'
+        $unreleased.Groups['Body'].Value.Trim() | Should -Not -BeNullOrEmpty
+    }
+
+    It 'enforces an empty Unreleased section only at the stable publication boundary' {
+        $manifest = Import-PowerShellDataFile -LiteralPath $script:manifestPath
+        $version = [string] $manifest.ModuleVersion
+        $changelog = Get-Content -LiteralPath $script:changelogPath -Raw
+        $unreleased = [regex]::Match(
+            $changelog,
+            '(?ms)^## \[Unreleased\]\r?\n(?<Body>.*?)(?=^## \[\d+\.\d+\.\d+\])'
+        )
+        $unreleasedBody = $unreleased.Groups['Body'].Value.Trim()
+        $emptyUnreleasedSentinel = 'No unreleased product changes.'
+
+        if ($unreleasedBody -ceq $emptyUnreleasedSentinel) {
+            { & $script:releaseReadinessPath -Tag "v$version" -RequireEmptyUnreleased } |
+                Should -Not -Throw
+        }
+        else {
+            { & $script:releaseReadinessPath -Tag "v$version" -RequireEmptyUnreleased } |
+                Should -Throw -ExpectedMessage '*contains Unreleased entries that would ship*'
+        }
     }
 
     It 'keeps real Unreleased entries blocked by release readiness' {

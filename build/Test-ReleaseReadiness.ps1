@@ -17,6 +17,7 @@ $changelogPath = Join-Path $repositoryRoot 'CHANGELOG.md'
 $publishingPath = Join-Path $repositoryRoot 'docs/release/publishing.md'
 $releaseWorkflowPath = Join-Path $repositoryRoot '.github/workflows/publish-release.yml'
 $galleryPackageBuilderPath = Join-Path $repositoryRoot 'build/New-PowerShellGalleryPackage.ps1'
+$galleryReleaseNotesPath = Join-Path $repositoryRoot 'build/Set-PowerShellGalleryReleaseNotes.ps1'
 $releaseArtifactBuilderPath = Join-Path $repositoryRoot 'build/New-ReleaseArtifact.ps1'
 $installerPath = Join-Path $repositoryRoot 'install.ps1'
 $uninstallerPath = Join-Path $repositoryRoot 'uninstall.ps1'
@@ -27,6 +28,7 @@ $requiredPaths = @(
     $publishingPath
     $releaseWorkflowPath
     $galleryPackageBuilderPath
+    $galleryReleaseNotesPath
     $releaseArtifactBuilderPath
     $installerPath
     $uninstallerPath

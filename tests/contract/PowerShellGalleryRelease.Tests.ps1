@@ -88,6 +88,15 @@ Describe 'PowerShell Gallery release workflow contract' {
         $script:releaseReadiness = (Get-Content -LiteralPath $script:releaseReadinessPath -Raw) -replace "`r`n?", "`n"
     }
 
+    It 'passes the stable release-readiness boundary for the current module version' {
+        $expectedTag = "v$($script:expectedPackageVersion)"
+        $readiness = & $script:releaseReadinessPath -Tag $expectedTag -RequireEmptyUnreleased
+
+        $readiness.IsReady | Should -BeTrue
+        $readiness.Version | Should -Be $script:expectedPackageVersion
+        $readiness.ExpectedTag | Should -Be $expectedTag
+    }
+
     It 'supports version-tag pushes and guarded manual dispatch through one release workflow' {
         $script:releaseWorkflow | Should -Match '(?m)^name: Publish Release$'
         $script:releaseWorkflow | Should -Match "(?ms)^'on':\s+push:\s+tags:\s+- 'v\*'\s+workflow_dispatch:"

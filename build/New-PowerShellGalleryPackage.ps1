@@ -5,12 +5,12 @@
 Builds and validates the PowerShell Gallery module payload.
 
 .DESCRIPTION
-Copies only the module source into a clean package directory, validates manifest and
-export contracts, imports the package in-process and in an isolated PowerShell
-process, and verifies that every exported public command retains complete native
-comment-based help. The script fails before publication when package contents,
-exports, formatting data, importability, or public help drift from the release
-contract.
+Copies only the module source into a clean package directory, injects version-specific
+Gallery release notes from CHANGELOG.md, validates manifest and export contracts,
+imports the package in-process and in an isolated PowerShell process, and verifies that
+every exported public command retains complete native comment-based help. The script
+fails before publication when package contents, exports, formatting data, importability,
+release metadata, or public help drift from the release contract.
 
 .PARAMETER OutputDirectory
 Directory that receives the CopyGitHubRepo package. Defaults to dist/PSGallery under
@@ -26,6 +26,8 @@ $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $moduleSourcePath = Join-Path $repositoryRoot 'src/CopyGitHubRepo'
+$releaseNotesScriptPath = Join-Path $PSScriptRoot 'Set-PowerShellGalleryReleaseNotes.ps1'
+$changelogPath = Join-Path $repositoryRoot 'CHANGELOG.md'
 
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $repositoryRoot 'dist/PSGallery'
@@ -40,6 +42,8 @@ if (Test-Path -LiteralPath $packagePath) {
 
 New-Item -Path $packagePath -ItemType Directory -Force | Out-Null
 Copy-Item -Path (Join-Path $moduleSourcePath '*') -Destination $packagePath -Recurse -Force
+
+& $releaseNotesScriptPath -ManifestPath $manifestPath -ChangelogPath $changelogPath | Out-Null
 
 $manifest = Test-ModuleManifest -Path $manifestPath -ErrorAction Stop
 $manifestData = Import-PowerShellDataFile -Path $manifestPath

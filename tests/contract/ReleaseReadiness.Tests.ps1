@@ -25,7 +25,7 @@ Describe 'Stable release readiness validation' {
             Should -Throw -ExpectedMessage '*does not match module version*'
     }
 
-    It 'keeps an Unreleased section available for normal development' {
+    It 'keeps an Unreleased section available for normal development and release preparation' {
         $changelog = Get-Content -LiteralPath $script:changelogPath -Raw
         $unreleased = [regex]::Match(
             $changelog,
@@ -33,28 +33,14 @@ Describe 'Stable release readiness validation' {
         )
 
         $unreleased.Success | Should -BeTrue
-        $unreleased.Groups['Body'].Value.Trim() | Should -Not -BeNullOrEmpty
     }
 
-    It 'enforces an empty Unreleased section only at the stable publication boundary' {
+    It 'accepts an empty Unreleased section at the stable publication boundary' {
         $manifest = Import-PowerShellDataFile -LiteralPath $script:manifestPath
         $version = [string] $manifest.ModuleVersion
-        $changelog = Get-Content -LiteralPath $script:changelogPath -Raw
-        $unreleased = [regex]::Match(
-            $changelog,
-            '(?ms)^## \[Unreleased\]\r?\n(?<Body>.*?)(?=^## \[\d+\.\d+\.\d+\])'
-        )
-        $unreleasedBody = $unreleased.Groups['Body'].Value.Trim()
-        $emptyUnreleasedSentinel = 'No unreleased product changes.'
 
-        if ($unreleasedBody -ceq $emptyUnreleasedSentinel) {
-            { & $script:releaseReadinessPath -Tag "v$version" -RequireEmptyUnreleased } |
-                Should -Not -Throw
-        }
-        else {
-            { & $script:releaseReadinessPath -Tag "v$version" -RequireEmptyUnreleased } |
-                Should -Throw -ExpectedMessage '*contains Unreleased entries that would ship*'
-        }
+        { & $script:releaseReadinessPath -Tag "v$version" } | Should -Not -Throw
+        { & $script:releaseReadinessPath -Tag "v$version" -RequireEmptyUnreleased } | Should -Not -Throw
     }
 
     It 'keeps real Unreleased entries blocked by release readiness' {

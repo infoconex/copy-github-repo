@@ -1,3 +1,8 @@
+---
+title: "PowerShell Command Reference for CopyGitHubRepo"
+description: "Reference documentation for the CopyGitHubRepo PowerShell commands used to discover, copy, migrate, and verify GitHub repositories."
+---
+
 # Command Reference
 
 Public PowerShell command documentation.

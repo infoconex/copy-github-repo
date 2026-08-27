@@ -1,3 +1,8 @@
+---
+title: "Test-GitHubRepositoryMigration – Verify GitHub Repository Migrations"
+description: "Verify Snapshot or FullHistory GitHub repository migrations with PowerShell using a read-only comparison of source and destination content."
+---
+
 # Test-GitHubRepositoryMigration
 
 Performs read-only verification of migrated Git content. Use the same content mode that was used for the migration.

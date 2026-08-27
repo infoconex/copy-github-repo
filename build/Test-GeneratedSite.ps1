@@ -87,7 +87,7 @@ function Add-GeneratedSiteFailure {
     $failures.Add("$Source -> $Message")
 }
 
-function Resolve-HtmlAttributeValue {
+$htmlAttributeValue = {
     param(
         [Parameter(Mandatory)]
         [string]$Tag,
@@ -217,12 +217,12 @@ foreach ($htmlFile in $htmlFiles) {
     $metaTags = @([regex]::Matches($html, '(?is)<meta\b[^>]*>') | ForEach-Object { $_.Value })
     $linkTags = @([regex]::Matches($html, '(?is)<link\b[^>]*>') | ForEach-Object { $_.Value })
 
-    $descriptionTags = @($metaTags | Where-Object { (Resolve-HtmlAttributeValue -Tag $_ -Name 'name') -ieq 'description' })
+    $descriptionTags = @($metaTags | Where-Object { (& $htmlAttributeValue -Tag $_ -Name 'name') -ieq 'description' })
     if ($descriptionTags.Count -ne 1) {
         Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one meta description, found $($descriptionTags.Count)"
     }
     else {
-        $descriptionValue = (Resolve-HtmlAttributeValue -Tag $descriptionTags[0] -Name 'content').Trim()
+        $descriptionValue = (& $htmlAttributeValue -Tag $descriptionTags[0] -Name 'content').Trim()
         if ([string]::IsNullOrWhiteSpace($descriptionValue)) {
             Add-GeneratedSiteFailure -Source $relativeSource -Message 'meta description is empty'
         }
@@ -232,7 +232,7 @@ foreach ($htmlFile in $htmlFiles) {
     }
 
     $canonicalTags = @($linkTags | Where-Object {
-        $rel = Resolve-HtmlAttributeValue -Tag $_ -Name 'rel'
+        $rel = & $htmlAttributeValue -Tag $_ -Name 'rel'
         $rel -and (@($rel -split '\s+') -icontains 'canonical')
     })
     $canonicalValue = $null
@@ -240,7 +240,7 @@ foreach ($htmlFile in $htmlFiles) {
         Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one canonical link, found $($canonicalTags.Count)"
     }
     else {
-        $canonicalValue = (Resolve-HtmlAttributeValue -Tag $canonicalTags[0] -Name 'href').Trim()
+        $canonicalValue = (& $htmlAttributeValue -Tag $canonicalTags[0] -Name 'href').Trim()
         $expectedCanonical = Get-ExpectedCanonicalUrl -RelativeSource $relativeSource
         if ($canonicalValue -cne $expectedCanonical) {
             Add-GeneratedSiteFailure -Source $relativeSource -Message "canonical URL mismatch: expected $expectedCanonical but found $canonicalValue"
@@ -251,13 +251,13 @@ foreach ($htmlFile in $htmlFiles) {
     }
 
     foreach ($propertyName in @('og:title', 'og:description', 'og:url')) {
-        $propertyTags = @($metaTags | Where-Object { (Resolve-HtmlAttributeValue -Tag $_ -Name 'property') -ieq $propertyName })
+        $propertyTags = @($metaTags | Where-Object { (& $htmlAttributeValue -Tag $_ -Name 'property') -ieq $propertyName })
         if ($propertyTags.Count -ne 1) {
             Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one $propertyName meta element, found $($propertyTags.Count)"
             continue
         }
 
-        $propertyValue = (Resolve-HtmlAttributeValue -Tag $propertyTags[0] -Name 'content').Trim()
+        $propertyValue = (& $htmlAttributeValue -Tag $propertyTags[0] -Name 'content').Trim()
         if ([string]::IsNullOrWhiteSpace($propertyValue)) {
             Add-GeneratedSiteFailure -Source $relativeSource -Message "$propertyName meta element is empty"
         }
@@ -266,14 +266,14 @@ foreach ($htmlFile in $htmlFiles) {
         }
     }
 
-    $twitterCardTags = @($metaTags | Where-Object { (Resolve-HtmlAttributeValue -Tag $_ -Name 'name') -ieq 'twitter:card' })
+    $twitterCardTags = @($metaTags | Where-Object { (& $htmlAttributeValue -Tag $_ -Name 'name') -ieq 'twitter:card' })
     if ($twitterCardTags.Count -ne 1) {
         Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one twitter:card meta element, found $($twitterCardTags.Count)"
     }
 
-    $robotsTags = @($metaTags | Where-Object { (Resolve-HtmlAttributeValue -Tag $_ -Name 'name') -ieq 'robots' })
+    $robotsTags = @($metaTags | Where-Object { (& $htmlAttributeValue -Tag $_ -Name 'name') -ieq 'robots' })
     foreach ($robotsTag in $robotsTags) {
-        $robotsContent = Resolve-HtmlAttributeValue -Tag $robotsTag -Name 'content'
+        $robotsContent = & $htmlAttributeValue -Tag $robotsTag -Name 'content'
         if ($robotsContent -match '(?i)(?:^|[,\s])noindex(?:$|[,\s])') {
             Add-GeneratedSiteFailure -Source $relativeSource -Message "page unexpectedly contains noindex robots directive: $robotsContent"
         }

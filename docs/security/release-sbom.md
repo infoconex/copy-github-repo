@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Release SBOM and GitHub Attestations"
+description: "Understand CopyGitHubRepo stable-release SBOM, SHA-256 integrity, dependency classification, GitHub provenance and SBOM attestations, VEX boundaries, retrieval, and verification."
+---
+
 # Release SBOM and attestations
 
 Stable CopyGitHubRepo releases publish machine-readable component evidence alongside the installable archive. This document defines that evidence and its security boundary.

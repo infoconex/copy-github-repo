@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo GitHub Repository Security Baseline"
+description: "Review the required GitHub repository security baseline for CopyGitHubRepo, including rulesets, CodeQL, PowerShell security analysis, Dependabot, secret scanning, Actions permissions, and post-Snapshot qualification."
+---
+
 # GitHub repository security baseline
 
 This document records the repository-level GitHub security baseline for `infoconex/copy-github-repo`. It distinguishes settings verified from the live repository from settings that the connected GitHub integration cannot read or administer.

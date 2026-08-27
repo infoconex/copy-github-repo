@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Dependency and Supply-Chain Monitoring"
+description: "Understand how CopyGitHubRepo monitors PowerShell development dependencies and GitHub Actions for stable updates and published security advisories without automatically adopting changes."
+---
+
 # Dependency and supply-chain monitoring
 
 This document defines the ongoing monitoring policy for third-party development and CI dependencies used by Copy GitHub Repository. It complements the exact dependency pins in `build/DevelopmentDependencies.psd1` and the broader threat/control model in [`security-architecture.md`](security-architecture.md).

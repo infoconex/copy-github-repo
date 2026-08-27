@@ -3,7 +3,8 @@
 [CmdletBinding()]
 param(
     [string]$SitePath = (Join-Path (Split-Path -Parent $PSScriptRoot) '_site'),
-    [string]$BaseUrlPath = '/copy-github-repo'
+    [string]$BaseUrlPath = '/copy-github-repo',
+    [string]$SiteUrl = 'https://infoconex.github.io'
 )
 
 Set-StrictMode -Version Latest
@@ -15,9 +16,14 @@ if (-not (Test-Path -LiteralPath $siteRoot -PathType Container)) {
 }
 
 $basePath = '/' + $BaseUrlPath.Trim('/')
+$siteOrigin = $SiteUrl.TrimEnd('/')
+$canonicalRoot = "$siteOrigin$basePath/"
 $referencePattern = '(?i)(?:href|src)\s*=\s*["''](?<value>[^"'']+)["'']'
 $failures = [System.Collections.Generic.List[string]]::new()
 $htmlFiles = @(Get-ChildItem -LiteralPath $siteRoot -Filter '*.html' -File -Recurse)
+$titleRecords = @()
+$descriptionRecords = @()
+$canonicalRecords = @()
 
 if ($htmlFiles.Count -eq 0) {
     throw "No generated HTML files were found beneath $siteRoot"
@@ -79,6 +85,42 @@ function Add-GeneratedSiteFailure {
     )
 
     $failures.Add("$Source -> $Message")
+}
+
+function Get-HtmlAttributeValue {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Tag,
+        [Parameter(Mandatory)]
+        [string]$Name
+    )
+
+    $escapedName = [regex]::Escape($Name)
+    $attributePattern = "(?is)\b$escapedName\s*=\s*['`\"](?<value>[^'`\"]*)['`\"]"
+    $match = [regex]::Match($Tag, $attributePattern)
+    if (-not $match.Success) {
+        return $null
+    }
+
+    return [System.Net.WebUtility]::HtmlDecode($match.Groups['value'].Value)
+}
+
+function Get-ExpectedCanonicalUrl {
+    param(
+        [Parameter(Mandatory)]
+        [string]$RelativeSource
+    )
+
+    $relativeUrl = $RelativeSource -replace '\\', '/'
+    if ($relativeUrl -eq 'index.html') {
+        return $canonicalRoot
+    }
+
+    if ($relativeUrl.EndsWith('/index.html', [StringComparison]::Ordinal)) {
+        $relativeUrl = $relativeUrl.Substring(0, $relativeUrl.Length - 'index.html'.Length)
+    }
+
+    return "$canonicalRoot$relativeUrl"
 }
 
 foreach ($htmlFile in $htmlFiles) {
@@ -152,11 +194,151 @@ foreach ($htmlFile in $htmlFiles) {
             Add-GeneratedSiteFailure -Source $relativeSource -Message 'input uses aria-expanded without role="combobox"'
         }
     }
+
+    $titleMatches = @([regex]::Matches($html, '(?is)<title\b[^>]*>(?<value>.*?)</title>'))
+    if ($titleMatches.Count -ne 1) {
+        Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one title element, found $($titleMatches.Count)"
+    }
+    else {
+        $titleValue = [System.Net.WebUtility]::HtmlDecode(($titleMatches[0].Groups['value'].Value -replace '(?is)<[^>]+>', '').Trim())
+        if ([string]::IsNullOrWhiteSpace($titleValue)) {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message 'title element is empty'
+        }
+        else {
+            $titleRecords += [pscustomobject]@{ Source = $relativeSource; Value = $titleValue }
+        }
+    }
+
+    $metaTags = @([regex]::Matches($html, '(?is)<meta\b[^>]*>') | ForEach-Object { $_.Value })
+    $linkTags = @([regex]::Matches($html, '(?is)<link\b[^>]*>') | ForEach-Object { $_.Value })
+
+    $descriptionTags = @($metaTags | Where-Object { (Get-HtmlAttributeValue -Tag $_ -Name 'name') -ieq 'description' })
+    if ($descriptionTags.Count -ne 1) {
+        Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one meta description, found $($descriptionTags.Count)"
+    }
+    else {
+        $descriptionValue = (Get-HtmlAttributeValue -Tag $descriptionTags[0] -Name 'content').Trim()
+        if ([string]::IsNullOrWhiteSpace($descriptionValue)) {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message 'meta description is empty'
+        }
+        else {
+            $descriptionRecords += [pscustomobject]@{ Source = $relativeSource; Value = $descriptionValue }
+        }
+    }
+
+    $canonicalTags = @($linkTags | Where-Object {
+        $rel = Get-HtmlAttributeValue -Tag $_ -Name 'rel'
+        $rel -and (@($rel -split '\s+') -icontains 'canonical')
+    })
+    $canonicalValue = $null
+    if ($canonicalTags.Count -ne 1) {
+        Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one canonical link, found $($canonicalTags.Count)"
+    }
+    else {
+        $canonicalValue = (Get-HtmlAttributeValue -Tag $canonicalTags[0] -Name 'href').Trim()
+        $expectedCanonical = Get-ExpectedCanonicalUrl -RelativeSource $relativeSource
+        if ($canonicalValue -cne $expectedCanonical) {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message "canonical URL mismatch: expected $expectedCanonical but found $canonicalValue"
+        }
+        else {
+            $canonicalRecords += [pscustomobject]@{ Source = $relativeSource; Value = $canonicalValue }
+        }
+    }
+
+    foreach ($propertyName in @('og:title', 'og:description', 'og:url')) {
+        $propertyTags = @($metaTags | Where-Object { (Get-HtmlAttributeValue -Tag $_ -Name 'property') -ieq $propertyName })
+        if ($propertyTags.Count -ne 1) {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one $propertyName meta element, found $($propertyTags.Count)"
+            continue
+        }
+
+        $propertyValue = (Get-HtmlAttributeValue -Tag $propertyTags[0] -Name 'content').Trim()
+        if ([string]::IsNullOrWhiteSpace($propertyValue)) {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message "$propertyName meta element is empty"
+        }
+        elseif ($propertyName -eq 'og:url' -and $canonicalValue -and $propertyValue -cne $canonicalValue) {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message "og:url does not match canonical URL: $propertyValue"
+        }
+    }
+
+    $twitterCardTags = @($metaTags | Where-Object { (Get-HtmlAttributeValue -Tag $_ -Name 'name') -ieq 'twitter:card' })
+    if ($twitterCardTags.Count -ne 1) {
+        Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one twitter:card meta element, found $($twitterCardTags.Count)"
+    }
+
+    $robotsTags = @($metaTags | Where-Object { (Get-HtmlAttributeValue -Tag $_ -Name 'name') -ieq 'robots' })
+    foreach ($robotsTag in $robotsTags) {
+        $robotsContent = Get-HtmlAttributeValue -Tag $robotsTag -Name 'content'
+        if ($robotsContent -match '(?i)(?:^|[,\s])noindex(?:$|[,\s])') {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message "page unexpectedly contains noindex robots directive: $robotsContent"
+        }
+    }
+
+    $jsonLdMatches = @([regex]::Matches($html, '(?is)<script\b(?=[^>]*\btype\s*=\s*["'']application/ld\+json["''])[^>]*>(?<value>.*?)</script>'))
+    if ($jsonLdMatches.Count -ne 1) {
+        Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one JSON-LD block, found $($jsonLdMatches.Count)"
+    }
+    else {
+        try {
+            $jsonLd = $jsonLdMatches[0].Groups['value'].Value | ConvertFrom-Json -Depth 100
+            if ($canonicalValue -and ([string]$jsonLd.url) -cne $canonicalValue) {
+                Add-GeneratedSiteFailure -Source $relativeSource -Message "JSON-LD URL does not match canonical URL: $($jsonLd.url)"
+            }
+        }
+        catch {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message "JSON-LD is not valid JSON: $($_.Exception.Message)"
+        }
+    }
+}
+
+foreach ($duplicateTitle in @($titleRecords | Group-Object Value | Where-Object Count -gt 1)) {
+    $sources = @($duplicateTitle.Group.Source) -join ', '
+    Add-GeneratedSiteFailure -Source 'SEO metadata' -Message "duplicate title '$($duplicateTitle.Name)' on: $sources"
+}
+
+foreach ($duplicateDescription in @($descriptionRecords | Group-Object Value | Where-Object Count -gt 1)) {
+    $sources = @($duplicateDescription.Group.Source) -join ', '
+    Add-GeneratedSiteFailure -Source 'SEO metadata' -Message "duplicate meta description on: $sources"
+}
+
+$sitemapPath = Join-Path $siteRoot 'sitemap.xml'
+if (-not (Test-Path -LiteralPath $sitemapPath -PathType Leaf)) {
+    Add-GeneratedSiteFailure -Source 'sitemap.xml' -Message 'sitemap was not generated'
+}
+else {
+    $sitemapContent = Get-Content -LiteralPath $sitemapPath -Raw
+    $sitemapUrls = @([regex]::Matches($sitemapContent, '(?is)<loc>\s*(?<value>[^<]+?)\s*</loc>') | ForEach-Object {
+        [System.Net.WebUtility]::HtmlDecode($_.Groups['value'].Value.Trim())
+    })
+
+    $canonicalUrls = @($canonicalRecords.Value)
+    foreach ($canonicalUrl in $canonicalUrls) {
+        if ($sitemapUrls -cnotcontains $canonicalUrl) {
+            Add-GeneratedSiteFailure -Source 'sitemap.xml' -Message "missing canonical page URL: $canonicalUrl"
+        }
+    }
+    foreach ($sitemapUrl in $sitemapUrls) {
+        if ($canonicalUrls -cnotcontains $sitemapUrl) {
+            Add-GeneratedSiteFailure -Source 'sitemap.xml' -Message "contains URL without a generated HTML canonical: $sitemapUrl"
+        }
+    }
+}
+
+$robotsPath = Join-Path $siteRoot 'robots.txt'
+$expectedSitemapReference = "Sitemap: $siteOrigin$basePath/sitemap.xml"
+if (-not (Test-Path -LiteralPath $robotsPath -PathType Leaf)) {
+    Add-GeneratedSiteFailure -Source 'robots.txt' -Message 'robots file was not generated'
+}
+else {
+    $robotsContent = Get-Content -LiteralPath $robotsPath -Raw
+    if ($robotsContent -cnotmatch [regex]::Escape($expectedSitemapReference)) {
+        Add-GeneratedSiteFailure -Source 'robots.txt' -Message "expected sitemap reference was not found: $expectedSitemapReference"
+    }
 }
 
 if ($failures.Count -gt 0) {
     $details = $failures | Sort-Object -Unique | ForEach-Object { " - $_" }
-    throw "Generated site contains $($failures.Count) integrity/accessibility issue(s):`n$($details -join "`n")"
+    throw "Generated site contains $($failures.Count) integrity/accessibility/SEO issue(s):`n$($details -join "`n")"
 }
 
-Write-Output "Validated $($htmlFiles.Count) generated HTML page(s); internal references and deterministic accessibility semantics passed."
+Write-Output "Validated $($htmlFiles.Count) generated HTML page(s); internal references, deterministic accessibility semantics, SEO metadata, canonicals, sitemap, and robots checks passed."

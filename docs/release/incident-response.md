@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Post-Release Incident Response and Emergency Maintenance"
+description: "Use the CopyGitHubRepo incident-response process for critical defects, vulnerabilities, credential or workflow compromise, artifact problems, distribution mismatches, emergency patches, communication, and follow-up."
+---
+
 # Post-release incident response and emergency maintenance
 
 This document defines the lightweight exceptional process for serious problems discovered **after** a CopyGitHubRepo version or release channel has been published. It does not replace normal user migration recovery, normal issue handling, or the normal release process.

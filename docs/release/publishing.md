@@ -1,3 +1,8 @@
+---
+title: "Publish CopyGitHubRepo to PowerShell Gallery – Release Workflow and Validation"
+description: "Learn how stable CopyGitHubRepo releases are validated and published to PowerShell Gallery and GitHub Releases, including tags, package validation, API-key security, manual fallback, and partial-failure handling."
+---
+
 # Publishing to PowerShell Gallery
 
 PowerShell Gallery is the primary public package channel for stable CopyGitHubRepo releases. The repository-hosted installers remain available as bootstrap and pinned-release alternatives.

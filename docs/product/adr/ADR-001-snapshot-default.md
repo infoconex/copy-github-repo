@@ -1,3 +1,8 @@
+---
+title: "ADR-001 – Snapshot Is the Default Publication Mode | CopyGitHubRepo"
+description: "Architecture decision explaining why CopyGitHubRepo defaults to clean Snapshot publication and requires explicit selection for history-preserving FullHistory copies."
+---
+
 # ADR-001: Snapshot is the default publication mode
 
 Status: Accepted

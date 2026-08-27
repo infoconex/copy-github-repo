@@ -1,3 +1,8 @@
+---
+title: "PowerShell Wizard Progress and Activity Contract | CopyGitHubRepo"
+description: "Understand how CopyGitHubRepo reports repository-copy progress in interactive, redirected, and automation contexts without fabricating percentages or polluting structured output."
+---
+
 # Wizard activity and progress contract
 
 Long-running repository-copy operations expose semantic activity events to the wizard presentation layer. Migration and Git/GitHub boundary code does not perform cursor manipulation and does not write terminal spinners directly.

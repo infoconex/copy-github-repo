@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Architecture – Safe GitHub Repository Copy Design"
+description: "Explore CopyGitHubRepo architecture, trust boundaries, immutable planning, shared execution, Snapshot and FullHistory verification, replacement safety, recovery, and infrastructure layers."
+---
+
 # Architecture
 
 ## Goals

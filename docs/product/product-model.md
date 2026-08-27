@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Product Journeys, Capabilities, Use Cases, and Scenarios"
+description: "Explore CopyGitHubRepo personas, product journeys, capability and use-case catalogs, behavioral scenarios, resilience requirements, and traceability from requirements to release evidence."
+---
+
 # Product journeys and behavioral model
 
 This document provides the product/program structure that connects people and goals to the authoritative behavior defined in [`product-contract.md`](product-contract.md).

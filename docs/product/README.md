@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Product Documentation – Behavior and Architecture"
+description: "Explore CopyGitHubRepo product behavior, architecture, quality requirements, accessibility, command and wizard contracts, and architecture decision records."
+---
+
 # Understand the Product
 
 Product behavior, architecture, quality expectations, interaction contracts, and architecture decisions.

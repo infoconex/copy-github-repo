@@ -1,3 +1,8 @@
+---
+title: "ADR-004 – Shared Execution and Native Command Boundaries | CopyGitHubRepo"
+description: "Architecture decision requiring the wizard and public command to share the approved-plan engine while Git, Git LFS, and GitHub CLI run through centralized no-shell process helpers."
+---
+
 # ADR-004: Share the approved-plan engine and centralize native command execution
 
 Status: Accepted

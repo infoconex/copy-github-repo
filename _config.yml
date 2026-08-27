@@ -21,8 +21,13 @@ relative_links:
   enabled: true
   collections: true
 
-# Apply the documentation layout to existing Markdown without requiring
-# front matter in every repository document.
+# GitHub Pages enables jekyll-readme-index by default. Allow the root README
+# to remain the site index now that it carries explicit SEO front matter.
+readme_index:
+  with_frontmatter: true
+
+# Apply the documentation layout by default so published Markdown pages only
+# need page-specific metadata in their front matter.
 defaults:
   - scope:
       path: ""

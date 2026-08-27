@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo User Guide – Copy and Migrate GitHub Repositories"
+description: "Use CopyGitHubRepo to plan, copy, migrate, and verify GitHub repositories with clean Snapshot or history-preserving FullHistory modes, including safe replacement workflows."
+---
+
 # User guide: capabilities and common scenarios
 
 This guide is the user-facing path for evaluating, planning, running, and verifying Copy GitHub Repository operations.
@@ -60,7 +65,7 @@ If preserving ancestry, branches, or tags matters, choose `FullHistory`. If the 
 This matrix is the user-facing support summary for the current `0.1.x` release line. The product contract remains authoritative if a detail requires normative interpretation.
 
 | GitHub state | Snapshot | FullHistory | Notes |
-| --- | --- | --- | --- |
+| --- | --- | --- |
 | Default-branch file tree | **Copied** | **Copied** | Snapshot publishes the approved tree as one unrelated root commit; FullHistory preserves its history. |
 | Commit ancestry | **Not copied** | **Copied** | Snapshot intentionally severs ancestry. |
 | Other ordinary branches | **Not copied** | **Copied** | FullHistory preserves approved ordinary branch refs. |

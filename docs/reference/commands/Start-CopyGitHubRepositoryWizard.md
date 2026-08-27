@@ -1,3 +1,8 @@
+---
+title: "Start-CopyGitHubRepositoryWizard – Guided GitHub Repository Copy"
+description: "Use Start-CopyGitHubRepositoryWizard for a guided PowerShell workflow that discovers repositories, reviews a real copy plan, and safely executes Snapshot or FullHistory migrations."
+---
+
 # Start-CopyGitHubRepositoryWizard
 
 Starts the guided, human-facing repository-copy workflow. The wizard handles interaction and delegates repository discovery to `Get-GitHubRepository` and planning/execution to `Copy-GitHubRepository`.

@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Changelog – Release History"
+description: "Review CopyGitHubRepo release history, including new features, behavior changes, packaging improvements, and notable updates across stable versions."
+---
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

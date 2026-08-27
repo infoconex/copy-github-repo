@@ -1,3 +1,8 @@
+---
+title: "GitHub Repository Copy Disk-Space Preflight | CopyGitHubRepo"
+description: "Understand CopyGitHubRepo's temporary disk-space preflight, observed workspace lower bound, advisory headroom, failure behavior, and retry semantics before GitHub mutation."
+---
+
 # Local temporary-storage preflight
 
 CopyGitHubRepo performs a local temporary-storage preflight before an approved repository-copy plan is allowed to mutate GitHub.

@@ -1,3 +1,8 @@
+---
+title: "Restore GitHub Repository Rulesets and Branch Protection | CopyGitHubRepo"
+description: "Learn how CopyGitHubRepo restores transferable GitHub repository rulesets and default-branch protection after migration, including supported and skipped policy semantics."
+---
+
 # Repository protection restoration
 
 Repository protection is restored **after Git content has been copied and verified**. This ordering is deliberate: activating rulesets or branch protection before the initial push, LFS transfer, default-branch establishment, or content verification could block the migration itself.

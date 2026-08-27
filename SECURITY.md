@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Security Policy – Vulnerability Reporting and Trust"
+description: "Review CopyGitHubRepo's supported security versions, private vulnerability reporting process, runtime security boundaries, repository posture, and release trust model."
+---
+
 # Security Policy
 
 ## Supported versions

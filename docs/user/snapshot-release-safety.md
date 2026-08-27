@@ -1,3 +1,8 @@
+---
+title: "Snapshot Release Safety – Tags and GitHub Releases | CopyGitHubRepo"
+description: "Understand how clean Snapshot publication handles Git tags and GitHub Releases, including same-name replacement archives and the safe ordering for creating a stable release."
+---
+
 # Snapshot Release Safety
 
 Snapshot publication intentionally creates a clean Git history. Historical Git tags and GitHub Releases are historical records and are not copied into the clean destination.

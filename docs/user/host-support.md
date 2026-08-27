@@ -1,3 +1,8 @@
+---
+title: "GitHub Host Support – GitHub.com Compatibility | CopyGitHubRepo"
+description: "Learn which GitHub hosts CopyGitHubRepo supports, how the HostName parameter behaves, and why unsupported GitHub hosts fail closed before repository operations."
+---
+
 # GitHub host support
 
 The current `0.1.x` release line supports GitHub.com only.

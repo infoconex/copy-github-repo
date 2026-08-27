@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Source Code Documentation Policy – PowerShell Help and Inventories"
+description: "Review CopyGitHubRepo source documentation requirements for public PowerShell help, private-function documentation tiers, operational script inventories, comments, and automated enforcement."
+---
+
 # Source code documentation policy
 
 This document defines the maintainership documentation standard for the PowerShell source and operational scripts. The objective is useful engineering context, not comment volume.

@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Engineering Principles – Maintainable PowerShell Design"
+description: "Review CopyGitHubRepo engineering principles for responsibility, pragmatic DRY and SOLID, domain contracts, error stability, safety-first abstraction, testing, and PowerShell maintainability."
+---
+
 # Engineering principles
 
 CopyGitHubRepo is a PowerShell module, but the design applies the same maintainability principles expected of production software. These principles are intentionally pragmatic: they improve clarity, safety, and testability without forcing object-oriented ceremony onto PowerShell.

@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Maintainer Guide – Change Impact and Definition of Done"
+description: "Use the CopyGitHubRepo maintainer guide to map repository ownership, choose validation and live E2E, triage failures, assess change impact, and apply the project Definition of Done."
+---
+
 # Maintainer guide
 
 This guide is the contributor/maintainer map for making changes safely and knowing when a change is complete. `CONTRIBUTING.md` remains the entry point; this page owns the repository map, change-impact guidance, focused validation choices, maintainer failure triage, and Definition of Done. Project decision ownership, proposal paths, CODEOWNERS policy, and maintainership transfer are authoritative in `docs/engineering/governance.md` rather than being duplicated here.

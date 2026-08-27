@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Governance and Ownership – Decision Authority"
+description: "Review CopyGitHubRepo project governance, current maintainership, ownership by decision area, compatibility and architecture proposal paths, CODEOWNERS policy, and release authority."
+---
+
 # Project governance and ownership
 
 This document defines the lightweight governance and decision-ownership model for Copy GitHub Repository. The model is intentionally proportional to a focused open-source PowerShell project with one primary maintainer today. It establishes clear responsibility and proposal paths without inventing committees, independent approvers, or separation of duties that do not exist.

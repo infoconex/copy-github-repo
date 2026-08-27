@@ -18,6 +18,7 @@ if (-not (Test-Path -LiteralPath $siteRoot -PathType Container)) {
 $basePath = '/' + $BaseUrlPath.Trim('/')
 $siteOrigin = $SiteUrl.TrimEnd('/')
 $canonicalRoot = "$siteOrigin$basePath/"
+$expectedSocialPreviewUrl = "$siteOrigin$basePath/assets/images/social-preview.png"
 $referencePattern = '(?i)(?:href|src)\s*=\s*["''](?<value>[^"'']+)["'']'
 $failures = [System.Collections.Generic.List[string]]::new()
 $htmlFiles = @(Get-ChildItem -LiteralPath $siteRoot -Filter '*.html' -File -Recurse)
@@ -250,7 +251,7 @@ foreach ($htmlFile in $htmlFiles) {
         }
     }
 
-    foreach ($propertyName in @('og:title', 'og:description', 'og:url')) {
+    foreach ($propertyName in @('og:title', 'og:description', 'og:url', 'og:image')) {
         $propertyTags = @($metaTags | Where-Object { (& $htmlAttributeValue -Tag $_ -Name 'property') -ieq $propertyName })
         if ($propertyTags.Count -ne 1) {
             Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one $propertyName meta element, found $($propertyTags.Count)"
@@ -263,6 +264,9 @@ foreach ($htmlFile in $htmlFiles) {
         }
         elseif ($propertyName -eq 'og:url' -and $canonicalValue -and $propertyValue -cne $canonicalValue) {
             Add-GeneratedSiteFailure -Source $relativeSource -Message "og:url does not match canonical URL: $propertyValue"
+        }
+        elseif ($propertyName -eq 'og:image' -and $propertyValue -cne $expectedSocialPreviewUrl) {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message "og:image URL mismatch: expected $expectedSocialPreviewUrl but found $propertyValue"
         }
     }
 
@@ -285,13 +289,11 @@ foreach ($htmlFile in $htmlFiles) {
     }
     else {
         try {
-            $jsonLdMatches[0].Groups['value'].Value |
-                ConvertFrom-Json -Depth 100 |
-                ForEach-Object {
-                    if ($canonicalValue -and ([string]$_.url) -cne $canonicalValue) {
-                        Add-GeneratedSiteFailure -Source $relativeSource -Message "JSON-LD URL does not match canonical URL: $($_.url)"
-                    }
+            foreach ($jsonLdDocument in @($jsonLdMatches[0].Groups['value'].Value | ConvertFrom-Json -Depth 100)) {
+                if ($canonicalValue -and ([string]$jsonLdDocument.url) -cne $canonicalValue) {
+                    Add-GeneratedSiteFailure -Source $relativeSource -Message "JSON-LD URL does not match canonical URL: $($jsonLdDocument.url)"
                 }
+            }
         }
         catch {
             Add-GeneratedSiteFailure -Source $relativeSource -Message "JSON-LD is not valid JSON: $($_.Exception.Message)"
@@ -319,11 +321,24 @@ else {
         [System.Net.WebUtility]::HtmlDecode($_.Groups['value'].Value.Trim())
     })
 
-    @($canonicalRecords.Value) | Where-Object { $sitemapUrls -cnotcontains $_ } | ForEach-Object {
-        Add-GeneratedSiteFailure -Source 'sitemap.xml' -Message "missing canonical page URL: $_"
+    foreach ($canonicalRecord in $canonicalRecords) {
+        if ($sitemapUrls -cnotcontains $canonicalRecord.Value) {
+            Add-GeneratedSiteFailure -Source 'sitemap.xml' -Message "missing canonical page URL: $($canonicalRecord.Value)"
+        }
     }
-    $sitemapUrls | Where-Object { @($canonicalRecords.Value) -cnotcontains $_ } | ForEach-Object {
-        Add-GeneratedSiteFailure -Source 'sitemap.xml' -Message "contains URL without a generated HTML canonical: $_"
+
+    foreach ($sitemapUrl in $sitemapUrls) {
+        $hasCanonicalMatch = $false
+        foreach ($canonicalRecord in $canonicalRecords) {
+            if ($canonicalRecord.Value -ceq $sitemapUrl) {
+                $hasCanonicalMatch = $true
+                break
+            }
+        }
+
+        if (-not $hasCanonicalMatch) {
+            Add-GeneratedSiteFailure -Source 'sitemap.xml' -Message "contains URL without a generated HTML canonical: $sitemapUrl"
+        }
     }
 }
 
@@ -344,4 +359,4 @@ if ($failures.Count -gt 0) {
     throw "Generated site contains $($failures.Count) integrity/accessibility/SEO issue(s):`n$($details -join "`n")"
 }
 
-Write-Output "Validated $($htmlFiles.Count) generated HTML page(s); internal references, deterministic accessibility semantics, SEO metadata, canonicals, sitemap, and robots checks passed."
+Write-Output "Validated $($htmlFiles.Count) generated HTML page(s); internal references, deterministic accessibility semantics, SEO metadata, social preview metadata, canonicals, sitemap, and robots checks passed."

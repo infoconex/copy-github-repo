@@ -285,10 +285,13 @@ foreach ($htmlFile in $htmlFiles) {
     }
     else {
         try {
-            $jsonLdUrl = [string](($jsonLdMatches[0].Groups['value'].Value | ConvertFrom-Json -Depth 100).url)
-            if ($canonicalValue -and $jsonLdUrl -cne $canonicalValue) {
-                Add-GeneratedSiteFailure -Source $relativeSource -Message "JSON-LD URL does not match canonical URL: $jsonLdUrl"
-            }
+            $jsonLdMatches[0].Groups['value'].Value |
+                ConvertFrom-Json -Depth 100 |
+                ForEach-Object {
+                    if ($canonicalValue -and ([string]$_.url) -cne $canonicalValue) {
+                        Add-GeneratedSiteFailure -Source $relativeSource -Message "JSON-LD URL does not match canonical URL: $($_.url)"
+                    }
+                }
         }
         catch {
             Add-GeneratedSiteFailure -Source $relativeSource -Message "JSON-LD is not valid JSON: $($_.Exception.Message)"
@@ -316,11 +319,10 @@ else {
         [System.Net.WebUtility]::HtmlDecode($_.Groups['value'].Value.Trim())
     })
 
-    $canonicalUrls = @($canonicalRecords.Value)
-    $canonicalUrls | Where-Object { $sitemapUrls -cnotcontains $_ } | ForEach-Object {
+    @($canonicalRecords.Value) | Where-Object { $sitemapUrls -cnotcontains $_ } | ForEach-Object {
         Add-GeneratedSiteFailure -Source 'sitemap.xml' -Message "missing canonical page URL: $_"
     }
-    $sitemapUrls | Where-Object { $canonicalUrls -cnotcontains $_ } | ForEach-Object {
+    $sitemapUrls | Where-Object { @($canonicalRecords.Value) -cnotcontains $_ } | ForEach-Object {
         Add-GeneratedSiteFailure -Source 'sitemap.xml' -Message "contains URL without a generated HTML canonical: $_"
     }
 }

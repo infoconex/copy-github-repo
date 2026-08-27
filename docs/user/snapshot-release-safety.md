@@ -1,5 +1,5 @@
 ---
-title: "Snapshot Release Safety – Tags and GitHub Releases | CopyGitHubRepo"
+title: "Snapshot Migration Safety – Git Tags and GitHub Releases"
 description: "Understand how clean Snapshot publication handles Git tags and GitHub Releases, including same-name replacement archives and the safe ordering for creating a stable release."
 ---
 

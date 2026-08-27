@@ -1,6 +1,6 @@
 ---
-title: "CopyGitHubRepo User Guide – Copy and Migrate GitHub Repositories"
-description: "Use CopyGitHubRepo to plan, copy, migrate, and verify GitHub repositories with clean Snapshot or history-preserving FullHistory modes, including safe replacement workflows."
+title: "How to Copy or Migrate a GitHub Repository"
+description: "Learn how to copy or migrate a GitHub repository with PowerShell using Snapshot for a clean copy without history or FullHistory to preserve commits, branches, tags, and Git LFS."
 ---
 
 # User guide: capabilities and common scenarios

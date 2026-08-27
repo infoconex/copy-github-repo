@@ -1,6 +1,6 @@
 ---
-title: "CopyGitHubRepo Installation Security – PowerShell Gallery, Checksums, and Provenance"
-description: "Compare CopyGitHubRepo installation trust paths for PowerShell Gallery, repository-hosted releases, pinned artifacts, prerelease builds, checksums, GitHub attestations, and safe uninstall."
+title: "Install CopyGitHubRepo – PowerShell Gallery, Checksums, and Provenance"
+description: "Install CopyGitHubRepo from PowerShell Gallery or a verified GitHub Release, compare trust paths, validate checksums and attestations, and uninstall safely."
 ---
 
 # Installation security

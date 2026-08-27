@@ -1,6 +1,6 @@
 ---
-title: "How to Create a Clean GitHub Repository Snapshot Manually"
-description: "Follow a manual Git and GitHub CLI procedure to publish a clean GitHub repository Snapshot with one unrelated root commit, verified content, settings, protection, LFS, and provenance."
+title: "Copy a GitHub Repository Without History – Manual Snapshot Guide"
+description: "Create a clean GitHub repository from the current default branch with Git and GitHub CLI, using one unrelated root commit and no prior Git history."
 ---
 
 # Manually Creating a Clean GitHub Repository Snapshot

@@ -1,5 +1,5 @@
 ---
-title: "Troubleshooting GitHub Repository Migration Failures | CopyGitHubRepo"
+title: "Troubleshooting GitHub Repository Migration Failures"
 description: "Diagnose CopyGitHubRepo failures, determine whether GitHub state changed, preserve migration evidence, and recover safely from stale plans, partial publication, settings, or protection failures."
 ---
 

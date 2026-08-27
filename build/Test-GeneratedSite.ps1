@@ -96,8 +96,13 @@ function Get-HtmlAttributeValue {
     )
 
     $escapedName = [regex]::Escape($Name)
-    $attributePattern = "(?is)\b$escapedName\s*=\s*['`\"](?<value>[^'`\"]*)['`\"]"
-    $match = [regex]::Match($Tag, $attributePattern)
+    $doubleQuotePattern = '(?is)\b{0}\s*=\s*"(?<value>[^"]*)"' -f $escapedName
+    $singleQuotePattern = "(?is)\b{0}\s*=\s*'(?<value>[^']*)'" -f $escapedName
+
+    $match = [regex]::Match($Tag, $doubleQuotePattern)
+    if (-not $match.Success) {
+        $match = [regex]::Match($Tag, $singleQuotePattern)
+    }
     if (-not $match.Success) {
         return $null
     }

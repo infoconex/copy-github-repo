@@ -1,3 +1,8 @@
+---
+title: "Troubleshooting GitHub Repository Migration Failures | CopyGitHubRepo"
+description: "Diagnose CopyGitHubRepo failures, determine whether GitHub state changed, preserve migration evidence, and recover safely from stale plans, partial publication, settings, or protection failures."
+---
+
 # Troubleshooting and recovery
 
 This guide helps operators determine what a failure means, whether GitHub state may already have changed, what to check safely, and what evidence to preserve before attempting recovery.

@@ -1,3 +1,8 @@
+---
+title: "How to Create a Clean GitHub Repository Snapshot Manually"
+description: "Follow a manual Git and GitHub CLI procedure to publish a clean GitHub repository Snapshot with one unrelated root commit, verified content, settings, protection, LFS, and provenance."
+---
+
 # Manually Creating a Clean GitHub Repository Snapshot
 
 ## Purpose

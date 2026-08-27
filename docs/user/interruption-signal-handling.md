@@ -1,3 +1,8 @@
+---
+title: "PowerShell Ctrl+C and Interruption Handling | CopyGitHubRepo"
+description: "Understand how CopyGitHubRepo handles cancellation, Ctrl+C, process termination, partial GitHub mutation, recovery evidence, and cross-platform signal behavior."
+---
+
 # Interruption and signal-handling contract
 
 This document defines how Copy GitHub Repository treats controlled cancellation, terminal interruption, and process/session termination across Windows, macOS, and Linux.

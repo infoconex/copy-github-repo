@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Support and Compatibility Policy"
+description: "Review supported CopyGitHubRepo versions, PowerShell and operating-system compatibility, Git and GitHub prerequisites, deprecation rules, breaking changes, and end-of-support policy."
+---
+
 # Support, compatibility, and deprecation policy
 
 This policy defines which Copy GitHub Repository versions and environments the project supports, how compatibility-sensitive changes are handled, and how deprecations or end-of-support decisions are communicated.

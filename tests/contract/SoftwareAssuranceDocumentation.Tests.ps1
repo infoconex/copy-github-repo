@@ -8,7 +8,7 @@ BeforeAll {
 
 Describe 'Software assurance review package documentation contract' {
     It 'is an evidence entry point rather than a compliance or organizational approval claim' {
-        $script:assurance | Should -Match '^# Software assurance review package'
+        $script:assurance | Should -Match '(?m)^# Software assurance review package$'
         $script:assurance | Should -Match 'evidence index and current-state summary'
         $script:assurance | Should -Match 'not a certification'
         $script:assurance | Should -Match 'does not claim regulatory compliance'

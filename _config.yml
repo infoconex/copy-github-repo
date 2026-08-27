@@ -26,13 +26,14 @@ relative_links:
 readme_index:
   with_frontmatter: true
 
-# Apply the documentation layout by default so published Markdown pages only
-# need page-specific metadata in their front matter.
+# Apply the documentation layout and social preview image by default so
+# published Markdown pages only need page-specific metadata in front matter.
 defaults:
   - scope:
       path: ""
     values:
       layout: default
+      image: /assets/images/social-preview.png
 
 exclude:
   - Gemfile

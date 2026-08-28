@@ -28,9 +28,17 @@ function Copy-CgrApprovedGitHubRelease {
             ApprovedReleaseCount = 0
             DestinationReleaseCount = 0
             Releases = @()
-            Unsupported = @('OriginalReleaseId', 'OriginalCreatedAt', 'OriginalPublishedAt', 'ReleaseDownloadCounts')
+            Unsupported = @('OriginalReleaseId', 'OriginalCreatedAt', 'OriginalPublishedAt', 'ReleaseDownloadCounts', 'ReleaseImmutability', 'LinkedDiscussion')
             IsSuccessful = $true
         }
+    }
+
+    $approvedLatestIncluded = @($approvedReleases | Where-Object { [bool] $_.IsLatest }).Count -gt 0
+    $approvedLatestTag = if ($approvedLatestIncluded) {
+        [string] (@($approvedReleases | Where-Object { [bool] $_.IsLatest }) | Select-Object -First 1).TagName
+    }
+    else {
+        $null
     }
 
     $workspacePath = Join-Path ([System.IO.Path]::GetTempPath()) "copy-github-repo-approved-releases-$([guid]::NewGuid().ToString('N'))"
@@ -160,6 +168,14 @@ function Copy-CgrApprovedGitHubRelease {
             if (-not [string]::IsNullOrWhiteSpace([string] $approved.Name)) { $createArguments.Add('--title'); $createArguments.Add([string] $approved.Name) }
             if ([bool] $approved.Draft) { $createArguments.Add('--draft') }
             if ([bool] $approved.Prerelease) { $createArguments.Add('--prerelease') }
+            if (-not [bool] $approved.Draft -and -not [bool] $approved.Prerelease -and $approvedLatestIncluded) {
+                if ([bool] $approved.IsLatest) {
+                    $createArguments.Add('--latest')
+                }
+                else {
+                    $createArguments.Add('--latest=false')
+                }
+            }
 
             $createResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList $createArguments.ToArray()
             if ($createResult.ExitCode -ne 0) {
@@ -223,9 +239,32 @@ function Copy-CgrApprovedGitHubRelease {
                     DestinationReleaseId = $destinationRelease.id
                     SourceCommitSha = $sourceCommitSha
                     DestinationCommitSha = $destinationCommitSha
+                    IsLatest = [bool] $approved.IsLatest
                     AssetCount = @($approved.Assets).Count
                     IsVerified = $true
                 })
+        }
+
+        if ($approvedLatestIncluded) {
+            $destinationLatestResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @(
+                'api', '--hostname', $HostName,
+                "repos/$($DestinationRepository.FullName)/releases/latest"
+            )
+            if ($destinationLatestResult.ExitCode -ne 0) {
+                $message = "Unable to verify destination latest-release designation for approved release '$approvedLatestTag'. $($destinationLatestResult.ErrorText)"
+                $exception = [System.InvalidOperationException]::new($message.Trim())
+                $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationGitHubLatestReleaseVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $approvedLatestTag)
+                $PSCmdlet.ThrowTerminatingError($errorRecord)
+            }
+
+            $destinationLatestJson = ($destinationLatestResult.Output | ForEach-Object { [string] $_ }) -join "`n"
+            $destinationLatest = $destinationLatestJson | ConvertFrom-Json -Depth 100
+            if ([string] $destinationLatest.tag_name -ne $approvedLatestTag) {
+                $message = "Destination latest release is '$($destinationLatest.tag_name)' instead of approved source latest release '$approvedLatestTag'."
+                $exception = [System.InvalidOperationException]::new($message)
+                $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationGitHubLatestReleaseVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $approvedLatestTag)
+                $PSCmdlet.ThrowTerminatingError($errorRecord)
+            }
         }
 
         [pscustomobject] @{
@@ -234,8 +273,10 @@ function Copy-CgrApprovedGitHubRelease {
             DestinationRepository = $DestinationRepository.FullName
             ApprovedReleaseCount = $approvedReleases.Count
             DestinationReleaseCount = $migrated.Count
+            LatestReleasePreserved = [bool] $approvedLatestIncluded
+            LatestReleaseTag = $approvedLatestTag
             Releases = $migrated.ToArray()
-            Unsupported = @('OriginalReleaseId', 'OriginalCreatedAt', 'OriginalPublishedAt', 'ReleaseDownloadCounts')
+            Unsupported = @('OriginalReleaseId', 'OriginalCreatedAt', 'OriginalPublishedAt', 'ReleaseDownloadCounts', 'ReleaseImmutability', 'LinkedDiscussion')
             IsSuccessful = $migrated.Count -eq $approvedReleases.Count
         }
     }

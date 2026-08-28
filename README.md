@@ -244,7 +244,7 @@ Install development dependencies as needed, then run the repository quality gate
 ./build/Test-Project.ps1
 ```
 
-The quality gate runs in GitHub Actions on Windows, Ubuntu, and macOS for pushes to `main` and pull requests targeting `main`. Controlled live-validation harnesses live under `tests/e2e/`; build/release tooling remains under `build/`. Issue #27 tracks extending PR validation to `release/*` integration branches.
+The quality gate runs in GitHub Actions on Windows, Ubuntu, and macOS for pushes to `main` and pull requests targeting `main`. Controlled live-validation harnesses live under `tests/e2e/`; build/release tooling remains under `build/`. Pull requests targeting release integration branches require separate validation until the workflow branch filters are extended.
 
 Release publication is tag-only. A stable release tag must exactly match `v<ModuleVersion>` and the exact tagged commit must pass the cross-platform quality gate before publication. The release workflow validates a clean Gallery package, rejects duplicate PSGallery and GitHub Release versions, publishes with `Publish-PSResource`, and creates the immutable GitHub release assets. Merging to `main` does not publish a release.
 

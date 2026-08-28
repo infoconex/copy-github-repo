@@ -17,6 +17,7 @@ Describe 'Approved GitHub Release execution' {
                         Body = 'approved body'
                         Draft = $false
                         Prerelease = $false
+                        IsLatest = $false
                         TargetCommitSha = 'abc123'
                         Assets = @()
                     })
@@ -57,6 +58,7 @@ Describe 'Approved GitHub Release execution' {
                         Body = 'approved body'
                         Draft = $false
                         Prerelease = $false
+                        IsLatest = $false
                         TargetCommitSha = 'abc123'
                         Assets = @()
                     })
@@ -82,6 +84,65 @@ Describe 'Approved GitHub Release execution' {
 
             { Copy-CgrApprovedGitHubRelease -SourceRepository $source -DestinationRepository $destination -ApprovedSelection $selection } |
                 Should -Throw -ErrorId 'GitHubReleaseTagTargetMismatch,Copy-CgrApprovedGitHubRelease'
+        }
+    }
+
+    It 'preserves and verifies the approved source latest-release designation' {
+        InModuleScope CopyGitHubRepo {
+            $source = [pscustomobject] @{ FullName = 'acme/source' }
+            $destination = [pscustomobject] @{ FullName = 'acme/destination' }
+            $selection = [pscustomobject] @{
+                Releases = @([pscustomobject] @{
+                        ReleaseId = 10
+                        TagName = 'v2.0.0'
+                        Name = 'Release 2.0'
+                        Body = 'approved body'
+                        Draft = $false
+                        Prerelease = $false
+                        IsLatest = $true
+                        TargetCommitSha = 'abc123'
+                        Assets = @()
+                    })
+            }
+
+            Mock New-Item { $null }
+            Mock Test-Path { $true }
+            Mock Remove-Item { $null }
+            Mock Invoke-CgrNativeCommand {
+                $joined = $ArgumentList -join ' '
+                if ($joined -match 'repos/acme/source/releases/tags/v2.0.0') {
+                    return [pscustomobject] @{ ExitCode = 0; Output = @('{"id":10,"tag_name":"v2.0.0","name":"Release 2.0","body":"approved body","draft":false,"prerelease":false,"assets":[]}'); ErrorText = '' }
+                }
+                if ($joined -match 'repos/acme/source/commits/v2.0.0') {
+                    return [pscustomobject] @{ ExitCode = 0; Output = @('abc123'); ErrorText = '' }
+                }
+                if ($joined -match 'repos/acme/destination/commits/v2.0.0') {
+                    return [pscustomobject] @{ ExitCode = 0; Output = @('abc123'); ErrorText = '' }
+                }
+                if ($joined -match '^release view v2.0.0') {
+                    return [pscustomobject] @{ ExitCode = 1; Output = @(); ErrorText = 'not found' }
+                }
+                if ($joined -match '^release create v2.0.0') {
+                    return [pscustomobject] @{ ExitCode = 0; Output = @('created'); ErrorText = '' }
+                }
+                if ($joined -match 'repos/acme/destination/releases/tags/v2.0.0') {
+                    return [pscustomobject] @{ ExitCode = 0; Output = @('{"id":20,"tag_name":"v2.0.0","name":"Release 2.0","body":"approved body","draft":false,"prerelease":false,"assets":[]}'); ErrorText = '' }
+                }
+                if ($joined -match 'repos/acme/destination/releases/latest') {
+                    return [pscustomobject] @{ ExitCode = 0; Output = @('{"id":20,"tag_name":"v2.0.0"}'); ErrorText = '' }
+                }
+                throw "Unexpected native command: $joined"
+            }
+
+            $result = Copy-CgrApprovedGitHubRelease -SourceRepository $source -DestinationRepository $destination -ApprovedSelection $selection
+
+            $result.IsSuccessful | Should -BeTrue
+            $result.LatestReleasePreserved | Should -BeTrue
+            $result.LatestReleaseTag | Should -Be 'v2.0.0'
+            Should -Invoke Invoke-CgrNativeCommand -Times 1 -Exactly -ParameterFilter {
+                $FilePath -eq 'gh' -and
+                ($ArgumentList -join ' ') -match '^release create v2.0.0 .*--latest( |$)'
+            }
         }
     }
 

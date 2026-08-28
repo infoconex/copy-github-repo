@@ -104,6 +104,7 @@ function Copy-CgrApprovedGitHubRelease {
                     if ($null -eq $currentAsset -or
                         $currentAsset.Size -ne [long] $approvedAsset.Size -or
                         $currentAsset.Label -ne [string] $approvedAsset.Label -or
+                        $currentAsset.ContentType -ne [string] $approvedAsset.ContentType -or
                         (-not [string]::IsNullOrWhiteSpace([string] $approvedAsset.Digest) -and $currentAsset.Digest -ne [string] $approvedAsset.Digest)) {
                         $stateChanged = $true
                         break
@@ -195,6 +196,7 @@ function Copy-CgrApprovedGitHubRelease {
             $destinationRelease = $destinationReleaseJson | ConvertFrom-Json -Depth 100
             $destinationAssets = @($destinationRelease.assets)
             $mismatches = [System.Collections.Generic.List[string]]::new()
+            if ([string] $destinationRelease.tag_name -ne $tagName) { $mismatches.Add('TagName') }
             if ([string] $destinationRelease.name -ne [string] $approved.Name) { $mismatches.Add('Name') }
             if ([string] $destinationRelease.body -ne [string] $approved.Body) { $mismatches.Add('Body') }
             if ([bool] $destinationRelease.draft -ne [bool] $approved.Draft) { $mismatches.Add('Draft') }
@@ -204,6 +206,8 @@ function Copy-CgrApprovedGitHubRelease {
                 $actual = @($destinationAssets | Where-Object { [string] $_.name -eq [string] $asset.Name }) | Select-Object -First 1
                 if ($null -eq $actual) { $mismatches.Add("AssetMissing:$($asset.Name)"); continue }
                 if ([long] $actual.size -ne [long] $asset.Size) { $mismatches.Add("AssetSize:$($asset.Name)") }
+                if ([string] $actual.label -ne [string] $asset.Label) { $mismatches.Add("AssetLabel:$($asset.Name)") }
+                if ([string] $actual.content_type -ne [string] $asset.ContentType) { $mismatches.Add("AssetContentType:$($asset.Name)") }
                 if (-not [string]::IsNullOrWhiteSpace([string] $asset.Digest) -and [string] $actual.digest -ne [string] $asset.Digest) { $mismatches.Add("AssetDigest:$($asset.Name)") }
             }
             if ($mismatches.Count -gt 0) {

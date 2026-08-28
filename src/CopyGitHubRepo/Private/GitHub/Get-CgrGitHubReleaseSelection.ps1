@@ -143,12 +143,19 @@ function Get-CgrGitHubReleaseSelection {
             })
     }
 
+    $selectedAssetCount = if ($normalized.Count -eq 0) {
+        0
+    }
+    else {
+        [int] (($normalized | ForEach-Object { @($_.Assets).Count } | Measure-Object -Sum).Sum)
+    }
+
     [pscustomobject] @{
         PSTypeName = 'CopyGitHubRepo.ReleaseSelection'
         Repository = $Repository.FullName
         AvailableReleaseCount = $available.Count
         SelectedReleaseCount = $normalized.Count
-        SelectedAssetCount = @($normalized | ForEach-Object { @($_.Assets).Count } | Measure-Object -Sum).Sum
+        SelectedAssetCount = $selectedAssetCount
         IncludePatterns = @($ReleaseTag)
         ExcludePatterns = @($ReleaseExcludeTag)
         IncludePrerelease = [bool] $IncludePrerelease

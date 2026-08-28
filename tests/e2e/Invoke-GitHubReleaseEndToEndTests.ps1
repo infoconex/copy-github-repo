@@ -171,6 +171,22 @@ try {
         throw 'Execution did not report preservation of the selected source Latest release designation.'
     }
 
+    $independentVerification = Test-GitHubRepositoryMigration `
+        -SourceRepository $sourceRepository `
+        -DestinationRepository $destinationRepository `
+        -ContentMode FullHistory `
+        -IncludeReleases `
+        -ReleaseTag 'v1.*' `
+        -ReleaseCount 1
+
+    if (-not $independentVerification.IsSuccessful -or -not $independentVerification.ReleasesVerified) {
+        throw 'Independent FullHistory plus GitHub Release verification did not succeed.'
+    }
+    if ($independentVerification.ReleaseVerification.VerifiedReleaseCount -ne 1 -or
+        $independentVerification.ReleaseVerification.DestinationLatestTag -ne 'v1.1.0') {
+        throw 'Independent release verification did not verify the expected release and Latest designation.'
+    }
+
     $destinationReleaseList = @(Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', 'github.com', "repos/$destinationRepository/releases?per_page=100"))
     $destinationReleases = (($destinationReleaseList -join "`n") | ConvertFrom-Json -Depth 50)
     if (@($destinationReleases).Count -ne 1) {
@@ -213,7 +229,8 @@ try {
         LatestReleasePreserved = $destinationLatest.tag_name -eq 'v1.1.0'
         FullHistoryTagTargetsPreserved = $true
         PrereleaseExcluded = $null -eq (@($destinationReleases | Where-Object prerelease)[0])
-        Verified = $result.IsVerified
+        ExecutionVerified = $result.IsVerified
+        IndependentVerificationSucceeded = $independentVerification.IsSuccessful
     } | Format-List
 }
 finally {

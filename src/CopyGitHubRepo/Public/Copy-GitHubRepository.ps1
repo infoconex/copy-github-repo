@@ -10,6 +10,11 @@ function Copy-GitHubRepository {
     explicit and preserves the approved branches, tags, commits, and reachable
     Git LFS objects.
 
+    FullHistory can optionally preserve selected GitHub Releases and their assets.
+    Release selection is stable/non-draft by default and can be narrowed with tag
+    include/exclude patterns or a newest-N limit. Prereleases and draft releases
+    require explicit opt-in. Snapshot release preservation is not implemented yet.
+
     Planning captures immutable source-state evidence. Execution uses that same
     plan and fails closed with SourceStateChangedSincePlanning if the source no
     longer matches the approved state before mutation. Verification compares the
@@ -44,6 +49,30 @@ function Copy-GitHubRepository {
     Selects Snapshot or FullHistory. Snapshot is the default clean-publication
     mode. FullHistory preserves approved Git history, branches, tags, and reachable
     Git LFS objects.
+
+    .PARAMETER IncludeReleases
+    Requests GitHub Release preservation for FullHistory. By default, all stable,
+    non-draft releases are selected. Use the release filter parameters to narrow
+    or expand that selection. Snapshot does not support this option yet.
+
+    .PARAMETER ReleaseTag
+    Includes only GitHub Releases whose tag names match one or more PowerShell
+    wildcard patterns. Exact tag names are valid patterns.
+
+    .PARAMETER ReleaseExcludeTag
+    Excludes GitHub Releases whose tag names match one or more PowerShell wildcard
+    patterns after include filtering.
+
+    .PARAMETER IncludePrerelease
+    Includes GitHub Releases marked as prereleases. Prereleases are excluded by
+    default even when -IncludeReleases is specified.
+
+    .PARAMETER IncludeDraftReleases
+    Includes draft GitHub Releases. Draft releases are excluded by default.
+
+    .PARAMETER ReleaseCount
+    Limits the selected releases to the newest N after all other release filters
+    are applied. Ordering uses release publication time, then creation time.
 
     .PARAMETER DestinationVisibility
     Specifies public, private, or internal destination visibility. If omitted,
@@ -125,6 +154,12 @@ function Copy-GitHubRepository {
 
     Copies and verifies the approved history-preserving branch/tag/ref state.
 
+    .EXAMPLE
+    Copy-GitHubRepository -SourceRepository infoconex/source -DestinationRepository infoconex/destination -ContentMode FullHistory -IncludeReleases -ReleaseTag 'v2.*' -ReleaseCount 3
+
+    Copies FullHistory and selects the three newest stable non-draft GitHub Releases
+    whose tags match v2.* for preservation.
+
     .INPUTS
     None. This command does not accept pipeline input.
 
@@ -150,6 +185,19 @@ function Copy-GitHubRepository {
 
         [ValidateSet('Snapshot', 'FullHistory')]
         [string] $ContentMode = 'Snapshot',
+
+        [switch] $IncludeReleases,
+
+        [string[]] $ReleaseTag,
+
+        [string[]] $ReleaseExcludeTag,
+
+        [switch] $IncludePrerelease,
+
+        [switch] $IncludeDraftReleases,
+
+        [ValidateRange(1, [int]::MaxValue)]
+        [int] $ReleaseCount,
 
         [ValidateSet('public', 'private', 'internal')]
         [string] $DestinationVisibility,
@@ -190,6 +238,26 @@ function Copy-GitHubRepository {
 
     Assert-CgrSupportedHostName -HostName $HostName
 
+    $releaseFilterWasSpecified = $PSBoundParameters.ContainsKey('ReleaseTag') -or
+        $PSBoundParameters.ContainsKey('ReleaseExcludeTag') -or
+        $IncludePrerelease -or
+        $IncludeDraftReleases -or
+        $PSBoundParameters.ContainsKey('ReleaseCount')
+
+    if ($releaseFilterWasSpecified -and -not $IncludeReleases) {
+        $message = 'Release filter parameters require -IncludeReleases.'
+        $exception = [System.InvalidOperationException]::new($message)
+        $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'ReleaseFilterRequiresIncludeReleases', [System.Management.Automation.ErrorCategory]::InvalidArgument, 'IncludeReleases')
+        $PSCmdlet.ThrowTerminatingError($errorRecord)
+    }
+
+    if ($IncludeReleases -and $ContentMode -ne 'FullHistory') {
+        $message = 'GitHub Release preservation is currently supported only with -ContentMode FullHistory.'
+        $exception = [System.NotSupportedException]::new($message)
+        $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'SnapshotReleaseMigrationNotImplemented', [System.Management.Automation.ErrorCategory]::NotImplemented, 'IncludeReleases')
+        $PSCmdlet.ThrowTerminatingError($errorRecord)
+    }
+
     $prerequisites = Get-CgrPrerequisiteStatus -HostName $HostName
     if (-not $prerequisites.Git.Found) {
         $exception = [System.InvalidOperationException]::new("Git is required for repository copy planning. Install 'git' from https://git-scm.com/.")
@@ -211,19 +279,30 @@ function Copy-GitHubRepository {
     $destinationVisibilityWasProvided = $PSBoundParameters.ContainsKey('DestinationVisibility')
     $resolvedDestinationVisibility = if ($destinationVisibilityWasProvided) { $DestinationVisibility } else { $source.Visibility }
 
-    $plan = New-CgrMigrationPlan `
-        -SourceRepository $source `
-        -DestinationRepository $DestinationRepository `
-        -ContentMode $ContentMode `
-        -DestinationVisibility $resolvedDestinationVisibility `
-        -ArchiveRepositoryName $ArchiveRepositoryName `
-        -ExistingDestinationArchiveName $ExistingDestinationArchiveName `
-        -CommitMessage $CommitMessage `
-        -RestorePages:$RestorePages `
-        -EnableActionsAfterMigration:$EnableActionsAfterMigration `
-        -SkipSettings:$SkipSettings `
-        -HostName $HostName `
-        -PlanOnly:$PlanOnly
+    $planParameters = @{
+        SourceRepository = $source
+        DestinationRepository = $DestinationRepository
+        ContentMode = $ContentMode
+        DestinationVisibility = $resolvedDestinationVisibility
+        ArchiveRepositoryName = $ArchiveRepositoryName
+        ExistingDestinationArchiveName = $ExistingDestinationArchiveName
+        CommitMessage = $CommitMessage
+        RestorePages = $RestorePages
+        EnableActionsAfterMigration = $EnableActionsAfterMigration
+        SkipSettings = $SkipSettings
+        HostName = $HostName
+        PlanOnly = $PlanOnly
+        IncludeReleases = $IncludeReleases
+        ReleaseTag = $ReleaseTag
+        ReleaseExcludeTag = $ReleaseExcludeTag
+        IncludePrerelease = $IncludePrerelease
+        IncludeDraftReleases = $IncludeDraftReleases
+    }
+    if ($PSBoundParameters.ContainsKey('ReleaseCount')) {
+        $planParameters.ReleaseCount = $ReleaseCount
+    }
+
+    $plan = New-CgrMigrationPlan @planParameters
 
     if ($PlanOnly) {
         if ($ReportPath) { Write-CgrMigrationPlanReport -Plan $plan -Path $ReportPath }

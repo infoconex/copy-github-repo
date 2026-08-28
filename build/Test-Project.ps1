@@ -38,6 +38,11 @@ $executionRoot = Join-Path $repositoryRoot '.pester-execution'
 $minimumCoveragePercent = 65.0
 
 New-Item -Path $testResultsPath -ItemType Directory -Force | Out-Null
+
+# Pester contract tests exercise custom analyzer rules that construct
+# DiagnosticRecord instances. Load PSScriptAnalyzer explicitly so those CLR types
+# are available even when static analysis is intentionally skipped for this phase.
+Import-Module PSScriptAnalyzer -ErrorAction Stop
 Import-Module $modulePath -Force -ErrorAction Stop
 
 if (-not $SkipAnalysis) {

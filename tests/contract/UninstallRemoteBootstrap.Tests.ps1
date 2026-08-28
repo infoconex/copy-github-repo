@@ -22,10 +22,10 @@ Describe 'Remote uninstall bootstrap compatibility' {
 
         {
             & {
-                $Version = ''
-                $RequestedVersion = ''
-                $CgrUninstallVersion = ''
-                $null = @($Version, $RequestedVersion, $CgrUninstallVersion)
+                foreach ($variableName in @('Version', 'RequestedVersion', 'CgrUninstallVersion')) {
+                    New-Variable -Name $variableName -Value '' -Scope Local -Force
+                }
+                $null = Get-Variable -Name Version, RequestedVersion, CgrUninstallVersion -Scope Local
                 $invokeExpressionCommand = Get-Command 'Invoke-Expression'
                 & $invokeExpressionCommand $probeContent
             }

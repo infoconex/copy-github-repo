@@ -50,8 +50,19 @@ function Test-CgrGitHubReleaseMigration {
         $destinationCommitSha = if ($destinationCommitResult.ExitCode -eq 0) {
             [string] @($destinationCommitResult.Output)[0]
         }
-        else {
+        elseif ([string] $destinationCommitResult.ErrorText -match '(?i)404|not found') {
             $null
+        }
+        else {
+            $message = "Unable to read destination tag commit '$tagName' while verifying GitHub Releases. $($destinationCommitResult.ErrorText)"
+            $exception = [System.InvalidOperationException]::new($message.Trim())
+            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                $exception,
+                'DestinationGitHubReleaseTagReadFailed',
+                [System.Management.Automation.ErrorCategory]::ReadError,
+                $tagName
+            )
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
         }
 
         if ([string]::IsNullOrWhiteSpace($destinationCommitSha)) {
@@ -68,7 +79,20 @@ function Test-CgrGitHubReleaseMigration {
 
         $destinationRelease = $null
         if ($destinationReleaseResult.ExitCode -ne 0) {
-            $mismatches.Add('DestinationReleaseMissing')
+            if ([string] $destinationReleaseResult.ErrorText -match '(?i)404|not found') {
+                $mismatches.Add('DestinationReleaseMissing')
+            }
+            else {
+                $message = "Unable to read destination GitHub Release '$tagName' during verification. $($destinationReleaseResult.ErrorText)"
+                $exception = [System.InvalidOperationException]::new($message.Trim())
+                $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                    $exception,
+                    'DestinationGitHubReleaseVerificationReadFailed',
+                    [System.Management.Automation.ErrorCategory]::ReadError,
+                    $tagName
+                )
+                $PSCmdlet.ThrowTerminatingError($errorRecord)
+            }
         }
         else {
             $destinationReleaseJson = ($destinationReleaseResult.Output | ForEach-Object { [string] $_ }) -join "`n"
@@ -151,8 +175,27 @@ function Test-CgrGitHubReleaseMigration {
                 $destinationLatestTag = [string] $destinationLatest.tag_name
             }
             catch {
-                $destinationLatestTag = $null
+                $message = "Destination latest GitHub Release returned invalid JSON during verification. $($_.Exception.Message)"
+                $exception = [System.InvalidOperationException]::new($message)
+                $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                    $exception,
+                    'DestinationGitHubLatestReleaseVerificationResponseInvalid',
+                    [System.Management.Automation.ErrorCategory]::InvalidData,
+                    $DestinationRepository.FullName
+                )
+                $PSCmdlet.ThrowTerminatingError($errorRecord)
             }
+        }
+        elseif ([string] $destinationLatestResult.ErrorText -notmatch '(?i)404|not found') {
+            $message = "Unable to read the destination latest GitHub Release during verification. $($destinationLatestResult.ErrorText)"
+            $exception = [System.InvalidOperationException]::new($message.Trim())
+            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                $exception,
+                'DestinationGitHubLatestReleaseVerificationReadFailed',
+                [System.Management.Automation.ErrorCategory]::ReadError,
+                $DestinationRepository.FullName
+            )
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
         }
 
         $latestPassed = $destinationLatestTag -eq [string] $sourceSelection.SourceLatestTag

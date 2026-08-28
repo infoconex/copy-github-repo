@@ -5,7 +5,7 @@ BeforeAll {
 }
 
 Describe 'GitHub Release plan formatting' {
-    It 'renders approved FullHistory release selection and commit evidence' {
+    It 'renders approved FullHistory release selection commit evidence and Latest state' {
         InModuleScope CopyGitHubRepo {
             $plan = [pscustomobject] @{
                 SourceRepository = 'acme/source'
@@ -35,6 +35,8 @@ Describe 'GitHub Release plan formatting' {
                     AvailableReleaseCount = 4
                     SelectedReleaseCount = 1
                     SelectedAssetCount = 2
+                    SourceLatestTag = 'v2.0.0'
+                    SourceLatestSelected = $true
                     IncludePatterns = @('v2.*')
                     ExcludePatterns = @()
                     IncludePrerelease = $false
@@ -43,6 +45,7 @@ Describe 'GitHub Release plan formatting' {
                     Releases = @([pscustomobject] @{
                             TagName = 'v2.0.0'
                             TargetCommitSha = 'abc123'
+                            IsLatest = $true
                             Draft = $false
                             Prerelease = $false
                             Assets = @([pscustomobject] @{ Name = 'one.zip' }, [pscustomobject] @{ Name = 'one.sha256' })
@@ -57,9 +60,11 @@ Describe 'GitHub Release plan formatting' {
             $markdown | Should -Match 'Available source releases \| 4'
             $markdown | Should -Match 'Selected releases \| 1'
             $markdown | Should -Match 'Selected assets \| 2'
+            $markdown | Should -Match 'Source Latest release \| v2\.0\.0'
+            $markdown | Should -Match 'Source Latest selected \| True'
             $markdown | Should -Match 'v2\.\*'
-            $markdown | Should -Match 'v2\.0\.0'
-            $markdown | Should -Match 'abc123'
+            $markdown | Should -Match '\| Tag \| Commit SHA \| Latest \| Draft \| Prerelease \| Assets \|'
+            $markdown | Should -Match '\| v2\.0\.0 \| abc123 \| True \| False \| False \| 2 \|'
         }
     }
 }

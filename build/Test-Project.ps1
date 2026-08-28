@@ -3,11 +3,29 @@
 [CmdletBinding()]
 param(
     [ValidateSet('All', 'Unit', 'Integration', 'Contract')]
-    [string] $Category = 'All'
+    [string] $Category = 'All',
+
+    [switch] $AnalysisOnly,
+
+    [switch] $SkipAnalysis,
+
+    [switch] $CoverageOnly
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+if ($AnalysisOnly -and $SkipAnalysis) {
+    throw '-AnalysisOnly and -SkipAnalysis cannot be used together.'
+}
+
+if ($AnalysisOnly -and $CoverageOnly) {
+    throw '-AnalysisOnly and -CoverageOnly cannot be used together.'
+}
+
+if ($CoverageOnly -and $Category -ne 'All') {
+    throw '-CoverageOnly requires -Category All.'
+}
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $modulePath = Join-Path $repositoryRoot 'src/CopyGitHubRepo/CopyGitHubRepo.psd1'
@@ -22,18 +40,27 @@ $minimumCoveragePercent = 65.0
 New-Item -Path $testResultsPath -ItemType Directory -Force | Out-Null
 Import-Module $modulePath -Force -ErrorAction Stop
 
-$analysisResults = Invoke-ScriptAnalyzer `
-    -Path $repositoryRoot `
-    -Settings $analyzerSettingsPath `
-    -Recurse
+if (-not $SkipAnalysis) {
+    Write-Output 'Running PSScriptAnalyzer.'
+    $analysisResults = Invoke-ScriptAnalyzer `
+        -Path $repositoryRoot `
+        -Settings $analyzerSettingsPath `
+        -Recurse
 
-if (@($analysisResults).Count -gt 0) {
-    $formattedAnalysisResults = $analysisResults | Format-Table -AutoSize | Out-String
-    Set-Content `
-        -LiteralPath (Join-Path $testResultsPath 'script-analyzer.txt') `
-        -Value $formattedAnalysisResults `
-        -Encoding utf8NoBOM
-    throw "PSScriptAnalyzer reported one or more findings.`n$formattedAnalysisResults"
+    if (@($analysisResults).Count -gt 0) {
+        $formattedAnalysisResults = $analysisResults | Format-Table -AutoSize | Out-String
+        Set-Content `
+            -LiteralPath (Join-Path $testResultsPath 'script-analyzer.txt') `
+            -Value $formattedAnalysisResults `
+            -Encoding utf8NoBOM
+        throw "PSScriptAnalyzer reported one or more findings.`n$formattedAnalysisResults"
+    }
+
+    Write-Output 'PSScriptAnalyzer passed.'
+}
+
+if ($AnalysisOnly) {
+    return
 }
 
 $taxonomy = Import-PowerShellDataFile -LiteralPath $taxonomyPath
@@ -115,7 +142,7 @@ try {
     $pesterConfiguration = New-PesterConfiguration
     $pesterConfiguration.Run.Path = $testPaths
     $pesterConfiguration.Run.PassThru = $true
-    $pesterConfiguration.Output.Verbosity = 'Detailed'
+    $pesterConfiguration.Output.Verbosity = if ($CoverageOnly) { 'Minimal' } else { 'Detailed' }
     $pesterConfiguration.TestResult.Enabled = $true
     $pesterConfiguration.TestResult.OutputPath = $testResultPath
 

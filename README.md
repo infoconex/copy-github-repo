@@ -38,6 +38,8 @@ Want to see what Snapshot automates? See [Manually Creating a Clean GitHub Repos
 - FullHistory release restoration is bound to the exact release inventory approved during planning; selected release drift fails closed.
 - Destination release tags must resolve to the same approved FullHistory commit before release restoration.
 - Existing destination GitHub Releases are not silently overwritten.
+- When the source release marked Latest is selected, that designation is preserved and verified at the destination.
+- Release immutability state and linked release discussions are not currently recreated.
 - Failures after mutation begins retain durable recovery information instead of automatically deleting or rolling back repositories or restored releases.
 - The current release line supports GitHub.com only and fails closed for other hosts.
 
@@ -242,7 +244,7 @@ Install development dependencies as needed, then run the repository quality gate
 ./build/Test-Project.ps1
 ```
 
-The quality gate runs in GitHub Actions on Windows, Ubuntu, and macOS for pushes to `main` and pull requests targeting supported integration branches. Controlled live-validation harnesses live under `tests/e2e/`; build/release tooling remains under `build/`.
+The quality gate runs in GitHub Actions on Windows, Ubuntu, and macOS for pushes to `main` and pull requests targeting `main`. Controlled live-validation harnesses live under `tests/e2e/`; build/release tooling remains under `build/`. Issue #27 tracks extending PR validation to `release/*` integration branches.
 
 Release publication is tag-only. A stable release tag must exactly match `v<ModuleVersion>` and the exact tagged commit must pass the cross-platform quality gate before publication. The release workflow validates a clean Gallery package, rejects duplicate PSGallery and GitHub Release versions, publishes with `Publish-PSResource`, and creates the immutable GitHub release assets. Merging to `main` does not publish a release.
 

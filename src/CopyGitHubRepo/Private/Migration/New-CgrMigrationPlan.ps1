@@ -10,6 +10,10 @@ function New-CgrMigrationPlan {
     itself does not perform the repository-copy mutation; the returned source-state
     evidence is later revalidated so execution fails closed if the source changes.
 
+    FullHistory planning can also capture the exact GitHub Releases selected for
+    restoration, including tag targets and release asset metadata. Execution must
+    use that approved selection rather than re-evaluating the original filters.
+
     .NOTES
     Replacement modes deliberately require unused archive names. The plan is the
     safety contract between review and execution and must not be reconstructed from
@@ -32,6 +36,19 @@ function New-CgrMigrationPlan {
         [Parameter(Mandatory)]
         [ValidateSet('Snapshot', 'FullHistory')]
         [string] $ContentMode,
+
+        [switch] $IncludeReleases,
+
+        [string[]] $ReleaseTag,
+
+        [string[]] $ReleaseExcludeTag,
+
+        [switch] $IncludePrerelease,
+
+        [switch] $IncludeDraftReleases,
+
+        [ValidateRange(1, [int]::MaxValue)]
+        [int] $ReleaseCount,
 
         [Parameter(Mandatory)]
         [ValidateSet('public', 'private', 'internal')]
@@ -56,6 +73,18 @@ function New-CgrMigrationPlan {
 
         [switch] $PlanOnly
     )
+
+    if ($IncludeReleases -and $ContentMode -ne 'FullHistory') {
+        $message = 'GitHub Release preservation is currently supported only with FullHistory plans.'
+        $exception = [System.NotSupportedException]::new($message)
+        $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+            $exception,
+            'SnapshotReleaseMigrationNotImplemented',
+            [System.Management.Automation.ErrorCategory]::NotImplemented,
+            'IncludeReleases'
+        )
+        $PSCmdlet.ThrowTerminatingError($errorRecord)
+    }
 
     $normalizedDestination = ConvertTo-CgrRepositoryName -Repository $DestinationRepository
     $sourceFullName = ConvertTo-CgrRepositoryName -Repository $SourceRepository.FullName
@@ -177,6 +206,22 @@ function New-CgrMigrationPlan {
 
     $sourceState = Get-CgrApprovedSourceState -Repository $SourceRepository -ContentMode $ContentMode
 
+    $releaseSelection = $null
+    if ($IncludeReleases) {
+        $releaseSelectionParameters = @{
+            Repository = $SourceRepository
+            ReleaseTag = $ReleaseTag
+            ReleaseExcludeTag = $ReleaseExcludeTag
+            IncludePrerelease = $IncludePrerelease
+            IncludeDraftReleases = $IncludeDraftReleases
+            HostName = $HostName
+        }
+        if ($PSBoundParameters.ContainsKey('ReleaseCount')) {
+            $releaseSelectionParameters.ReleaseCount = $ReleaseCount
+        }
+        $releaseSelection = Get-CgrGitHubReleaseSelection @releaseSelectionParameters
+    }
+
     $steps = [System.Collections.Generic.List[object]]::new()
     if ($isSameNameReplacement) {
         $steps.Add([pscustomobject] @{
@@ -239,6 +284,15 @@ function New-CgrMigrationPlan {
             MutatesGitHub = $false
         })
 
+    if ($IncludeReleases) {
+        $steps.Add([pscustomobject] @{
+                Order = $steps.Count + 1
+                Name = 'RestoreGitHubReleases'
+                Description = "Restore $($releaseSelection.SelectedReleaseCount) approved GitHub Release(s) and $($releaseSelection.SelectedAssetCount) release asset(s) after FullHistory verification."
+                MutatesGitHub = $true
+            })
+    }
+
     if (-not $SkipSettings) {
         $steps.Add([pscustomobject] @{
                 Order = $steps.Count + 1
@@ -296,6 +350,8 @@ function New-CgrMigrationPlan {
         ContentMode = $ContentMode
         DestinationVisibility = $DestinationVisibility
         CommitMessage = $CommitMessage
+        IncludeReleases = [bool] $IncludeReleases
+        ReleaseSelection = $releaseSelection
         RestorePages = [bool] $RestorePages
         EnableActionsAfterMigration = [bool] $EnableActionsAfterMigration
         SkipSettings = [bool] $SkipSettings

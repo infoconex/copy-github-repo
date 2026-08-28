@@ -26,6 +26,7 @@ function Format-CgrMigrationPlan {
         $lines.Add("| Content mode | $($Plan.ContentMode) |")
         $lines.Add("| Source visibility | $($Plan.SourceVisibility) |")
         $lines.Add("| Destination visibility | $($Plan.DestinationVisibility) |")
+        $lines.Add("| Include GitHub Releases | $([bool] $Plan.IncludeReleases) |")
         $lines.Add("| Restore Pages | $($Plan.RestorePages) |")
         $lines.Add("| Enable Actions after copy | $($Plan.EnableActionsAfterMigration) |")
         $lines.Add("| Skip settings | $($Plan.SkipSettings) |")
@@ -98,6 +99,38 @@ function Format-CgrMigrationPlan {
             }
         }
 
+        $releaseSelection = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseSelection'
+        if ($Plan.ContentMode -eq 'FullHistory' -and $Plan.IncludeReleases -and $releaseSelection) {
+            $lines.Add('')
+            $lines.Add('## Approved GitHub Releases')
+            $lines.Add('')
+            $lines.Add('This is the exact GitHub Release inventory approved by the plan. Execution revalidates these releases before restoration; newly published matching releases do not silently join the migration.')
+            $lines.Add('')
+            $lines.Add('| Field | Value |')
+            $lines.Add('| --- | --- |')
+            $lines.Add("| Available source releases | $(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'AvailableReleaseCount') |")
+            $lines.Add("| Selected releases | $(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'SelectedReleaseCount') |")
+            $lines.Add("| Selected assets | $(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'SelectedAssetCount') |")
+            $includePatterns = @(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'IncludePatterns')
+            $excludePatterns = @(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'ExcludePatterns')
+            $lines.Add("| Include tag filters | $(if ($includePatterns.Count -gt 0) { $includePatterns -join ', ' } else { 'All' }) |")
+            $lines.Add("| Exclude tag filters | $(if ($excludePatterns.Count -gt 0) { $excludePatterns -join ', ' } else { 'None' }) |")
+            $lines.Add("| Include prereleases | $(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'IncludePrerelease') |")
+            $lines.Add("| Include drafts | $(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'IncludeDraftReleases') |")
+            $releaseLimit = Get-CgrObjectProperty -InputObject $releaseSelection -Name 'ReleaseCount'
+            $lines.Add("| Newest release limit | $(if ($null -ne $releaseLimit) { $releaseLimit } else { 'None' }) |")
+
+            $approvedReleases = @(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'Releases')
+            if ($approvedReleases.Count -gt 0) {
+                $lines.Add('')
+                $lines.Add('| Tag | Commit SHA | Draft | Prerelease | Assets |')
+                $lines.Add('| --- | --- | --- | --- | ---: |')
+                foreach ($release in $approvedReleases) {
+                    $lines.Add("| $($release.TagName) | $($release.TargetCommitSha) | $($release.Draft) | $($release.Prerelease) | $(@($release.Assets).Count) |")
+                }
+            }
+        }
+
         $lines.Add('')
         $lines.Add('## Steps')
         $lines.Add('')
@@ -110,7 +143,7 @@ function Format-CgrMigrationPlan {
         }
 
         $lines.Add('')
-        $lines.Add('This report is a dry-run repository copy plan. No GitHub repository was created, renamed, overwritten, or deleted.')
+        $lines.Add('This report is a dry-run repository copy plan. No GitHub repository was created, renamed, overwritten, deleted, or given new GitHub Releases.')
 
         return $lines -join [Environment]::NewLine
     }

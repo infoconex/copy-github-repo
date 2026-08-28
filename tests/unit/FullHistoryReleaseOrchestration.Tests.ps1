@@ -82,4 +82,53 @@ Describe 'FullHistory release orchestration' {
             Should -Invoke Copy-CgrApprovedGitHubRelease -Times 0
         }
     }
+
+    It 'records release selection evidence when release restoration fails after content verification' {
+        InModuleScope CopyGitHubRepo {
+            $releaseSelection = [pscustomobject] @{
+                SelectedReleaseCount = 2
+                Releases = @(
+                    [pscustomobject] @{ TagName = 'v1.0.0' },
+                    [pscustomobject] @{ TagName = 'v1.1.0' }
+                )
+            }
+            $plan = [pscustomobject] @{
+                SourceRepository = 'acme/source'
+                SourceVisibility = 'private'
+                DestinationVisibility = 'private'
+                SourceState = [pscustomobject] @{ Refs = @(); ReachableCommitCount = 1 }
+                IncludeReleases = $true
+                ReleaseSelection = $releaseSelection
+                SkipSettings = $true
+                Protection = $null
+            }
+            $source = [pscustomobject] @{ FullName = 'acme/source'; HostName = 'github.com' }
+            $destination = [pscustomobject] @{ FullName = 'acme/destination'; HtmlUrl = 'https://github.com/acme/destination' }
+            $script:recoveryFailureStage = $null
+            $script:recoveryProvenance = $null
+
+            Mock Copy-CgrRepositoryFullHistory {
+                [pscustomobject] @{ IsSuccessful = $true; DefaultBranch = 'main'; CopiedSourceEvidence = $plan.SourceState }
+            }
+            Mock Get-CgrRepository { $destination }
+            Mock Invoke-CgrApprovedFullHistoryVerification { [pscustomobject] @{ IsSuccessful = $true } }
+            Mock Copy-CgrApprovedGitHubRelease { throw 'simulated second-release failure' }
+            Mock Write-CgrMigrationRecoveryReport {
+                $script:recoveryFailureStage = $FailureStage
+                $script:recoveryProvenance = $Provenance
+                'release-recovery.json'
+            }
+
+            { Invoke-CgrNewDestinationFullHistory -Plan $plan -SourceRepository $source -DestinationRepository $destination } |
+                Should -Throw '*simulated second-release failure*'
+
+            $script:recoveryFailureStage | Should -Be 'RestoreGitHubReleases'
+            $script:recoveryProvenance.PlannedReleaseSelection | Should -Be $releaseSelection
+            $script:recoveryProvenance.PlannedSourceState | Should -Be $plan.SourceState
+            Should -Invoke Write-CgrMigrationRecoveryReport -Times 1 -Exactly -ParameterFilter {
+                $FailureStage -eq 'RestoreGitHubReleases' -and
+                $Provenance.PlannedReleaseSelection -eq $releaseSelection
+            }
+        }
+    }
 }

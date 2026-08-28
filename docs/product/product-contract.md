@@ -178,11 +178,11 @@ Snapshot verification proves that the destination tree matches the approved Snap
 
 FullHistory verification compares destination branch/tag targets, reachable commit count, branch-tip trees, default branch, and Git LFS availability with the approved FullHistory state.
 
-When `-IncludeReleases` is requested, release restoration additionally verifies that destination release tags resolve to approved FullHistory commit identities and that supported release metadata/assets match the approved release selection. When the approved source Latest release is selected, the destination Latest designation is also verified.
+When `-IncludeReleases` is requested during migration, execution-integrated release restoration additionally verifies that destination release tags resolve to approved FullHistory commit identities and that supported release metadata/assets match the approved release selection. When the approved source Latest release is selected, the destination Latest designation is also verified.
 
 Ordinary settings and transferable protection are independently read back after restoration.
 
-`Test-GitHubRepositoryMigration` remains the standalone comparison command for callers who explicitly want to compare current source and destination repository state outside an execution plan. Independent release verification is not yet part of that standalone command surface.
+`Test-GitHubRepositoryMigration` is the standalone read-only comparison command. With `FullHistory -IncludeReleases`, it applies the same release-selection parameters to the **current** source release state and compares the selected releases with the destination, including tag commit identity, supported release metadata/assets, and the Latest designation when selected. Because standalone verification does not receive the original immutable migration plan, it verifies current source-versus-destination equivalence rather than proving that the source release state has remained unchanged since the migration. Extra destination releases outside the selected current source set do not cause standalone verification failure.
 
 ## Public command contract
 
@@ -195,7 +195,7 @@ The exported commands are exactly:
 
 `Get-GitHubRepository` exposes `ByRepository` and `Search` parameter sets and returns immutable `Id`/`NodeId` when GitHub provides them.
 
-All public commands publish complete comment-based help. `Copy-GitHubRepository` preserves `ShouldProcess`, `-WhatIf`, `-Confirm`, `-PlanOnly`, `-NonInteractive`, `-Force`, structured execution output, Plain/Json plan rendering, and the FullHistory-only release-selection parameters documented in its command reference.
+All public commands publish complete comment-based help. `Copy-GitHubRepository` preserves `ShouldProcess`, `-WhatIf`, `-Confirm`, `-PlanOnly`, `-NonInteractive`, `-Force`, structured execution output, Plain/Json plan rendering, and the FullHistory-only release-selection parameters documented in its command reference. `Test-GitHubRepositoryMigration` exposes the same release-selection surface for read-only FullHistory release verification.
 
 ## Host and release contract
 

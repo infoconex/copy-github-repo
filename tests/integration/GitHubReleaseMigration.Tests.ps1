@@ -142,7 +142,7 @@ Describe 'GitHub Release migration orchestration' {
             $result.IsVerified | Should -BeTrue
             $result.Releases.IsSuccessful | Should -BeTrue
             $result.Releases.DestinationReleaseCount | Should -Be 1
-            $result.ReleaseRestored | Should -BeTrue
+            $result.ReleasesRestored | Should -BeTrue
             @($result.CompletedSteps | Where-Object Name -eq 'RestoreGitHubReleases').Count | Should -Be 1
             ($script:stageOrder -join ',') | Should -Be 'VerifyFullHistory,RestoreGitHubReleases'
 
@@ -186,7 +186,7 @@ Describe 'GitHub Release migration orchestration' {
 
             $result.IsVerified | Should -BeFalse
             $result.Releases.IsSuccessful | Should -BeFalse
-            $result.Releases.Skipped | Should -Contain 'FullHistoryVerificationFailed'
+            $result.Releases.Status | Should -Be 'FullHistoryVerificationFailed'
             Should -Invoke Copy-CgrApprovedGitHubRelease -Times 0 -Exactly
         }
     }

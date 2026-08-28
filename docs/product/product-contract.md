@@ -60,7 +60,7 @@ FullHistory plans capture:
 - reachable Git LFS availability; and
 - capture time.
 
-When `-IncludeReleases` is requested, the plan additionally enumerates source GitHub Releases and stores the exact approved selection. The selection records release identity, tag name, name/body, draft/prerelease state, resolved tag commit SHA, and asset metadata including name, label, size, content type, and digest when GitHub provides one.
+When `-IncludeReleases` is requested, the plan additionally enumerates source GitHub Releases and stores the exact approved selection. The selection records release identity, tag name, name/body, draft/prerelease state, whether the selected release was the source repository's Latest full release at planning time, resolved tag commit SHA, and asset metadata including name, label, size, content type, and digest when GitHub provides one.
 
 Release filtering is applied during planning in this order:
 
@@ -74,6 +74,8 @@ Release filtering is applied during planning in this order:
 Immediately before the first GitHub mutation, execution re-checks the Git source against the approved state. Drift terminates with `SourceStateChangedSincePlanning`; destination creation or rename does not proceed from that stale plan.
 
 Selected releases are revalidated immediately before release restoration. A selected release that is missing or whose approved metadata, tag target, or asset evidence changed terminates with `SourceReleaseStateChangedSincePlanning`. A newly created source release that was not part of the approved selection is ignored rather than silently added to the migration.
+
+The source Latest designation is intentionally bound to the approved plan rather than re-evaluated as live selection criteria during execution. Publishing a new unselected source release after planning does not silently add that release or invalidate an otherwise unchanged approved release set.
 
 The copy engine also checks its cloned source workspace against the approved state before publishing destination content. Verification then compares the destination with the approved/copied evidence rather than rereading a source branch or ref set that may have moved after publication.
 
@@ -124,9 +126,11 @@ Release restoration occurs only after FullHistory content verification succeeds.
 - an unrelated pre-existing destination GitHub Release for the tag is never overwritten;
 - release name/body and draft/prerelease state are recreated where GitHub permits;
 - approved release assets are downloaded from the source and uploaded to the destination; and
-- the destination release is read back and metadata plus asset name/size and available digest evidence are verified.
+- the destination release is read back and metadata plus asset name, label, size, content type, and available digest evidence are verified.
 
-GitHub-assigned destination release IDs and creation/publication timestamps are new values. Original release IDs, historical creation/publication timestamps, and release download counts are provenance/unsupported metadata rather than values the product claims to preserve exactly.
+If the source release marked Latest at planning time is part of the approved selection, execution explicitly preserves that designation and verifies the destination Latest release resolves to the same selected tag. When filtering excludes the source Latest release, the product does not claim to preserve an omitted release; GitHub determines Latest among the releases that actually exist at the destination.
+
+GitHub-assigned destination release IDs and creation/publication timestamps are new values. Original release IDs, historical creation/publication timestamps, release download counts, per-release immutability state, and linked release discussions are provenance/unsupported metadata rather than values the product claims to preserve exactly.
 
 A release-stage failure after earlier releases were restored does not automatically delete those destination releases. Recovery evidence records the release failure stage and available approved/restored release evidence.
 
@@ -152,6 +156,8 @@ The following remain outside the implemented restoration contract:
 - environments
 - collaborator/team access
 - packages/deployments
+- GitHub Release immutability configuration/state
+- linked GitHub Release discussions
 - GitHub historical/operational records not explicitly supported
 
 `-RestorePages` and `-EnableActionsAfterMigration` may appear in plans, but mutating execution rejects them because those operations are not implemented. Secret values are never requested, copied, displayed, or persisted.
@@ -160,7 +166,7 @@ The following remain outside the implemented restoration contract:
 
 Snapshot intentionally severs Git ancestry, so successful execution exposes publication provenance outside the clean Git graph. Evidence includes approved source commit/tree state, actual copied source evidence, destination root commit/tree, repository identities when available, UTC time, and verification outcome. Same-name results also record archive identity continuity and distinct replacement identity.
 
-FullHistory release results expose the approved/restored release count, per-release source/destination release IDs, source/destination commit SHAs, asset counts, and verification state. Recovery evidence includes the approved release selection and any available release restoration result when failure occurs during or after that stage.
+FullHistory release results expose the approved/restored release count, per-release source/destination release IDs, source/destination commit SHAs, latest-release preservation evidence when applicable, asset counts, and verification state. Recovery evidence includes the approved release selection and any available release restoration result when failure occurs during or after that stage.
 
 This evidence does not add marker files, tags, notes, parents, or extra commits to the destination.
 
@@ -172,7 +178,7 @@ Snapshot verification proves that the destination tree matches the approved Snap
 
 FullHistory verification compares destination branch/tag targets, reachable commit count, branch-tip trees, default branch, and Git LFS availability with the approved FullHistory state.
 
-When `-IncludeReleases` is requested, release restoration additionally verifies that destination release tags resolve to approved FullHistory commit identities and that supported release metadata/assets match the approved release selection.
+When `-IncludeReleases` is requested, release restoration additionally verifies that destination release tags resolve to approved FullHistory commit identities and that supported release metadata/assets match the approved release selection. When the approved source Latest release is selected, the destination Latest designation is also verified.
 
 Ordinary settings and transferable protection are independently read back after restoration.
 
@@ -203,5 +209,6 @@ Stable publication is tag-only. The tag must equal `v<ModuleVersion>` and the ex
 - silent destination overwrite
 - automatic migration of secret values
 - Snapshot GitHub Release preservation
+- GitHub Release immutability state and linked release discussions
 - pull requests, issues, discussions, workflow-run history, packages, deployments, stars, watchers, forks, or traffic history
 - GitHub Enterprise Server or other non-GitHub.com hosts

@@ -105,9 +105,6 @@ Describe 'Approved GitHub Release execution' {
                     })
             }
 
-            Mock New-Item { $null }
-            Mock Test-Path { $true }
-            Mock Remove-Item { $null }
             Mock Invoke-CgrNativeCommand {
                 $joined = $ArgumentList -join ' '
                 if ($joined -match 'repos/acme/source/releases/tags/v2.0.0') {

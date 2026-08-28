@@ -28,9 +28,17 @@ Describe 'GitHub Release selection' {
             )
 
             Mock Invoke-CgrNativeCommand {
+                $joined = $ArgumentList -join ' '
                 if ($ArgumentList -contains '--paginate') {
                     $json = @($script:releasePayload) | ConvertTo-Json -Depth 20 -Compress
                     return [pscustomobject] @{ ExitCode = 0; Output = @("[$json]"); ErrorText = '' }
+                }
+                if ($joined -match 'repos/acme/widget/releases/latest') {
+                    return [pscustomobject] @{
+                        ExitCode = 0
+                        Output = @('{"id":3,"tag_name":"v1.1.0"}')
+                        ErrorText = ''
+                    }
                 }
 
                 $path = @($ArgumentList | Where-Object { $_ -like 'repos/*/commits/*' }) | Select-Object -First 1
@@ -40,7 +48,7 @@ Describe 'GitHub Release selection' {
         }
     }
 
-    It 'selects all stable non-draft releases by default' {
+    It 'selects all stable non-draft releases by default and identifies the source latest release' {
         InModuleScope CopyGitHubRepo {
             $repository = [pscustomobject] @{ FullName = 'acme/widget' }
             $result = Get-CgrGitHubReleaseSelection -Repository $repository
@@ -49,6 +57,10 @@ Describe 'GitHub Release selection' {
             $result.SelectedReleaseCount | Should -Be 2
             @($result.Releases.TagName) | Should -Be @('v1.1.0', 'v1.0.0')
             $result.SelectedAssetCount | Should -Be 1
+            $result.SourceLatestTag | Should -Be 'v1.1.0'
+            $result.SourceLatestSelected | Should -BeTrue
+            $result.Releases[0].IsLatest | Should -BeTrue
+            $result.Releases[1].IsLatest | Should -BeFalse
         }
     }
 
@@ -111,16 +123,45 @@ Describe 'GitHub Release selection' {
             $result.AvailableReleaseCount | Should -Be 4
             $result.SelectedReleaseCount | Should -Be 0
             $result.SelectedAssetCount | Should -Be 0
+            $result.SourceLatestSelected | Should -BeFalse
             @($result.Releases).Count | Should -Be 0
+        }
+    }
+
+    It 'treats a missing latest full release as valid when the repository has only draft or prerelease releases' {
+        InModuleScope CopyGitHubRepo {
+            Mock Invoke-CgrNativeCommand {
+                $joined = $ArgumentList -join ' '
+                if ($ArgumentList -contains '--paginate') {
+                    $payload = @($script:releasePayload | Where-Object { $_.draft -or $_.prerelease })
+                    $json = $payload | ConvertTo-Json -Depth 20 -Compress
+                    return [pscustomobject] @{ ExitCode = 0; Output = @("[$json]"); ErrorText = '' }
+                }
+                if ($joined -match 'releases/latest') {
+                    return [pscustomobject] @{ ExitCode = 1; Output = @(); ErrorText = 'HTTP 404: Not Found' }
+                }
+                throw "Unexpected native command: $joined"
+            }
+
+            $repository = [pscustomobject] @{ FullName = 'acme/widget' }
+            $result = Get-CgrGitHubReleaseSelection -Repository $repository
+
+            $result.SelectedReleaseCount | Should -Be 0
+            $result.SourceLatestTag | Should -BeNullOrEmpty
+            $result.SourceLatestSelected | Should -BeFalse
         }
     }
 
     It 'fails closed when a selected release tag cannot resolve to a commit' {
         InModuleScope CopyGitHubRepo {
             Mock Invoke-CgrNativeCommand {
+                $joined = $ArgumentList -join ' '
                 if ($ArgumentList -contains '--paginate') {
                     $json = @($script:releasePayload) | ConvertTo-Json -Depth 20 -Compress
                     return [pscustomobject] @{ ExitCode = 0; Output = @("[$json]"); ErrorText = '' }
+                }
+                if ($joined -match 'releases/latest') {
+                    return [pscustomobject] @{ ExitCode = 0; Output = @('{"id":3,"tag_name":"v1.1.0"}'); ErrorText = '' }
                 }
                 return [pscustomobject] @{ ExitCode = 1; Output = @(); ErrorText = 'not found' }
             }

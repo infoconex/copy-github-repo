@@ -50,6 +50,31 @@ function Get-CgrGitHubReleaseSelection {
         }
     }
 
+    $latestReleaseId = $null
+    $latestReleaseTag = $null
+    $latestResult = Invoke-CgrNativeCommand `
+        -FilePath 'gh' `
+        -ArgumentList @('api', '--hostname', $HostName, "repos/$($Repository.FullName)/releases/latest")
+    if ($latestResult.ExitCode -eq 0) {
+        $latestJson = ($latestResult.Output | ForEach-Object { [string] $_ }) -join "`n"
+        if (-not [string]::IsNullOrWhiteSpace($latestJson)) {
+            $latestRelease = $latestJson | ConvertFrom-Json -Depth 100
+            $latestReleaseId = $latestRelease.id
+            $latestReleaseTag = [string] $latestRelease.tag_name
+        }
+    }
+    elseif ([string] $latestResult.ErrorText -notmatch '(?i)404|not found') {
+        $message = "GitHub CLI failed to determine the latest release for '$($Repository.FullName)'. $($latestResult.ErrorText)"
+        $exception = [System.InvalidOperationException]::new($message.Trim())
+        $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+            $exception,
+            'SourceGitHubLatestReleaseReadFailed',
+            [System.Management.Automation.ErrorCategory]::ReadError,
+            $Repository.FullName
+        )
+        $PSCmdlet.ThrowTerminatingError($errorRecord)
+    }
+
     $selected = @($available)
     if (-not $IncludeDraftReleases) {
         $selected = @($selected | Where-Object { -not [bool] $_.draft })
@@ -136,6 +161,7 @@ function Get-CgrGitHubReleaseSelection {
                 Body = [string] $release.body
                 Draft = [bool] $release.draft
                 Prerelease = [bool] $release.prerelease
+                IsLatest = [bool] ($null -ne $latestReleaseId -and [long] $release.id -eq [long] $latestReleaseId)
                 CreatedAt = $release.created_at
                 PublishedAt = $release.published_at
                 TargetCommitSha = [string] @($commitResult.Output)[0]
@@ -156,6 +182,9 @@ function Get-CgrGitHubReleaseSelection {
         AvailableReleaseCount = $available.Count
         SelectedReleaseCount = $normalized.Count
         SelectedAssetCount = $selectedAssetCount
+        SourceLatestReleaseId = $latestReleaseId
+        SourceLatestTag = $latestReleaseTag
+        SourceLatestSelected = [bool] ($normalized | Where-Object { $_.IsLatest } | Select-Object -First 1)
         IncludePatterns = @($ReleaseTag)
         ExcludePatterns = @($ReleaseExcludeTag)
         IncludePrerelease = [bool] $IncludePrerelease

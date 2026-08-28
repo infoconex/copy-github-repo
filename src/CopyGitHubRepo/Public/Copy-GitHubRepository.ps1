@@ -10,28 +10,24 @@ function Copy-GitHubRepository {
     explicit and preserves the approved branches, tags, commits, and reachable
     Git LFS objects.
 
-    FullHistory can optionally plan selected GitHub Releases and their assets.
+    FullHistory can optionally preserve selected GitHub Releases and their assets.
     Release selection is stable/non-draft by default and can be narrowed with tag
     include/exclude patterns or a newest-N limit. Prereleases and draft releases
     require explicit opt-in. Snapshot release preservation is not implemented yet.
-    Until the release execution path is wired to the approved release inventory,
-    mutating execution with -IncludeReleases fails closed after planning.
 
     Planning captures immutable source-state evidence. Execution uses that same
     plan and fails closed with SourceStateChangedSincePlanning if the source no
-    longer matches the approved state before mutation. Verification compares the
-    destination with the approved/copied source evidence rather than rereading a
-    moving source branch or ref set.
+    longer matches the approved state before mutation. Selected releases are also
+    captured in the plan and revalidated before release restoration.
 
     An existing destination is never silently overwritten. Replacement requires
     an explicit archive plan and exact confirmation, and the prior repository is
     preserved before a fresh replacement is created. -Force does not bypass exact
     replacement confirmation.
 
-    After content verification, supported repository settings are restored and
-    verified, followed by transferable repository protection. -SkipSettings skips
-    both configuration stages. Protection that cannot be transferred safely is
-    reported rather than weakened.
+    After content verification, approved GitHub Releases are restored when
+    requested, followed by supported repository settings and transferable
+    repository protection. -SkipSettings skips only the settings/protection stages.
 
     Mutating execution supports -WhatIf and -Confirm. Non-interactive mutation
     requires -Force. Changing destination visibility requires -Force. GitHub Pages
@@ -112,7 +108,7 @@ function Copy-GitHubRepository {
 
     .PARAMETER SkipSettings
     Skips restoration of supported repository settings and repository protection.
-    Content verification still runs.
+    Content verification and requested release restoration still run.
 
     .PARAMETER PlanOnly
     Returns a read-only repository copy plan without mutation. The plan contains
@@ -157,10 +153,10 @@ function Copy-GitHubRepository {
     Copies and verifies the approved history-preserving branch/tag/ref state.
 
     .EXAMPLE
-    Copy-GitHubRepository -SourceRepository infoconex/source -DestinationRepository infoconex/destination -ContentMode FullHistory -IncludeReleases -ReleaseTag 'v2.*' -ReleaseCount 3 -PlanOnly
+    Copy-GitHubRepository -SourceRepository infoconex/source -DestinationRepository infoconex/destination -ContentMode FullHistory -IncludeReleases -ReleaseTag 'v2.*' -ReleaseCount 3
 
-    Plans FullHistory and selects the three newest stable non-draft GitHub Releases
-    whose tags match v2.* for preservation.
+    Copies FullHistory and restores the three newest stable non-draft GitHub Releases
+    whose tags match v2.*, including their release assets.
 
     .INPUTS
     None. This command does not accept pipeline input.
@@ -313,13 +309,6 @@ function Copy-GitHubRepository {
         return $plan
     }
 
-    if ($IncludeReleases) {
-        $message = 'GitHub Release execution is being implemented on this feature branch. Use -PlanOnly to review the approved release selection until execution is wired to that inventory.'
-        $exception = [System.NotSupportedException]::new($message)
-        $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'GitHubReleaseExecutionNotImplemented', [System.Management.Automation.ErrorCategory]::NotImplemented, 'IncludeReleases')
-        $PSCmdlet.ThrowTerminatingError($errorRecord)
-    }
-
     if ($RestorePages) {
         $message = 'Pages restoration is not implemented yet. Remove -RestorePages and review the plan output for unsupported settings.'
         $exception = [System.NotSupportedException]::new($message)
@@ -354,7 +343,8 @@ function Copy-GitHubRepository {
         'SameNameReplacement' {
             if ($plan.ContentMode -eq 'FullHistory') {
                 "Preserve '$($plan.SourceRepository)' as '$($plan.ArchiveRepository)', create '$target', and copy the approved FullHistory state"
-            } else {
+            }
+            else {
                 "Preserve '$($plan.SourceRepository)' as '$($plan.ArchiveRepository)', create '$target', and publish the approved Snapshot state"
             }
         }
@@ -364,7 +354,8 @@ function Copy-GitHubRepository {
         default {
             if ($plan.ContentMode -eq 'FullHistory') {
                 "Create '$target' and copy the approved FullHistory state"
-            } else {
+            }
+            else {
                 "Create '$target' and publish the approved Snapshot state"
             }
         }

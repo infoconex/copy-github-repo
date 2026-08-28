@@ -98,17 +98,19 @@ Describe 'GitHub Release selection' {
 
             $result.Releases[0].TargetCommitSha | Should -Be 'sha-v1.1.0'
             $result.Releases[0].Assets[0].Name | Should -Be 'module.zip'
+            $result.Releases[0].Assets[0].ContentType | Should -Be 'application/zip'
             $result.Releases[0].Assets[0].Digest | Should -Be 'sha256:abc'
         }
     }
 
-    It 'returns an empty approved inventory when filters select no releases' {
+    It 'returns an empty approved inventory with a zero asset count when filters select no releases' {
         InModuleScope CopyGitHubRepo {
             $repository = [pscustomobject] @{ FullName = 'acme/widget' }
             $result = Get-CgrGitHubReleaseSelection -Repository $repository -ReleaseTag 'v9.*'
 
             $result.AvailableReleaseCount | Should -Be 4
             $result.SelectedReleaseCount | Should -Be 0
+            $result.SelectedAssetCount | Should -Be 0
             @($result.Releases).Count | Should -Be 0
         }
     }

@@ -65,10 +65,19 @@ function Start-CopyGitHubRepositoryWizard {
     Specifies the GitHub host used by discovery and copy commands. The default is
     github.com. Version 1 supports github.com only.
 
+    .PARAMETER Version
+    Displays the loaded CopyGitHubRepo module version and exits without starting
+    discovery, planning, or migration operations.
+
     .EXAMPLE
     Start-CopyGitHubRepositoryWizard
 
     Starts the guided repository-copy wizard using github.com.
+
+    .EXAMPLE
+    Start-CopyGitHubRepositoryWizard -Version
+
+    Displays the loaded CopyGitHubRepo module version and exits.
 
     .EXAMPLE
     Start-CopyGitHubRepositoryWizard -WhatIf
@@ -80,10 +89,10 @@ function Start-CopyGitHubRepositoryWizard {
     None. This command does not accept pipeline input.
 
     .OUTPUTS
-    CopyGitHubRepo.WizardResult when the user cancels before mutation or a known
-    pre-mutation application condition is presented cleanly. Successful interactive
-    execution is rendered as a concise host summary rather than emitting the raw
-    execution object.
+    System.String when -Version is specified. Otherwise, CopyGitHubRepo.WizardResult
+    when the user cancels before mutation or a known pre-mutation application
+    condition is presented cleanly. Successful interactive execution is rendered as
+    a concise host summary rather than emitting the raw execution object.
 
     .LINK
     https://github.com/infoconex/copy-github-repo
@@ -94,8 +103,14 @@ function Start-CopyGitHubRepositoryWizard {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Low')]
     param(
         [ValidateNotNullOrEmpty()]
-        [string] $HostName = 'github.com'
+        [string] $HostName = 'github.com',
+
+        [switch] $Version
     )
+
+    if ($Version) {
+        return $ExecutionContext.SessionState.Module.Version.ToString()
+    }
 
     $resolvedHostName = $HostName
     $callerPSCmdlet = $PSCmdlet

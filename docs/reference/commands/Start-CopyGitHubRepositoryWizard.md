@@ -10,18 +10,21 @@ Starts the guided, human-facing repository-copy workflow. The wizard handles int
 ## Synopsis
 
 ```powershell
-Start-CopyGitHubRepositoryWizard [-HostName <hostname>] [-WhatIf] [-Confirm]
+Start-CopyGitHubRepositoryWizard [-HostName <hostname>] [-Version] [-WhatIf] [-Confirm]
 ```
 
 ## When to use it
 
 Use the wizard when a person wants to choose a source and migration options interactively, review a real migration plan, and explicitly decide whether to execute it. For scripts and automation, use [`Copy-GitHubRepository`](Copy-GitHubRepository.md) directly.
 
+Use `-Version` when you only need to report the version of the loaded `CopyGitHubRepo` module. Version reporting exits immediately without repository discovery, planning, or GitHub mutation.
+
 ## Parameters
 
 | Parameter | Type | Required | Default | Accepted values / format | Description |
 | --- | --- | --- | --- | --- | --- |
 | `HostName` | `String` | No | `github.com` | `github.com` in `v0.1.0` | GitHub host used by discovery and migration operations. Unsupported hosts fail closed. |
+| `Version` | `Switch` | No | Off | `-Version` | Displays the loaded `CopyGitHubRepo` module version and exits. |
 
 Because the command supports `ShouldProcess`, PowerShell also provides `-WhatIf` and `-Confirm`. Standard common parameters are available as well.
 
@@ -90,13 +93,25 @@ Unexpected internal defects are not converted into friendly application errors. 
 
 ## Output
 
-Pre-mutation cancellation returns `CopyGitHubRepo.WizardResult` with `Status = 'Cancelled'` and `MutatedGitHub = $false`. A known pre-mutation application failure returns `CopyGitHubRepo.WizardResult` with `Status = 'ApplicationError'`, `MutatedGitHub = $false`, and the stable application `ErrorId`. Confirmed execution is rendered as a concise human-facing completion summary; use `Copy-GitHubRepository` directly when automation requires the raw structured migration result.
+With `-Version`, the command returns a `System.String` containing the loaded module version, for example `0.1.1`, and performs no wizard work. Otherwise, pre-mutation cancellation returns `CopyGitHubRepo.WizardResult` with `Status = 'Cancelled'` and `MutatedGitHub = $false`. A known pre-mutation application failure returns `CopyGitHubRepo.WizardResult` with `Status = 'ApplicationError'`, `MutatedGitHub = $false`, and the stable application `ErrorId`. Confirmed execution is rendered as a concise human-facing completion summary; use `Copy-GitHubRepository` directly when automation requires the raw structured migration result.
 
 ## Important failure conditions
 
 The wizard can stop before mutation when the selected host is unsupported or when delegated discovery/planning cannot satisfy its prerequisites. Snapshot execution also requires a usable commit identity from Git configuration or the authenticated GitHub CLI account. Same-name replacement and existing-destination replacement cannot proceed without valid unused archive names and their required exact confirmations. Known pre-mutation conditions are shown cleanly in the wizard; unexpected or post-mutation failures retain their diagnostic/recovery paths.
 
 ## Examples
+
+### Report the installed module version
+
+```powershell
+Start-CopyGitHubRepositoryWizard -Version
+```
+
+Example output:
+
+```text
+0.1.1
+```
 
 ### Start with safe defaults
 

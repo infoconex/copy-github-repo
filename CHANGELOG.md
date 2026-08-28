@@ -12,6 +12,14 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- Added opt-in GitHub Release preservation for `FullHistory` migrations with `-IncludeReleases`.
+- Added release filtering by tag include/exclude wildcard patterns, prerelease/draft opt-in, and newest-N limiting.
+- Added immutable release-selection evidence to migration planning so execution restores the exact reviewed releases rather than rerunning a live filter.
+- Added post-FullHistory restoration of release metadata and assets with tag-target, metadata, asset size, and digest verification where available.
+- Added fail-closed release drift detection when a selected source release changes after planning, plus release provenance in migration/recovery results.
+
 ## [0.1.1] - 2026-08-25
 
 ### Changed

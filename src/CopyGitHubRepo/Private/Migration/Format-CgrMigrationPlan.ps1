@@ -111,6 +111,9 @@ function Format-CgrMigrationPlan {
             $lines.Add("| Available source releases | $(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'AvailableReleaseCount') |")
             $lines.Add("| Selected releases | $(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'SelectedReleaseCount') |")
             $lines.Add("| Selected assets | $(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'SelectedAssetCount') |")
+            $sourceLatestTag = Get-CgrObjectProperty -InputObject $releaseSelection -Name 'SourceLatestTag'
+            $lines.Add("| Source Latest release | $(if ([string]::IsNullOrWhiteSpace([string] $sourceLatestTag)) { 'None' } else { $sourceLatestTag }) |")
+            $lines.Add("| Source Latest selected | $([bool] (Get-CgrObjectProperty -InputObject $releaseSelection -Name 'SourceLatestSelected')) |")
             $includePatterns = @(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'IncludePatterns')
             $excludePatterns = @(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'ExcludePatterns')
             $lines.Add("| Include tag filters | $(if ($includePatterns.Count -gt 0) { $includePatterns -join ', ' } else { 'All' }) |")
@@ -123,10 +126,10 @@ function Format-CgrMigrationPlan {
             $approvedReleases = @(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'Releases')
             if ($approvedReleases.Count -gt 0) {
                 $lines.Add('')
-                $lines.Add('| Tag | Commit SHA | Draft | Prerelease | Assets |')
-                $lines.Add('| --- | --- | --- | --- | ---: |')
+                $lines.Add('| Tag | Commit SHA | Latest | Draft | Prerelease | Assets |')
+                $lines.Add('| --- | --- | --- | --- | --- | ---: |')
                 foreach ($release in $approvedReleases) {
-                    $lines.Add("| $($release.TagName) | $($release.TargetCommitSha) | $($release.Draft) | $($release.Prerelease) | $(@($release.Assets).Count) |")
+                    $lines.Add("| $($release.TagName) | $($release.TargetCommitSha) | $([bool] $release.IsLatest) | $($release.Draft) | $($release.Prerelease) | $(@($release.Assets).Count) |")
                 }
             }
         }

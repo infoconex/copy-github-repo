@@ -1,6 +1,6 @@
 ---
 title: "Copy and Migrate GitHub Repositories with PowerShell"
-description: "Copy GitHub repositories with PowerShell using Snapshot for a clean copy without prior history or FullHistory to preserve commits, branches, tags, and Git LFS, with planning, verification, and recovery safeguards."
+description: "Copy GitHub repositories with PowerShell using Snapshot for a clean copy without prior history or FullHistory to preserve commits, branches, tags, Git LFS, and optionally selected GitHub Releases, with planning, verification, and recovery safeguards."
 ---
 
 ![Copy GitHub Repo banner](assets/images/product_banner.png)
@@ -13,16 +13,16 @@ description: "Copy GitHub repositories with PowerShell using Snapshot for a clea
 ![PowerShell 7.4+](https://img.shields.io/badge/PowerShell-7.4%2B-informational)
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-informational)
 
-Copy GitHub Repository is a PowerShell utility for safely publishing or copying GitHub repositories. Its default `Snapshot` mode is designed for **clean publication**: it copies the current source default-branch state into one unrelated root commit, intentionally leaving prior Git history, old branches/tags, pull requests, issues, milestones, and other historical GitHub records behind. The explicit `FullHistory` mode is the history-preserving alternative and keeps ordinary Git history, branches, tags, and reachable Git LFS objects.
+Copy GitHub Repository is a PowerShell utility for safely publishing or copying GitHub repositories. Its default `Snapshot` mode is designed for **clean publication**: it copies the current source default-branch state into one unrelated root commit, intentionally leaving prior Git history, old branches/tags, pull requests, issues, milestones, and other historical GitHub records behind. The explicit `FullHistory` mode is the history-preserving alternative and keeps ordinary Git history, branches, tags, and reachable Git LFS objects. FullHistory can also optionally recreate selected GitHub Releases and their assets against the preserved tags.
 
 The project prioritizes preservation, explicit human authority, verification, and recoverability. It never automatically deletes a repository or overwrites an existing destination.
 
 > [!IMPORTANT]
-> Snapshot execution, same-name Snapshot replacement, new-destination FullHistory execution, same-name FullHistory replacement, and supported repository-level settings restoration are implemented and live-validated. The guided repository-copy wizard is implemented and covered by the cross-platform quality gate.
+> Snapshot execution, same-name Snapshot replacement, new-destination FullHistory execution, same-name FullHistory replacement, supported repository-level settings restoration, and FullHistory GitHub Release preservation are implemented on the current development line. The guided repository-copy wizard is implemented and covered by the project quality model.
 
 ## Choose the right content mode
 
-Use **Snapshot** when you want the repository's current default-branch contents to become a clean new repository with one fresh initial commit. Use **FullHistory** when commit ancestry, branches, tags, signed historical commits, blame history, or other Git-history evidence must remain intact.
+Use **Snapshot** when you want the repository's current default-branch contents to become a clean new repository with one fresh initial commit. Use **FullHistory** when commit ancestry, branches, tags, signed historical commits, blame history, or other Git-history evidence must remain intact. Add `-IncludeReleases` to FullHistory when selected GitHub Release pages and assets should also be recreated.
 
 For the complete user journey, support matrix, and common operating scenarios, start with the [User guide](docs/user/user-guide.md).
 
@@ -35,8 +35,11 @@ Want to see what Snapshot automates? See [Manually Creating a Clean GitHub Repos
 - Replacement flows require exact typed confirmation; `-Force` cannot bypass it.
 - `-PlanOnly` and `-WhatIf` are non-mutating.
 - Content is verified before success is reported.
-- Failures after mutation begins retain durable recovery information instead of automatically deleting or rolling back repositories.
-- The current `0.1.x` release line supports GitHub.com only and fails closed for other hosts.
+- FullHistory release restoration is bound to the exact release inventory approved during planning; selected release drift fails closed.
+- Destination release tags must resolve to the same approved FullHistory commit before release restoration.
+- Existing destination GitHub Releases are not silently overwritten.
+- Failures after mutation begins retain durable recovery information instead of automatically deleting or rolling back repositories or restored releases.
+- The current release line supports GitHub.com only and fails closed for other hosts.
 
 See the [Product contract](docs/product/product-contract.md) and [Architecture](docs/product/architecture.md) for the detailed safety and verification contracts.
 
@@ -179,14 +182,36 @@ Copy-GitHubRepository `
     -DestinationRepository infoconex/destination
 ```
 
-FullHistory, visibility changes, replacement modes, reporting, non-interactive execution, settings choices, and all parameter details are documented in [`Copy-GitHubRepository`](docs/reference/commands/Copy-GitHubRepository.md).
+To preserve FullHistory plus all stable, non-draft GitHub Releases and assets:
+
+```powershell
+Copy-GitHubRepository `
+    -SourceRepository infoconex/source `
+    -DestinationRepository infoconex/destination `
+    -ContentMode FullHistory `
+    -IncludeReleases
+```
+
+Release selection can be narrowed without changing the FullHistory Git graph. For example, preserve only the three newest stable v2 releases:
+
+```powershell
+Copy-GitHubRepository `
+    -SourceRepository infoconex/source `
+    -DestinationRepository infoconex/destination `
+    -ContentMode FullHistory `
+    -IncludeReleases `
+    -ReleaseTag 'v2.*' `
+    -ReleaseCount 3
+```
+
+FullHistory, release selection, visibility changes, replacement modes, reporting, non-interactive execution, settings choices, and all parameter details are documented in [`Copy-GitHubRepository`](docs/reference/commands/Copy-GitHubRepository.md).
 
 ## Commands
 
 | Command | Purpose | Mutates GitHub? |
 | --- | --- | --- |
 | [`Start-CopyGitHubRepositoryWizard`](docs/reference/commands/Start-CopyGitHubRepositoryWizard.md) | Guided clean-publication/history-copy workflow | Yes, after plan review and confirmation |
-| [`Copy-GitHubRepository`](docs/reference/commands/Copy-GitHubRepository.md) | Scriptable planning and repository publication/copy | Yes, except `-PlanOnly`/`-WhatIf` |
+| [`Copy-GitHubRepository`](docs/reference/commands/Copy-GitHubRepository.md) | Scriptable planning and repository publication/copy, including optional FullHistory GitHub Releases | Yes, except `-PlanOnly`/`-WhatIf` |
 | [`Get-GitHubRepository`](docs/reference/commands/Get-GitHubRepository.md) | Repository discovery and metadata | No |
 | [`Test-GitHubRepositoryMigration`](docs/reference/commands/Test-GitHubRepositoryMigration.md) | Snapshot/FullHistory verification | No |
 
@@ -217,7 +242,7 @@ Install development dependencies as needed, then run the repository quality gate
 ./build/Test-Project.ps1
 ```
 
-The quality gate runs in GitHub Actions on Windows, Ubuntu, and macOS for pushes to `main` and pull requests targeting `main`. Controlled live-validation harnesses live under `tests/e2e/`; build/release tooling remains under `build/`.
+The quality gate runs in GitHub Actions on Windows, Ubuntu, and macOS for pushes to `main` and pull requests targeting supported integration branches. Controlled live-validation harnesses live under `tests/e2e/`; build/release tooling remains under `build/`.
 
 Release publication is tag-only. A stable release tag must exactly match `v<ModuleVersion>` and the exact tagged commit must pass the cross-platform quality gate before publication. The release workflow validates a clean Gallery package, rejects duplicate PSGallery and GitHub Release versions, publishes with `Publish-PSResource`, and creates the immutable GitHub release assets. Merging to `main` does not publish a release.
 

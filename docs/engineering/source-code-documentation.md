@@ -38,6 +38,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `ConvertTo-CgrRepository` | Normalizes GitHub API repository payloads into the module repository output contract. |
 | `ConvertTo-CgrRepositoryName` | Canonicalizes owner/name identity for stable comparisons. |
 | `ConvertTo-CgrWizardNavigationResult` | Normalizes wizard navigation responses into the internal navigation contract. |
+| `Copy-CgrApprovedGitHubRelease` | Restores only the GitHub Releases captured in the approved FullHistory plan, revalidates selected source release/tag/asset evidence before mutation, refuses destination-release overwrite, preserves the selected Latest designation when applicable, and verifies destination metadata/assets after creation. |
 | `Copy-CgrGitLfsObject` | Transfers Snapshot Git LFS content while preserving explicit failure evidence. |
 | `Copy-CgrRepositoryFullHistory` | **Inline tier.** Copies branches, tags, reachable commits, and Git LFS objects after approved-state validation. |
 | `Copy-CgrRepositorySnapshot` | **Inline tier.** Publishes an approved branch tree as one unrelated root commit and verifies the pushed ref. |
@@ -53,6 +54,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Get-CgrGitHubApi` | Executes required GitHub API reads and converts failures into stable application errors. |
 | `Get-CgrGitHubApiOptional` | Performs optional GitHub API reads where unsupported or unavailable data is an expected condition. |
 | `Get-CgrGitHubAuthenticationStatus` | Reports GitHub CLI authentication readiness without mutating account state. |
+| `Get-CgrGitHubReleaseSelection` | Enumerates GitHub Releases, applies the public release-filter policy, resolves selected tag commit identities, captures asset evidence and the source Latest designation, and returns the exact release inventory bound into a FullHistory plan or standalone verification. |
 | `Get-CgrObjectProperty` | Safely reads optional properties from heterogeneous GitHub/module result objects. |
 | `Get-CgrPrerequisiteStatus` | Aggregates Git, GitHub CLI, and authentication prerequisites for public workflows. |
 | `Get-CgrRepository` | Retrieves repository state and normalizes it through the repository contract. |
@@ -68,16 +70,16 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Invoke-CgrGitHubApiMutation` | Centralizes GitHub API mutation execution and application-grade error handling. |
 | `Invoke-CgrGitHubApiReadRequest` | Applies bounded retry/backoff only to side-effect-free GitHub API reads, honoring bounded server retry guidance while keeping mutation retries out of scope. |
 | `Invoke-CgrNativeCommand` | Captures native-process stdout, stderr, and exit status without leaking stream implementation details. |
-| `Invoke-CgrNewDestinationFullHistory` | **Inline tier.** Orchestrates FullHistory copy, verification, settings/protection restoration, and recovery reporting for a new destination. |
+| `Invoke-CgrNewDestinationFullHistory` | **Inline tier.** Orchestrates FullHistory copy, verification, optional approved-release restoration, settings/protection restoration, and recovery reporting for a new destination. |
 | `Invoke-CgrNewDestinationSnapshot` | **Inline tier.** Orchestrates Snapshot publication, verification, settings/protection restoration, and recovery reporting for a new destination. |
 | `Invoke-CgrRepositoryCopyWizard` | Implements the testable wizard state machine while keeping prompts separate from migration execution. |
 | `Invoke-CgrRepositoryFullHistoryVerification` | Compares live source and destination history when immutable approved evidence is not supplied. |
 | `Invoke-CgrRepositorySnapshotVerification` | Verifies destination tree/root-history semantics against approved Snapshot evidence. |
-| `Invoke-CgrSameNameFullHistoryReplacement` | **Inline tier.** Preserves the source as an archive before publishing a fresh same-name FullHistory replacement. |
+| `Invoke-CgrSameNameFullHistoryReplacement` | **Inline tier.** Preserves the source as an archive before publishing a fresh same-name FullHistory replacement, with optional approved-release restoration from the preserved archive. |
 | `Invoke-CgrSameNameSnapshotReplacement` | **Inline tier.** Preserves the source as an archive before publishing a fresh same-name Snapshot replacement. |
 | `Invoke-CgrWithActivitySink` | Scopes activity event delivery to the current operation without global presentation coupling. |
 | `New-CgrGitHubRepository` | Creates an empty destination repository after the public safety boundary has approved mutation. |
-| `New-CgrMigrationPlan` | **Inline tier.** Creates the immutable reviewed plan, source-state evidence, replacement mode, and ordered safety steps without performing migration mutation. |
+| `New-CgrMigrationPlan` | **Inline tier.** Creates the immutable reviewed plan, source-state evidence, optional approved-release selection, replacement mode, and ordered safety steps without performing migration mutation. |
 | `New-CgrWizardActivitySink` | Creates the wizard activity adapter used to render structured progress events. |
 | `Protect-CgrDiagnosticText` | Redacts or normalizes sensitive diagnostic text before presentation or persistence. |
 | `Read-CgrWizardChoice` | Reads a bounded menu choice with default/help/navigation behavior suitable for mocked tests. |
@@ -95,6 +97,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Show-CgrWizardHelp` | Displays contextual help and returns control to the originating prompt. |
 | `Test-CgrConsoleStylingAvailable` | Detects whether optional styling can be used without making color a correctness dependency. |
 | `Test-CgrExpectedWizardApplicationError` | Distinguishes expected application errors from unexpected implementation failures for user-facing presentation. |
+| `Test-CgrGitHubReleaseMigration` | Performs read-only current source-versus-destination verification for a selected FullHistory GitHub Release set, including tag commit identity, supported metadata/assets, and Latest designation when selected. |
 | `Test-CgrGitHubRepositoryExistence` | Checks repository existence while preserving the distinction between not-found and API failure. |
 | `Test-CgrInteractiveTerminal` | Detects whether interactive wizard operation is appropriate in the current host. |
 | `Write-CgrExistingDestinationRecoveryReport` | Persists recovery evidence for partial existing-destination replacement. |
@@ -129,6 +132,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `uninstall.ps1` | Discovers installed copies, obtains confirmation as needed, and removes only selected module installations. |
 | `tests/e2e/Invoke-CleanSnapshotDemonstration.ps1` | Creates disposable repositories to demonstrate clean Snapshot publication; this is a demonstration, not part of the E2E test taxonomy. |
 | `tests/e2e/Invoke-FullHistoryEndToEndTests.ps1` | Exercises a live FullHistory copy against disposable GitHub repositories. |
+| `tests/e2e/Invoke-GitHubReleaseEndToEndTests.ps1` | Exercises filtered FullHistory GitHub Release restoration against disposable repositories, including assets, Latest designation, ordinary tag-target preservation, and independent post-migration release verification. |
 | `tests/e2e/Invoke-GitLfsEndToEndTests.ps1` | Exercises live Git LFS transfer behavior. |
 | `tests/e2e/Invoke-RecoveryEndToEndTests.ps1` | Exercises live failure/recovery evidence paths. |
 | `tests/e2e/Invoke-RepositorySettingsEndToEndTests.ps1` | Exercises live supported-settings restoration. |

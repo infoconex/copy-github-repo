@@ -1,6 +1,6 @@
 ---
 title: "How to Copy or Migrate a GitHub Repository"
-description: "Learn how to copy or migrate a GitHub repository with PowerShell using Snapshot for a clean copy without history or FullHistory to preserve commits, branches, tags, and Git LFS."
+description: "Learn how to copy or migrate a GitHub repository with PowerShell using Snapshot for a clean copy without history or FullHistory to preserve commits, branches, tags, Git LFS, and optionally selected GitHub Releases."
 ---
 
 # User guide: capabilities and common scenarios
@@ -15,9 +15,9 @@ A typical user journey is:
 
 1. **Choose the outcome.** Use `Snapshot` for a clean publication whose Git history begins with one unrelated root commit, or `FullHistory` when ordinary Git history must be preserved.
 2. **Install and authenticate.** Install the stable module from PowerShell Gallery, then authenticate GitHub CLI for `github.com`.
-3. **Preview before mutation.** Use the guided wizard or `Copy-GitHubRepository -PlanOnly` to review the source, destination, mode, visibility, settings choices, immutable source-state evidence, and any replacement/archive plan.
+3. **Preview before mutation.** Use the guided wizard or `Copy-GitHubRepository -PlanOnly` to review the source, destination, mode, visibility, settings choices, immutable source-state evidence, selected GitHub Releases when requested, and any replacement/archive plan.
 4. **Execute deliberately.** Replacement operations require the safety acknowledgements and exact confirmation defined by the product contract.
-5. **Verify the result.** Successful execution verifies content before reporting success and returns structured evidence. `Test-GitHubRepositoryMigration` is available for a separate current-state comparison.
+5. **Verify the result.** Successful execution verifies content before reporting success and returns structured evidence. Requested FullHistory release restoration also verifies selected release/tag/asset parity. `Test-GitHubRepositoryMigration` is available for a separate current-state comparison.
 6. **Preserve evidence if something fails.** If mutation has started, do not assume rollback occurred. The tool preserves repositories and writes recovery evidence when possible; use the [troubleshooting and recovery guide](troubleshooting-recovery.md) for diagnosis and recovery.
 
 For normal stable installation, use PowerShell Gallery:
@@ -55,14 +55,15 @@ Copy-GitHubRepository `
 | Preserve ordinary tags | No | **Yes** |
 | Preserve signed historical commits / blame history | No | **Yes, as part of preserved Git history** |
 | Preserve required Git LFS content | Yes, for LFS objects required by the approved Snapshot tree | Yes, for reachable LFS objects required by the copied history |
-| Restore supported repository settings | Yes, after content verification unless skipped | Yes, after content verification unless skipped |
+| Preserve selected GitHub Releases and assets | No | **Yes, with `-IncludeReleases`** |
+| Restore supported repository settings | Yes, after content verification unless skipped | Yes, after content/release verification unless skipped |
 | Restore transferable repository protection | Yes, as the final restoration stage unless skipped | Yes, as the final restoration stage unless skipped |
 
 If preserving ancestry, branches, or tags matters, choose `FullHistory`. If the goal is to publish the current state without the development history, choose `Snapshot`.
 
 ## What gets copied?
 
-This matrix is the user-facing support summary for the current `0.1.x` release line. The product contract remains authoritative if a detail requires normative interpretation.
+This matrix is the user-facing support summary for the current release line. The product contract remains authoritative if a detail requires normative interpretation.
 
 | GitHub state | Snapshot | FullHistory | Notes |
 | --- | --- | --- | --- |
@@ -80,20 +81,57 @@ This matrix is the user-facing support summary for the current `0.1.x` release l
 | Topics | **Restored** | **Restored** | Supported ordinary repository setting. |
 | Transferable repository-level rulesets | **Restored when safely transferable** | **Restored when safely transferable** | Security semantics are not weakened merely to make policy portable. |
 | Transferable legacy default-branch protection | **Restored when safely transferable** | **Restored when safely transferable** | Non-transferable/inherited/identity-bound policy is reported as skipped/unsupported. |
-| Pull requests | **Not copied** | **Not copied** | Historical/operational GitHub records are outside the current `0.1.x` scope. |
+| Pull requests | **Not copied** | **Not copied** | Historical/operational GitHub records remain outside the current scope. |
 | Issues and issue history | **Not copied** | **Not copied** | Only the Issues enabled/disabled setting can be restored. |
 | Discussion content/history | **Not copied** | **Not copied** | Only the Discussions enabled/disabled setting can be restored. |
-| GitHub Releases / release history | **Not copied** | **Not copied** | Git tags may be preserved in FullHistory; GitHub Release objects are separate and not copied. |
-| GitHub Actions configuration/activation | **Not restored** | **Not restored** | `-EnableActionsAfterMigration` is not implemented for mutating execution in the current `0.1.x` release line. Workflow files are ordinary repository files when present in copied Git content, but Actions activation/configuration/history is not restored. |
+| GitHub Releases / release history | **Not copied** | **Optional** | `-IncludeReleases` recreates the exact approved release selection and assets against preserved FullHistory tags. Stable non-draft releases are selected by default; filters can narrow or expand the set. |
+| GitHub Actions configuration/activation | **Not restored** | **Not restored** | Workflow files are ordinary repository files when present in copied Git content, but Actions activation/configuration/history is not restored. |
 | GitHub Actions workflow-run history | **Not copied** | **Not copied** | Historical operational state is outside scope. |
-| GitHub Pages configuration | **Not restored** | **Not restored** | `-RestorePages` is not implemented for mutating execution in the current `0.1.x` release line. |
+| GitHub Pages configuration | **Not restored** | **Not restored** | `-RestorePages` remains reserved and mutating execution rejects it. |
 | Secret values | **Never copied or requested** | **Never copied or requested** | Secret values are deliberately excluded. |
-| Webhooks / deploy keys / environments | **Not copied** | **Not copied** | Outside the current `0.1.x` restoration scope. |
-| Collaborator/team access | **Not copied** | **Not copied** | Outside the current `0.1.x` restoration scope. |
-| Packages / deployments | **Not copied** | **Not copied** | Outside the current `0.1.x` restoration scope. |
+| Webhooks / deploy keys / environments | **Not copied** | **Not copied** | Outside the current restoration scope. |
+| Collaborator/team access | **Not copied** | **Not copied** | Outside the current restoration scope. |
+| Packages / deployments | **Not copied** | **Not copied** | Outside the current restoration scope. |
 | Stars / watchers / forks / traffic history | **Not copied** | **Not copied** | Historical/operational GitHub state is outside scope. |
 
-`-SkipSettings` skips both ordinary settings and repository-protection restoration.
+`-SkipSettings` skips ordinary settings and repository-protection restoration. It does not suppress requested GitHub Release restoration.
+
+## GitHub Release selection in FullHistory
+
+GitHub Releases are separate from ordinary Git tags. FullHistory always preserves ordinary Git tags. `-IncludeReleases` controls which GitHub Release objects and assets are recreated against those preserved tags.
+
+A simple FullHistory migration with all stable, non-draft releases is:
+
+```powershell
+Copy-GitHubRepository `
+    -SourceRepository owner/source `
+    -DestinationRepository owner/destination `
+    -ContentMode FullHistory `
+    -IncludeReleases
+```
+
+Useful filters include:
+
+```powershell
+# Only v2 releases
+-ReleaseTag 'v2.*'
+
+# Specific releases
+-ReleaseTag 'v1.5.0','v2.0.0'
+
+# Exclude matching tags
+-ReleaseExcludeTag '*-legacy'
+
+# Include prereleases and drafts
+-IncludePrerelease -IncludeDraftReleases
+
+# Keep only the newest three after filtering
+-ReleaseCount 3
+```
+
+Planning enumerates the source releases and records the exact selected release inventory, release metadata, tag target commit SHAs, and asset metadata. Execution does not rerun the filter as a live query. A release published after planning does not silently join the migration. If one of the selected releases changes or disappears after planning, execution fails closed and requires a new plan.
+
+Release restoration runs only after FullHistory content verification succeeds. Each destination release tag must still resolve to the exact approved commit SHA. Existing destination releases are not silently overwritten. Release names, bodies, draft/prerelease state, and assets are recreated where GitHub permits it; destination metadata and assets are read back and verified. GitHub-assigned release IDs, original timestamps, and historical download counts cannot be recreated exactly.
 
 ## Common scenarios
 
@@ -122,7 +160,8 @@ Expected outcome:
 - approved ordinary branches/tags/reachable commits and default branch are copied;
 - required reachable Git LFS objects are transferred;
 - copied history and branch/tag identities are verified against the approved state;
-- supported settings/protection are restored after content verification unless skipped.
+- when `-IncludeReleases` is requested, the exact approved GitHub Release selection and assets are restored only after FullHistory verification;
+- supported settings/protection are restored after content/release verification unless skipped.
 
 ### Replace an existing different destination
 
@@ -138,42 +177,47 @@ Use same-name replacement when the source's current `owner/name` must ultimately
 
 The original repository is first preserved under an unused archive name. Where GitHub immutable repository identity is available, the archived repository must retain the approved original identity and the replacement must receive a distinct identity before content publication proceeds.
 
+For FullHistory release migration, the archived original becomes the source from which the approved release metadata/assets are restored. Its selected releases must still match the plan before restoration proceeds.
+
 This is intentionally a high-friction flow: exact confirmation is required and cannot be bypassed with `-Force` or `-Confirm:$false`.
 
 ### Preview without mutation
 
 Use `-PlanOnly` when you want the full repository copy plan and approved source-state evidence without executing it. Use `-WhatIf` to exercise the PowerShell `ShouldProcess` preview boundary. These correspond to `SCN-PLAN-NOOP-01`.
 
-Neither path should create, rename, publish, delete, or restore GitHub resources.
+Neither path should create, rename, publish, delete, restore releases, or restore GitHub resources.
 
 ### Run non-interactively
 
 Use `Copy-GitHubRepository` for automation rather than the interactive wizard. This corresponds to `UC-AUTO-01`.
 
-Automation must supply complete inputs and the safety acknowledgements required by the selected operation. `-NonInteractive` does not weaken replacement confirmation, source-state validation, or verification requirements. Successful execution returns structured result/evidence suitable for downstream automation.
+Automation must supply complete inputs and the safety acknowledgements required by the selected operation. `-NonInteractive` does not weaken replacement confirmation, source-state validation, release-state validation, or verification requirements. Successful execution returns structured result/evidence suitable for downstream automation.
 
 ### Verify independently
 
 Use `Test-GitHubRepositoryMigration` when you want a read-only comparison of the **current** source and destination repository states outside an execution plan. This corresponds to `UC-VERIFY-01`.
 
-This is different from execution-integrated verification, which compares the destination against the approved/copied evidence captured for the operation rather than assuming the source has remained unchanged afterward.
+This is different from execution-integrated verification, which compares the destination against the approved/copied evidence captured for the operation rather than assuming the source has remained unchanged afterward. Independent GitHub Release verification is not yet part of this command surface; release verification currently occurs in the FullHistory execution path when `-IncludeReleases` is requested.
 
 ## What happens when the source changes after planning?
 
-Execution re-checks the source immediately before the first GitHub mutation. If the approved state has drifted, the plan is stale and execution fails closed before destination creation or rename proceeds from that plan. Generate and review a new plan instead of trying to force the old one through.
+Execution re-checks the source immediately before the first GitHub mutation. If the approved Git state has drifted, the plan is stale and execution fails closed before destination creation or rename proceeds from that plan. Generate and review a new plan instead of trying to force the old one through.
 
-The wizard follows the same rule: if a reviewed plan becomes stale, it returns to plan generation and requires review of the newly captured state.
+Selected GitHub Releases are also bound to their approved plan evidence. Because release restoration occurs later in execution, selected release metadata/tag targets/assets are revalidated immediately before restoration. If a selected release changed after planning, release restoration fails closed and recovery evidence identifies the failure stage. A newly published release that was never selected by the approved plan is ignored rather than silently added.
+
+The wizard follows the same Git-state rule: if a reviewed plan becomes stale, it returns to plan generation and requires review of the newly captured state.
 
 ## What happens after a partial failure?
 
-A failure after mutation begins is not treated as if nothing happened. Depending on the stage reached, a destination or archive may already exist and content may already have been published.
+A failure after mutation begins is not treated as if nothing happened. Depending on the stage reached, a destination or archive may already exist and content or releases may already have been published.
 
 The product's recovery principle is preservation over automatic rollback:
 
 - repositories are not automatically deleted;
 - archives are not automatically renamed back;
+- destination releases already restored before a later release-stage failure are not automatically deleted;
 - completed and failed stages are captured in durable recovery evidence when possible;
-- known original/archive/replacement identities and available planned/copied content evidence are retained for diagnosis.
+- known original/archive/replacement identities and available planned/copied content/release evidence are retained for diagnosis.
 
 See the [troubleshooting and recovery guide](troubleshooting-recovery.md) for step-by-step recovery actions.
 

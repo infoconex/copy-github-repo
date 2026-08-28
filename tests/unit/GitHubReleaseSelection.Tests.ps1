@@ -102,6 +102,17 @@ Describe 'GitHub Release selection' {
         }
     }
 
+    It 'returns an empty approved inventory when filters select no releases' {
+        InModuleScope CopyGitHubRepo {
+            $repository = [pscustomobject] @{ FullName = 'acme/widget' }
+            $result = Get-CgrGitHubReleaseSelection -Repository $repository -ReleaseTag 'v9.*'
+
+            $result.AvailableReleaseCount | Should -Be 4
+            $result.SelectedReleaseCount | Should -Be 0
+            @($result.Releases).Count | Should -Be 0
+        }
+    }
+
     It 'fails closed when a selected release tag cannot resolve to a commit' {
         InModuleScope CopyGitHubRepo {
             Mock Invoke-CgrNativeCommand {

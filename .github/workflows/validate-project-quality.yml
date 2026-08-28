@@ -111,22 +111,22 @@ jobs:
       - name: Unit tests
         if: ${{ needs.scope.outputs.run-quality == 'true' }}
         shell: pwsh
-        run: ./build/Test-Project.ps1 -Category Unit -SkipAnalysis
+        run: ./build/Test-Project.ps1 -Category Unit -SkipAnalysis -CollectCoverage
 
       - name: Integration tests
         if: ${{ needs.scope.outputs.run-quality == 'true' }}
         shell: pwsh
-        run: ./build/Test-Project.ps1 -Category Integration -SkipAnalysis
+        run: ./build/Test-Project.ps1 -Category Integration -SkipAnalysis -CollectCoverage
 
       - name: Contract tests
         if: ${{ needs.scope.outputs.run-quality == 'true' }}
         shell: pwsh
-        run: ./build/Test-Project.ps1 -Category Contract -SkipAnalysis
+        run: ./build/Test-Project.ps1 -Category Contract -SkipAnalysis -CollectCoverage
 
       - name: Code coverage
         if: ${{ needs.scope.outputs.run-quality == 'true' }}
         shell: pwsh
-        run: ./build/Test-Project.ps1 -CoverageOnly -SkipAnalysis
+        run: ./build/Test-Project.ps1 -CoverageOnly
 
       - name: Build and validate PowerShell Gallery package
         if: ${{ needs.scope.outputs.run-quality == 'true' }}

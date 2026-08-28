@@ -63,7 +63,7 @@ jobs:
     name: Validate PowerShell (windows-latest)
     needs: scope
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Record documentation-only validation
@@ -103,10 +103,30 @@ jobs:
         shell: pwsh
         run: ./build/Install-DevelopmentDependencies.ps1
 
-      - name: Validate project quality
+      - name: Static analysis
         if: ${{ needs.scope.outputs.run-quality == 'true' }}
         shell: pwsh
-        run: ./build/Test-Project.ps1
+        run: ./build/Test-Project.ps1 -AnalysisOnly
+
+      - name: Unit tests
+        if: ${{ needs.scope.outputs.run-quality == 'true' }}
+        shell: pwsh
+        run: ./build/Test-Project.ps1 -Category Unit -SkipAnalysis
+
+      - name: Integration tests
+        if: ${{ needs.scope.outputs.run-quality == 'true' }}
+        shell: pwsh
+        run: ./build/Test-Project.ps1 -Category Integration -SkipAnalysis
+
+      - name: Contract tests
+        if: ${{ needs.scope.outputs.run-quality == 'true' }}
+        shell: pwsh
+        run: ./build/Test-Project.ps1 -Category Contract -SkipAnalysis
+
+      - name: Code coverage
+        if: ${{ needs.scope.outputs.run-quality == 'true' }}
+        shell: pwsh
+        run: ./build/Test-Project.ps1 -CoverageOnly -SkipAnalysis
 
       - name: Build and validate PowerShell Gallery package
         if: ${{ needs.scope.outputs.run-quality == 'true' }}
@@ -164,9 +184,17 @@ jobs:
         shell: pwsh
         run: ./build/Install-DevelopmentDependencies.ps1
 
-      - name: Validate project quality
+      - name: Unit tests
         shell: pwsh
-        run: ./build/Test-Project.ps1
+        run: ./build/Test-Project.ps1 -Category Unit -SkipAnalysis
+
+      - name: Integration tests
+        shell: pwsh
+        run: ./build/Test-Project.ps1 -Category Integration -SkipAnalysis
+
+      - name: Contract tests
+        shell: pwsh
+        run: ./build/Test-Project.ps1 -Category Contract -SkipAnalysis
 
       - name: Build and validate PowerShell Gallery package
         shell: pwsh

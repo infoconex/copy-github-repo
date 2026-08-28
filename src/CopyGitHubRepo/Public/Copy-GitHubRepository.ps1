@@ -10,10 +10,12 @@ function Copy-GitHubRepository {
     explicit and preserves the approved branches, tags, commits, and reachable
     Git LFS objects.
 
-    FullHistory can optionally preserve selected GitHub Releases and their assets.
+    FullHistory can optionally plan selected GitHub Releases and their assets.
     Release selection is stable/non-draft by default and can be narrowed with tag
     include/exclude patterns or a newest-N limit. Prereleases and draft releases
     require explicit opt-in. Snapshot release preservation is not implemented yet.
+    Until the release execution path is wired to the approved release inventory,
+    mutating execution with -IncludeReleases fails closed after planning.
 
     Planning captures immutable source-state evidence. Execution uses that same
     plan and fails closed with SourceStateChangedSincePlanning if the source no
@@ -155,9 +157,9 @@ function Copy-GitHubRepository {
     Copies and verifies the approved history-preserving branch/tag/ref state.
 
     .EXAMPLE
-    Copy-GitHubRepository -SourceRepository infoconex/source -DestinationRepository infoconex/destination -ContentMode FullHistory -IncludeReleases -ReleaseTag 'v2.*' -ReleaseCount 3
+    Copy-GitHubRepository -SourceRepository infoconex/source -DestinationRepository infoconex/destination -ContentMode FullHistory -IncludeReleases -ReleaseTag 'v2.*' -ReleaseCount 3 -PlanOnly
 
-    Copies FullHistory and selects the three newest stable non-draft GitHub Releases
+    Plans FullHistory and selects the three newest stable non-draft GitHub Releases
     whose tags match v2.* for preservation.
 
     .INPUTS
@@ -309,6 +311,13 @@ function Copy-GitHubRepository {
         if ($OutputMode -eq 'Json') { return Format-CgrMigrationPlan -Plan $plan -Format Json }
         if ($OutputMode -eq 'Plain') { return Format-CgrMigrationPlan -Plan $plan -Format Markdown }
         return $plan
+    }
+
+    if ($IncludeReleases) {
+        $message = 'GitHub Release execution is being implemented on this feature branch. Use -PlanOnly to review the approved release selection until execution is wired to that inventory.'
+        $exception = [System.NotSupportedException]::new($message)
+        $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'GitHubReleaseExecutionNotImplemented', [System.Management.Automation.ErrorCategory]::NotImplemented, 'IncludeReleases')
+        $PSCmdlet.ThrowTerminatingError($errorRecord)
     }
 
     if ($RestorePages) {

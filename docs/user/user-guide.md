@@ -17,7 +17,7 @@ A typical user journey is:
 2. **Install and authenticate.** Install the stable module from PowerShell Gallery, then authenticate GitHub CLI for `github.com`.
 3. **Preview before mutation.** Use the guided wizard or `Copy-GitHubRepository -PlanOnly` to review the source, destination, mode, visibility, settings choices, immutable source-state evidence, selected GitHub Releases when requested, and any replacement/archive plan.
 4. **Execute deliberately.** Replacement operations require the safety acknowledgements and exact confirmation defined by the product contract.
-5. **Verify the result.** Successful execution verifies content before reporting success and returns structured evidence. Requested FullHistory release restoration also verifies selected release/tag/asset parity. `Test-GitHubRepositoryMigration` is available for a separate current-state comparison.
+5. **Verify the result.** Successful execution verifies content before reporting success and returns structured evidence. Requested FullHistory release restoration also verifies selected release/tag/asset parity. `Test-GitHubRepositoryMigration` is available for a separate current-state comparison, including optional FullHistory GitHub Release verification.
 6. **Preserve evidence if something fails.** If mutation has started, do not assume rollback occurred. The tool preserves repositories and writes recovery evidence when possible; use the [troubleshooting and recovery guide](troubleshooting-recovery.md) for diagnosis and recovery.
 
 For normal stable installation, use PowerShell Gallery:
@@ -129,9 +129,9 @@ Useful filters include:
 -ReleaseCount 3
 ```
 
-Planning enumerates the source releases and records the exact selected release inventory, release metadata, tag target commit SHAs, and asset metadata. Execution does not rerun the filter as a live query. A release published after planning does not silently join the migration. If one of the selected releases changes or disappears after planning, execution fails closed and requires a new plan.
+Planning enumerates the source releases and records the exact selected release inventory, release metadata, tag target commit SHAs, whether a selected release is the source repository's Latest full release, and asset metadata. Execution does not rerun the filter as a live query. A release published after planning does not silently join the migration. If one of the selected releases changes or disappears after planning, execution fails closed and requires a new plan.
 
-Release restoration runs only after FullHistory content verification succeeds. Each destination release tag must still resolve to the exact approved commit SHA. Existing destination releases are not silently overwritten. Release names, bodies, draft/prerelease state, and assets are recreated where GitHub permits it; destination metadata and assets are read back and verified. GitHub-assigned release IDs, original timestamps, and historical download counts cannot be recreated exactly.
+Release restoration runs only after FullHistory content verification succeeds. Each destination release tag must still resolve to the exact approved commit SHA. Existing destination releases are not silently overwritten. Release names, bodies, draft/prerelease state, and assets are recreated where GitHub permits it; destination metadata and assets are read back and verified. If the source Latest release is selected, that Latest designation is also preserved and verified. GitHub-assigned release IDs, original timestamps, historical download counts, release immutability state, and linked release discussions are not recreated exactly.
 
 ## Common scenarios
 
@@ -197,7 +197,9 @@ Automation must supply complete inputs and the safety acknowledgements required 
 
 Use `Test-GitHubRepositoryMigration` when you want a read-only comparison of the **current** source and destination repository states outside an execution plan. This corresponds to `UC-VERIFY-01`.
 
-This is different from execution-integrated verification, which compares the destination against the approved/copied evidence captured for the operation rather than assuming the source has remained unchanged afterward. Independent GitHub Release verification is not yet part of this command surface; release verification currently occurs in the FullHistory execution path when `-IncludeReleases` is requested.
+For a FullHistory migration that included releases, use `-IncludeReleases` and the same selection filters to compare the currently selected source releases against the destination. The standalone check verifies release tag commit identity, supported release metadata/assets, and the Latest designation when the current source Latest release is selected. Its overall `IsSuccessful` value requires both the ordinary FullHistory Git/LFS checks and requested release checks to pass.
+
+This is different from execution-integrated verification, which compares the destination against the immutable approved/copied evidence captured for the operation. Standalone verification does not receive that original plan, so it verifies current source-versus-destination equivalence rather than proving the source release state has remained unchanged since migration. Extra destination releases outside the selected current source set do not cause failure.
 
 ## What happens when the source changes after planning?
 

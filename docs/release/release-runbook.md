@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Release and Deployment Runbook"
+description: "Follow the CopyGitHubRepo maintainer runbook for approved release candidates, stable tags, package publication, GitHub Releases, PowerShell Gallery, integrity evidence, post-publication verification, Pages deployment, and recovery."
+---
+
 # Release and deployment runbook
 
 This runbook is the ordered maintainer procedure for releasing Copy GitHub Repository. It owns **how** an already-approved release candidate is tagged, packaged, distributed, verified, and recovered. It does not decide **whether** a candidate is ready; that decision is authoritative in [`release-readiness.md`](release-readiness.md).

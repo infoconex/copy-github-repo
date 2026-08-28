@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Non-Functional Requirements and Resilience Boundaries"
+description: "Review CopyGitHubRepo operational requirements for scale, disk and memory, API retries, native-command timeout and cancellation, interruption, concurrency, recovery, and cross-platform behavior."
+---
+
 # Non-functional requirements and operational boundaries
 
 This document defines the current non-functional and resilience contract for Copy GitHub Repository. It complements [`product-contract.md`](product-contract.md), which remains authoritative for normative product behavior, and [`troubleshooting-recovery.md`](../user/troubleshooting-recovery.md), which remains authoritative for operator recovery.

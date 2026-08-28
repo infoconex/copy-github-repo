@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Versioning and Releases – Semantic Versioning Policy"
+description: "Understand CopyGitHubRepo Semantic Versioning, stable tag rules, release-readiness validation, tagged-commit quality gates, PowerShell Gallery publication, release immutability, prereleases, signing, and installer trust."
+---
+
 # Versioning and releases
 
 Copy GitHub Repository follows Semantic Versioning 2.0.0. Version `0.1.0` is the initial stable release.

@@ -1,3 +1,8 @@
+---
+title: "PowerShell Wizard Navigation and Keyboard Controls | CopyGitHubRepo"
+description: "Review CopyGitHubRepo wizard navigation, paging, filtering, contextual help, Back and Cancel behavior, default values, and keyboard-friendly repository selection."
+---
+
 # Wizard navigation
 
 The guided wizard advertises every available navigation action directly in the prompt. Bracketed hints are presentation-only and use the same subdued styling as other secondary guidance.

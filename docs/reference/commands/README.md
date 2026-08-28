@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo PowerShell Command Reference"
+description: "Choose and use the four CopyGitHubRepo PowerShell commands for guided repository copying, scripted migration, repository discovery, and migration verification."
+---
+
 # Command reference
 
 This directory is the user-facing reference for the four exported `CopyGitHubRepo` commands. For implementation architecture and engineering contracts, see the deeper documents linked from each command page.

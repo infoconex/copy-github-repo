@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo User Documentation – Plan, Copy, Verify, Recover"
+description: "User and operator documentation for installing CopyGitHubRepo, planning and executing GitHub repository copies, verifying results, and recovering safely from failures."
+---
+
 # Use the Product
 
 User and operator guidance for installing, planning, executing, verifying, and recovering repository copies.

@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Accessibility Baseline – Console and Documentation"
+description: "Review CopyGitHubRepo accessibility expectations for PowerShell console output, keyboard interaction, GitHub Pages semantics, focus, reduced motion, images, diagrams, and manual review."
+---
+
 # Accessibility baseline
 
 This document defines the repository-owned accessibility expectations for Copy GitHub Repository across the PowerShell console experience and the published documentation site. It is a product and contribution baseline, not a certification or claim of conformance to a regulatory or accessibility standard.

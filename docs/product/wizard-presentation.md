@@ -1,3 +1,8 @@
+---
+title: "PowerShell Wizard Presentation and Accessibility | CopyGitHubRepo"
+description: "Understand CopyGitHubRepo wizard styling, semantic status presentation, NO_COLOR and redirected-output fallbacks, completion summaries, and structured-output separation."
+---
+
 # Wizard presentation contract
 
 The guided repository-copy wizard is a presentation/orchestration layer over the deterministic public commands. Presentation must never change migration semantics or add terminal decoration to structured command results.

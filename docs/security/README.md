@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Security and Software Assurance Documentation"
+description: "Security and assurance documentation for CopyGitHubRepo covering threat architecture, installation trust, vulnerability applicability, repository controls, dependencies, SBOMs, and release evidence."
+---
+
 # Security and Assurance
 
 Security architecture, installation trust, vulnerability applicability, repository controls, dependency monitoring, release provenance, and assurance evidence.

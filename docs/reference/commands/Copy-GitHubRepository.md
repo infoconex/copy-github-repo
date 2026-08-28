@@ -1,3 +1,8 @@
+---
+title: "Copy-GitHubRepository – Copy or Migrate GitHub Repositories"
+description: "Use Copy-GitHubRepository to safely copy or migrate GitHub repositories with clean Snapshot or history-preserving FullHistory modes, planning, verification, and replacement safeguards."
+---
+
 # Copy-GitHubRepository
 
 Plans or executes a safe GitHub repository copy/publication. `Snapshot` is the default **clean current-state publication** mode; `FullHistory` is the explicit history-preserving alternative. The command is the deterministic API used directly by scripts and indirectly by the guided wizard.

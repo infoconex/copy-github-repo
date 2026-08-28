@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Quality Strategy – Test and Release Evidence"
+description: "Understand CopyGitHubRepo quality strategy, test taxonomy, traceability, coverage, live E2E evidence, resilience validation, and release-candidate evidence requirements."
+---
+
 # Quality strategy and traceability
 
 This document is the authoritative quality strategy for Copy GitHub Repository. It explains how product requirements and behavioral scenarios are evidenced by automated tests, live end-to-end capability, and release-specific validation.

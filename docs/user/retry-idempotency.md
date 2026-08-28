@@ -1,3 +1,8 @@
+---
+title: "Retry and Idempotency for GitHub Repository Copies | CopyGitHubRepo"
+description: "Learn when CopyGitHubRepo operations can be safely retried, how stale plans and partial mutations are handled, and why repository-copy mutations are not blindly replayed."
+---
+
 # Retry and idempotency
 
 This document defines the operator and product contract for repeating repository-copy operations after failure, cancellation, interruption, or partial mutation.

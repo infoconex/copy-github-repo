@@ -1,3 +1,8 @@
+---
+title: "Get-GitHubRepository – Find and Inspect GitHub Repositories"
+description: "Use Get-GitHubRepository to find or inspect GitHub repositories and return structured metadata without changing repository state."
+---
+
 # Get-GitHubRepository
 
 Returns structured GitHub repository metadata. The command is read-only.

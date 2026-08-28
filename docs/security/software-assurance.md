@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Software Assurance Review Package"
+description: "Use the CopyGitHubRepo software assurance review package to assess product scope, licensing, dependencies, permissions, network use, data handling, security controls, release provenance, support, and approval evidence."
+---
+
 # Software assurance review package
 
 This page is the organizational review entry point for Copy GitHub Repository. It is designed for Governance / Compliance, security, architecture, quality, and release reviewers who need one place to begin an approval decision without creating a second copy of the project's authoritative engineering contracts.

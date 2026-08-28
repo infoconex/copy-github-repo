@@ -1,3 +1,8 @@
+---
+title: "Copy GitHub Repository Documentation"
+description: "Browse user guides, PowerShell command reference, product architecture, security, engineering, and release documentation for Copy GitHub Repository."
+---
+
 # Documentation
 
 Copy GitHub Repository documentation is organized by durable subject areas. Each folder has its own `README.md` that serves as the table of contents for that topic.

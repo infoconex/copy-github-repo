@@ -1,3 +1,8 @@
+---
+title: "Install CopyGitHubRepo – PowerShell Gallery, Checksums, and Provenance"
+description: "Install CopyGitHubRepo from PowerShell Gallery or a verified GitHub Release, compare trust paths, validate checksums and attestations, and uninstall safely."
+---
+
 # Installation security
 
 Copy GitHub Repository has a primary stable PowerShell Gallery installation path plus repository-hosted stable, pinned-artifact, and prerelease alternatives with different trust properties.

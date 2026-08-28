@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Scale Characterization – Repository Size and Resource Evidence"
+description: "Review CopyGitHubRepo repository scale and resource characterization for history, refs, content, Git LFS, temporary storage, performance observations, and release-readiness interpretation."
+---
+
 # Repository scale and resource characterization
 
 CopyGitHubRepo does not claim a hard maximum repository size, history depth, branch/tag count, Git LFS volume, memory limit, disk requirement, or completion-time SLA without repeatable evidence. This document defines how scale observations are collected and how they may be used in release decisions.

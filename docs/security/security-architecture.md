@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Security Architecture and Threat Model"
+description: "Review CopyGitHubRepo security objectives, protected assets, trust boundaries, threat model, controls, credentials, release provenance, dependency trust, static analysis, residual risk, and incident boundaries."
+---
+
 # Security architecture and threat model
 
 This document is the authoritative reviewer-facing security model for Copy GitHub Repository. It consolidates protected assets, trust assumptions, threat classes, controls, evidence, and residual risk without replacing the behavioral contract in [`product-contract.md`](../product/product-contract.md), the architecture in [`architecture.md`](../product/architecture.md), the quality evidence model in [`quality-strategy.md`](../engineering/quality-strategy.md), or the installation trust authority in [`installation-security.md`](installation-security.md).

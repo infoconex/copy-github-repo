@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Engineering and Maintainer Documentation"
+description: "Engineering and maintenance guidance for CopyGitHubRepo contributors and maintainers, including governance, quality, PowerShell standards, source documentation, scale, and API resilience."
+---
+
 # Engineering and Maintenance
 
 Contributor, maintainer, engineering-standard, quality, and documentation-governance guidance.

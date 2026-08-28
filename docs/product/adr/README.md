@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Architecture Decision Records"
+description: "Review the durable architecture decisions behind CopyGitHubRepo, including Snapshot defaults, immutable approved state, preservation-first recovery, execution boundaries, and host/protection policy."
+---
+
 # Architecture Decision Records
 
 Architecture Decision Records (ADRs) capture durable design choices whose rationale should survive implementation refactoring. They complement [`../architecture.md`](../architecture.md); they do not replace the product contract.

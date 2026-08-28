@@ -1,3 +1,8 @@
+---
+title: "CopyGitHubRepo Code of Conduct"
+description: "Community participation standards for contributing to CopyGitHubRepo, including respectful communication, unacceptable behavior, scope, and enforcement."
+---
+
 # Code of Conduct
 
 ## Our standard

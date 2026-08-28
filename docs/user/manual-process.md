@@ -1,3 +1,8 @@
+---
+title: "Copy a GitHub Repository Without History – Manual Snapshot Guide"
+description: "Create a clean GitHub repository from the current default branch with Git and GitHub CLI, using one unrelated root commit and no prior Git history."
+---
+
 # Manually Creating a Clean GitHub Repository Snapshot
 
 ## Purpose

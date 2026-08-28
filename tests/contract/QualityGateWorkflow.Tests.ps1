@@ -53,14 +53,40 @@ Describe 'Validate Project Quality workflow contract' {
         $script:workflow | Should -Match '(?ms)persist-credentials: false'
     }
 
-    It 'runs the same quality gate on all supported runner platforms when required' {
+    It 'runs categorized tests on all supported runner platforms when required' {
         foreach ($runner in @('windows-latest', 'ubuntu-latest', 'macos-latest')) {
             $script:workflow | Should -Match ([regex]::Escape($runner))
         }
 
         $script:workflow | Should -Match '(?m)^\s+fail-fast: false$'
         $script:workflow | Should -Match '(?m)^\s+run: \./build/Install-DevelopmentDependencies\.ps1$'
-        $script:workflow | Should -Match '(?m)^\s+run: \./build/Test-Project\.ps1$'
+        foreach ($category in @('Unit', 'Integration', 'Contract')) {
+            $script:workflow | Should -Match ("(?m)^\s+run: \./build/Test-Project\.ps1 -Category {0} -SkipAnalysis(?: -CollectCoverage)?$" -f $category)
+        }
         $script:workflow | Should -Match '(?m)^\s+name: Validate PowerShell \(\$\{\{ matrix\.os \}\}\)$'
+    }
+
+    It 'collects Windows coverage during categorized tests and aggregates without rerunning tests' {
+        foreach ($category in @('Unit', 'Integration', 'Contract')) {
+            $script:workflow | Should -Match ("(?m)^\s+run: \./build/Test-Project\.ps1 -Category {0} -SkipAnalysis -CollectCoverage$" -f $category)
+        }
+
+        $script:workflow | Should -Match '(?m)^\s+run: \./build/Test-Project\.ps1 -CoverageOnly$'
+        $script:workflow | Should -Not -Match '(?m)^\s+run: \./build/Test-Project\.ps1 -CoverageOnly -SkipAnalysis$'
+    }
+
+    It 'separates Windows static analysis, tests, coverage, and package validation into visible phases' {
+        foreach ($stepName in @(
+            'Static analysis',
+            'Unit tests',
+            'Integration tests',
+            'Contract tests',
+            'Code coverage',
+            'Build and validate PowerShell Gallery package'
+        )) {
+            $script:workflow | Should -Match ("(?m)^      - name: {0}$" -f [regex]::Escape($stepName))
+        }
+
+        $script:workflow | Should -Match '(?m)^\s+run: \./build/Test-Project\.ps1 -AnalysisOnly$'
     }
 }

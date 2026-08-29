@@ -26,7 +26,8 @@ function Format-CgrMigrationPlan {
         $lines.Add("| Content mode | $($Plan.ContentMode) |")
         $lines.Add("| Source visibility | $($Plan.SourceVisibility) |")
         $lines.Add("| Destination visibility | $($Plan.DestinationVisibility) |")
-        $lines.Add("| Include GitHub Releases | $([bool] $Plan.IncludeReleases) |")
+        $includeReleases = [bool] (Get-CgrObjectProperty -InputObject $Plan -Name 'IncludeReleases')
+        $lines.Add("| Include GitHub Releases | $includeReleases |")
         $lines.Add("| Restore Pages | $($Plan.RestorePages) |")
         $lines.Add("| Enable Actions after copy | $($Plan.EnableActionsAfterMigration) |")
         $lines.Add("| Skip settings | $($Plan.SkipSettings) |")
@@ -100,7 +101,7 @@ function Format-CgrMigrationPlan {
         }
 
         $releaseSelection = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseSelection'
-        if ($Plan.ContentMode -eq 'FullHistory' -and $Plan.IncludeReleases -and $releaseSelection) {
+        if ($Plan.ContentMode -eq 'FullHistory' -and $includeReleases -and $releaseSelection) {
             $lines.Add('')
             $lines.Add('## Approved GitHub Releases')
             $lines.Add('')

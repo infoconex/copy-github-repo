@@ -76,18 +76,33 @@ function Invoke-CgrSameNameFullHistoryReplacement {
 
         if ($includeReleases) {
             $failureStage = 'RestoreGitHubReleases'
-            $releases = Invoke-CgrActivityStage -Name 'RestoreGitHubReleases' -Message 'Restore approved GitHub Releases and assets' -Action {
-                Copy-CgrApprovedGitHubRelease `
-                    -SourceRepository $archive `
-                    -DestinationRepository $verifiedDestination `
-                    -ApprovedSelection $releaseSelection `
-                    -HostName $HostName
+            if (-not $verification.IsSuccessful) {
+                $releases = [pscustomobject] @{
+                    PSTypeName = 'CopyGitHubRepo.ReleaseMigrationResult'
+                    SourceRepository = $archive.FullName
+                    DestinationRepository = $verifiedDestination.FullName
+                    ApprovedReleaseCount = @($releaseSelection.Releases).Count
+                    DestinationReleaseCount = 0
+                    Releases = @()
+                    Unsupported = @()
+                    IsSuccessful = $false
+                    Status = 'FullHistoryVerificationFailed'
+                }
             }
-            $releases | Add-Member -NotePropertyName Status -NotePropertyValue 'Restored' -Force
+            else {
+                $releases = Invoke-CgrActivityStage -Name 'RestoreGitHubReleases' -Message 'Restore approved GitHub Releases and assets' -Action {
+                    Copy-CgrApprovedGitHubRelease `
+                        -SourceRepository $archive `
+                        -DestinationRepository $verifiedDestination `
+                        -ApprovedSelection $releaseSelection `
+                        -HostName $HostName
+                }
+                $releases | Add-Member -NotePropertyName Status -NotePropertyValue 'Restored' -Force
+            }
             $completedSteps.Add([pscustomobject] @{
                     Order = $completedSteps.Count + 1
                     Name = 'RestoreGitHubReleases'
-                    MutatedGitHub = $true
+                    MutatedGitHub = [bool] $verification.IsSuccessful
                     Verified = $releases.IsSuccessful
                 })
         }

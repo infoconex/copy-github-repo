@@ -145,13 +145,14 @@ try {
         -SkipSettings `
         -PlanOnly
 
+    $selectedReleases = @($plan.ReleaseSelection.Releases)
     if ($plan.ReleaseSelection.AvailableReleaseCount -ne 3) {
         throw "Expected 3 available source releases but found $($plan.ReleaseSelection.AvailableReleaseCount)."
     }
-    if ($plan.ReleaseSelection.SelectedReleaseCount -ne 1 -or $plan.ReleaseSelection.Releases[0].TagName -ne 'v1.1.0') {
+    if ($plan.ReleaseSelection.SelectedReleaseCount -ne 1 -or $selectedReleases.Count -ne 1 -or $selectedReleases[0].TagName -ne 'v1.1.0') {
         throw 'Release selection did not choose only the newest stable matching release v1.1.0.'
     }
-    if ($plan.ReleaseSelection.SourceLatestTag -ne 'v1.1.0' -or -not $plan.ReleaseSelection.SourceLatestSelected -or -not $plan.ReleaseSelection.Releases[0].IsLatest) {
+    if ($plan.ReleaseSelection.SourceLatestTag -ne 'v1.1.0' -or -not $plan.ReleaseSelection.SourceLatestSelected -or -not $selectedReleases[0].IsLatest) {
         throw 'Planning did not capture v1.1.0 as the selected source Latest release.'
     }
 
@@ -193,19 +194,20 @@ try {
     }
 
     $destinationReleaseList = @(Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', 'github.com', "repos/$destinationRepository/releases?per_page=100"))
-    $destinationReleases = (($destinationReleaseList -join "`n") | ConvertFrom-Json -Depth 50)
-    if (@($destinationReleases).Count -ne 1) {
-        throw "Expected exactly one GitHub Release at destination but found $(@($destinationReleases).Count)."
+    $destinationReleases = @(($destinationReleaseList -join "`n") | ConvertFrom-Json -Depth 50)
+    if ($destinationReleases.Count -ne 1) {
+        throw "Expected exactly one GitHub Release at destination but found $($destinationReleases.Count)."
     }
 
-    $destinationRelease = @($destinationReleases)[0]
+    $destinationRelease = $destinationReleases[0]
     if ([string] $destinationRelease.tag_name -ne 'v1.1.0') { throw "Unexpected destination release tag '$($destinationRelease.tag_name)'." }
     if ([string] $destinationRelease.name -ne 'Release 1.1.0') { throw 'Destination release title was not preserved.' }
     if ([string] $destinationRelease.body -ne 'Stable release 1.1.0') { throw 'Destination release notes were not preserved.' }
     if ([bool] $destinationRelease.prerelease) { throw 'Destination release was unexpectedly marked prerelease.' }
-    if (@($destinationRelease.assets).Count -ne 1) { throw 'Destination release asset count was not preserved.' }
-    if ([string] $destinationRelease.assets[0].name -ne 'v1.1.0.txt') { throw 'Destination release asset name was not preserved.' }
-    if ([string] $destinationRelease.assets[0].label -ne 'stable-110') { throw 'Destination release asset label was not preserved.' }
+    $destinationAssets = @($destinationRelease.assets)
+    if ($destinationAssets.Count -ne 1) { throw 'Destination release asset count was not preserved.' }
+    if ([string] $destinationAssets[0].name -ne 'v1.1.0.txt') { throw 'Destination release asset name was not preserved.' }
+    if ([string] $destinationAssets[0].label -ne 'stable-110') { throw 'Destination release asset label was not preserved.' }
 
     $destinationLatestJson = @(Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', 'github.com', "repos/$destinationRepository/releases/latest")) -join "`n"
     $destinationLatest = $destinationLatestJson | ConvertFrom-Json -Depth 50
@@ -214,8 +216,13 @@ try {
     }
 
     foreach ($tag in @('v1.0.0', 'v1.1.0-rc.1', 'v1.1.0')) {
-        $sourceSha = ([string] @(Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', 'github.com', "repos/$sourceRepository/commits/$tag", '--jq', '.sha'))[0]).Trim()
-        $destinationSha = ([string] @(Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', 'github.com', "repos/$destinationRepository/commits/$tag", '--jq', '.sha'))[0]).Trim()
+        $sourceShaOutput = @(Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', 'github.com', "repos/$sourceRepository/commits/$tag", '--jq', '.sha'))
+        $destinationShaOutput = @(Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', 'github.com', "repos/$destinationRepository/commits/$tag", '--jq', '.sha'))
+        if ($sourceShaOutput.Count -ne 1 -or $destinationShaOutput.Count -ne 1) {
+            throw "Expected one commit SHA response for tag '$tag' from both source and destination."
+        }
+        $sourceSha = ([string] $sourceShaOutput[0]).Trim()
+        $destinationSha = ([string] $destinationShaOutput[0]).Trim()
         if ($sourceSha -ne $destinationSha) {
             throw "FullHistory tag target mismatch for '$tag'. Source=$sourceSha Destination=$destinationSha"
         }
@@ -227,13 +234,13 @@ try {
         DestinationRepository = $destinationRepository
         AvailableSourceReleases = $plan.ReleaseSelection.AvailableReleaseCount
         SelectedSourceReleases = $plan.ReleaseSelection.SelectedReleaseCount
-        SelectedTag = $plan.ReleaseSelection.Releases[0].TagName
-        DestinationReleaseCount = @($destinationReleases).Count
-        AssetPreserved = $destinationRelease.assets[0].name -eq 'v1.1.0.txt'
+        SelectedTag = $selectedReleases[0].TagName
+        DestinationReleaseCount = $destinationReleases.Count
+        AssetPreserved = $destinationAssets[0].name -eq 'v1.1.0.txt'
         ReleaseMetadataPreserved = $destinationRelease.name -eq 'Release 1.1.0'
         LatestReleasePreserved = $destinationLatest.tag_name -eq 'v1.1.0'
         FullHistoryTagTargetsPreserved = $true
-        PrereleaseExcluded = $null -eq (@($destinationReleases | Where-Object prerelease)[0])
+        PrereleaseExcluded = @($destinationReleases | Where-Object prerelease).Count -eq 0
         ExecutionVerified = $result.IsVerified
         IndependentVerificationSucceeded = $independentVerification.IsSuccessful
     } | Format-List

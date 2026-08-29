@@ -148,6 +148,7 @@ Describe 'Approved GitHub Release execution' {
             $source = [pscustomobject] @{ FullName = 'acme/source' }
             $destination = [pscustomobject] @{ FullName = 'acme/destination' }
             $selection = [pscustomobject] @{ Releases = @() }
+            Mock Invoke-CgrNativeCommand { throw 'Native GitHub operations must not run for an empty approved selection.' }
 
             $result = Copy-CgrApprovedGitHubRelease -SourceRepository $source -DestinationRepository $destination -ApprovedSelection $selection
 

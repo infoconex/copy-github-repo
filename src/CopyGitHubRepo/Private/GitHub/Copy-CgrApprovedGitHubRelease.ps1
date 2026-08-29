@@ -139,11 +139,20 @@ function Copy-CgrApprovedGitHubRelease {
                 $PSCmdlet.ThrowTerminatingError($errorRecord)
             }
 
-            $existingRelease = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @('release', 'view', $tagName, '--repo', $DestinationRepository.FullName)
-            if ($existingRelease.ExitCode -eq 0) {
+            $existingReleaseResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @(
+                'api', '--hostname', $HostName,
+                "repos/$($DestinationRepository.FullName)/releases/tags/$escapedTag"
+            )
+            if ($existingReleaseResult.ExitCode -eq 0) {
                 $message = "Destination '$($DestinationRepository.FullName)' already contains a GitHub Release for tag '$tagName'. The tool will not overwrite it."
                 $exception = [System.InvalidOperationException]::new($message)
                 $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationGitHubReleaseAlreadyExists', [System.Management.Automation.ErrorCategory]::ResourceExists, $tagName)
+                $PSCmdlet.ThrowTerminatingError($errorRecord)
+            }
+            if ([string] $existingReleaseResult.ErrorText -notmatch '(?i)404|not found') {
+                $message = "Unable to determine whether destination '$($DestinationRepository.FullName)' already contains a GitHub Release for tag '$tagName'. Release creation was not attempted. $($existingReleaseResult.ErrorText)"
+                $exception = [System.InvalidOperationException]::new($message.Trim())
+                $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationGitHubReleaseReadFailed', [System.Management.Automation.ErrorCategory]::ReadError, $tagName)
                 $PSCmdlet.ThrowTerminatingError($errorRecord)
             }
 

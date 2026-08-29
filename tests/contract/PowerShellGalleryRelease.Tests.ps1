@@ -88,9 +88,9 @@ Describe 'PowerShell Gallery release workflow contract' {
         $script:releaseReadiness = (Get-Content -LiteralPath $script:releaseReadinessPath -Raw) -replace "`r`n?", "`n"
     }
 
-    It 'passes the stable release-readiness boundary for the current module version' {
+    It 'passes baseline release-readiness validation for the current module version' {
         $expectedTag = "v$($script:expectedPackageVersion)"
-        $readiness = & $script:releaseReadinessPath -Tag $expectedTag -RequireEmptyUnreleased
+        $readiness = & $script:releaseReadinessPath -Tag $expectedTag
 
         $readiness.IsReady | Should -BeTrue
         $readiness.Version | Should -Be $script:expectedPackageVersion

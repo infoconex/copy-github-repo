@@ -83,6 +83,69 @@ Describe 'FullHistory release orchestration' {
         }
     }
 
+    It 'does not restore same-name releases when FullHistory verification fails' {
+        InModuleScope CopyGitHubRepo {
+            $plan = [pscustomobject] @{
+                SourceRepository = 'acme/source'
+                SourceVisibility = 'private'
+                DestinationVisibility = 'private'
+                DestinationRepository = 'acme/source'
+                ArchiveRepository = 'acme/source-archive'
+                SourceState = [pscustomobject] @{ Refs = @(); ReachableCommitCount = 1 }
+                IncludeReleases = $true
+                ReleaseSelection = [pscustomobject] @{ Releases = @([pscustomobject] @{ TagName = 'v1.0.0' }) }
+                SkipSettings = $true
+                Protection = $null
+            }
+            $source = [pscustomobject] @{
+                FullName = 'acme/source'
+                HostName = 'github.com'
+                Id = 10
+                NodeId = 'SRC'
+            }
+            $archive = [pscustomobject] @{
+                FullName = 'acme/source-archive'
+                HostName = 'github.com'
+                Id = 10
+                NodeId = 'SRC'
+            }
+            $destination = [pscustomobject] @{
+                FullName = 'acme/source'
+                HostName = 'github.com'
+                HtmlUrl = 'https://github.com/acme/source'
+                Id = 20
+                NodeId = 'DST'
+            }
+
+            Mock Assert-CgrApprovedSourceState {}
+            Mock Rename-CgrGitHubRepository { $archive }
+            Mock New-CgrGitHubRepository { $destination }
+            Mock Assert-CgrReplacementRepositoryIdentity {
+                [pscustomobject] @{
+                    SourceRepositoryId = 10
+                    ArchiveRepositoryId = 10
+                    ReplacementRepositoryId = 20
+                }
+            }
+            Mock Copy-CgrRepositoryFullHistory {
+                [pscustomobject] @{ IsSuccessful = $true; DefaultBranch = 'main'; CopiedSourceEvidence = $plan.SourceState }
+            }
+            Mock Get-CgrRepository { $destination }
+            Mock Invoke-CgrApprovedFullHistoryVerification { [pscustomobject] @{ IsSuccessful = $false } }
+            Mock Copy-CgrApprovedGitHubRelease { throw 'release restoration must not run' }
+
+            $result = Invoke-CgrSameNameFullHistoryReplacement -Plan $plan -SourceRepository $source
+
+            $result.IsVerified | Should -BeFalse
+            $result.ReleasesRestored | Should -BeFalse
+            $result.Releases.Status | Should -Be 'FullHistoryVerificationFailed'
+            $result.StoppedBeforeSettingsRestore | Should -BeTrue
+            @($result.CompletedSteps | Where-Object Name -eq 'RestoreGitHubReleases')[0].MutatedGitHub | Should -BeFalse
+            @($result.CompletedSteps | Where-Object Name -eq 'RestoreGitHubReleases')[0].Verified | Should -BeFalse
+            Should -Invoke Copy-CgrApprovedGitHubRelease -Times 0
+        }
+    }
+
     It 'records release selection evidence when release restoration fails after content verification' {
         InModuleScope CopyGitHubRepo {
             $releaseSelection = [pscustomobject] @{

@@ -19,6 +19,7 @@ $sourceRepository = "$Owner/$repositoryPrefix-source"
 $destinationRepository = "$Owner/$repositoryPrefix-destination"
 $createdRepositories = [System.Collections.Generic.List[string]]::new()
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) $repositoryPrefix
+$evidence = [System.Collections.Generic.List[object]]::new()
 
 function Invoke-E2eNativeCommand {
     [CmdletBinding()]
@@ -42,6 +43,29 @@ function Invoke-E2eNativeCommand {
     finally {
         Set-Location -LiteralPath $originalLocation
     }
+}
+
+function Assert-E2eEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)] [bool] $Condition,
+        [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Check,
+        [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $FailureMessage,
+        [string] $Actual
+    )
+
+    if (-not $Condition) {
+        throw $FailureMessage
+    }
+
+    $record = [pscustomobject] @{
+        Status = 'PASS'
+        Check = $Check
+        Actual = $Actual
+    }
+    $script:evidence.Add($record)
+    $actualSuffix = if ([string]::IsNullOrWhiteSpace($Actual)) { '' } else { " [$Actual]" }
+    Write-Host ("PASS  {0}{1}" -f $Check, $actualSuffix)
 }
 
 function Assert-E2eCleanupCapability {
@@ -97,6 +121,9 @@ Import-Module $modulePath -Force -ErrorAction Stop
 New-Item -Path $tempRoot -ItemType Directory -Force | Out-Null
 
 try {
+    Write-Host 'GitHub Release E2E evidence'
+    Write-Host '---------------------------'
+
     Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('repo', 'create', $sourceRepository, '--private') | Out-Null
     $createdRepositories.Add($sourceRepository)
     $createdRepositories.Add($destinationRepository)
@@ -146,15 +173,10 @@ try {
         -PlanOnly
 
     $selectedReleases = @($plan.ReleaseSelection.Releases)
-    if ($plan.ReleaseSelection.AvailableReleaseCount -ne 3) {
-        throw "Expected 3 available source releases but found $($plan.ReleaseSelection.AvailableReleaseCount)."
-    }
-    if ($plan.ReleaseSelection.SelectedReleaseCount -ne 1 -or $selectedReleases.Count -ne 1 -or $selectedReleases[0].TagName -ne 'v1.1.0') {
-        throw 'Release selection did not choose only the newest stable matching release v1.1.0.'
-    }
-    if ($plan.ReleaseSelection.SourceLatestTag -ne 'v1.1.0' -or -not $plan.ReleaseSelection.SourceLatestSelected -or -not $selectedReleases[0].IsLatest) {
-        throw 'Planning did not capture v1.1.0 as the selected source Latest release.'
-    }
+    Assert-E2eEvidence -Condition ($plan.ReleaseSelection.AvailableReleaseCount -eq 3) -Check 'Source fixture exposes all three GitHub Releases' -FailureMessage "Expected 3 available source releases but found $($plan.ReleaseSelection.AvailableReleaseCount)." -Actual "$($plan.ReleaseSelection.AvailableReleaseCount) releases"
+    Assert-E2eEvidence -Condition ($plan.ReleaseSelection.SelectedReleaseCount -eq 1 -and $selectedReleases.Count -eq 1) -Check 'ReleaseCount limits selection to one release' -FailureMessage 'Release selection did not select exactly one release.' -Actual "$($plan.ReleaseSelection.SelectedReleaseCount) selected"
+    Assert-E2eEvidence -Condition ($selectedReleases[0].TagName -eq 'v1.1.0') -Check 'Filtering selects the newest stable matching release' -FailureMessage 'Release selection did not choose only the newest stable matching release v1.1.0.' -Actual $selectedReleases[0].TagName
+    Assert-E2eEvidence -Condition ($plan.ReleaseSelection.SourceLatestTag -eq 'v1.1.0' -and $plan.ReleaseSelection.SourceLatestSelected -and $selectedReleases[0].IsLatest) -Check 'Plan captures the selected source Latest release' -FailureMessage 'Planning did not capture v1.1.0 as the selected source Latest release.' -Actual $plan.ReleaseSelection.SourceLatestTag
 
     $result = Copy-GitHubRepository `
         -SourceRepository $sourceRepository `
@@ -167,15 +189,9 @@ try {
         -NonInteractive `
         -Force
 
-    if (-not $result.IsVerified -or -not $result.ReleasesRestored) {
-        throw 'FullHistory release migration did not report verified release restoration.'
-    }
-    if ($result.Releases.DestinationReleaseCount -ne 1) {
-        throw "Expected one destination release but result reported $($result.Releases.DestinationReleaseCount)."
-    }
-    if (-not $result.Releases.LatestReleasePreserved -or $result.Releases.LatestReleaseTag -ne 'v1.1.0') {
-        throw 'Execution did not report preservation of the selected source Latest release designation.'
-    }
+    Assert-E2eEvidence -Condition ($result.IsVerified -and $result.ReleasesRestored) -Check 'FullHistory execution reports verified release restoration' -FailureMessage 'FullHistory release migration did not report verified release restoration.'
+    Assert-E2eEvidence -Condition ($result.Releases.DestinationReleaseCount -eq 1) -Check 'Execution restores exactly the approved release count' -FailureMessage "Expected one destination release but result reported $($result.Releases.DestinationReleaseCount)." -Actual "$($result.Releases.DestinationReleaseCount) release"
+    Assert-E2eEvidence -Condition ($result.Releases.LatestReleasePreserved -and $result.Releases.LatestReleaseTag -eq 'v1.1.0') -Check 'Execution reports preservation of Latest designation' -FailureMessage 'Execution did not report preservation of the selected source Latest release designation.' -Actual $result.Releases.LatestReleaseTag
 
     $independentVerification = Test-GitHubRepositoryMigration `
         -SourceRepository $sourceRepository `
@@ -185,53 +201,49 @@ try {
         -ReleaseTag 'v1.*' `
         -ReleaseCount 1
 
-    if (-not $independentVerification.IsSuccessful -or -not $independentVerification.ReleasesVerified) {
-        throw 'Independent FullHistory plus GitHub Release verification did not succeed.'
-    }
-    if ($independentVerification.ReleaseVerification.VerifiedReleaseCount -ne 1 -or
-        $independentVerification.ReleaseVerification.DestinationLatestTag -ne 'v1.1.0') {
-        throw 'Independent release verification did not verify the expected release and Latest designation.'
-    }
+    Assert-E2eEvidence -Condition ($independentVerification.IsSuccessful -and $independentVerification.ReleasesVerified) -Check 'Independent FullHistory and release verification succeeds' -FailureMessage 'Independent FullHistory plus GitHub Release verification did not succeed.'
+    Assert-E2eEvidence -Condition ($independentVerification.ReleaseVerification.VerifiedReleaseCount -eq 1) -Check 'Independent verifier confirms the selected release count' -FailureMessage 'Independent release verification did not verify the expected release count.' -Actual "$($independentVerification.ReleaseVerification.VerifiedReleaseCount) release"
+    Assert-E2eEvidence -Condition ($independentVerification.ReleaseVerification.DestinationLatestTag -eq 'v1.1.0') -Check 'Independent verifier confirms Latest designation' -FailureMessage 'Independent release verification did not verify the expected Latest designation.' -Actual $independentVerification.ReleaseVerification.DestinationLatestTag
 
     $destinationReleaseList = @(Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', 'github.com', "repos/$destinationRepository/releases?per_page=100"))
     $destinationReleases = @(($destinationReleaseList -join "`n") | ConvertFrom-Json -Depth 50)
-    if ($destinationReleases.Count -ne 1) {
-        throw "Expected exactly one GitHub Release at destination but found $($destinationReleases.Count)."
-    }
+    Assert-E2eEvidence -Condition ($destinationReleases.Count -eq 1) -Check 'GitHub API shows exactly one destination Release' -FailureMessage "Expected exactly one GitHub Release at destination but found $($destinationReleases.Count)." -Actual "$($destinationReleases.Count) release"
 
     $destinationRelease = $destinationReleases[0]
-    if ([string] $destinationRelease.tag_name -ne 'v1.1.0') { throw "Unexpected destination release tag '$($destinationRelease.tag_name)'." }
-    if ([string] $destinationRelease.name -ne 'Release 1.1.0') { throw 'Destination release title was not preserved.' }
-    if ([string] $destinationRelease.body -ne 'Stable release 1.1.0') { throw 'Destination release notes were not preserved.' }
-    if ([bool] $destinationRelease.prerelease) { throw 'Destination release was unexpectedly marked prerelease.' }
+    Assert-E2eEvidence -Condition ([string] $destinationRelease.tag_name -eq 'v1.1.0') -Check 'Destination release tag is preserved' -FailureMessage "Unexpected destination release tag '$($destinationRelease.tag_name)'." -Actual ([string] $destinationRelease.tag_name)
+    Assert-E2eEvidence -Condition ([string] $destinationRelease.name -eq 'Release 1.1.0') -Check 'Destination release title is preserved' -FailureMessage 'Destination release title was not preserved.' -Actual ([string] $destinationRelease.name)
+    Assert-E2eEvidence -Condition ([string] $destinationRelease.body -eq 'Stable release 1.1.0') -Check 'Destination release notes are preserved' -FailureMessage 'Destination release notes were not preserved.'
+    Assert-E2eEvidence -Condition (-not [bool] $destinationRelease.prerelease) -Check 'Prerelease state remains false for selected stable release' -FailureMessage 'Destination release was unexpectedly marked prerelease.'
+
     $destinationAssets = @($destinationRelease.assets)
-    if ($destinationAssets.Count -ne 1) { throw 'Destination release asset count was not preserved.' }
-    if ([string] $destinationAssets[0].name -ne 'v1.1.0.txt') { throw 'Destination release asset name was not preserved.' }
-    if ([string] $destinationAssets[0].label -ne 'stable-110') { throw 'Destination release asset label was not preserved.' }
+    Assert-E2eEvidence -Condition ($destinationAssets.Count -eq 1) -Check 'Destination release asset count is preserved' -FailureMessage 'Destination release asset count was not preserved.' -Actual "$($destinationAssets.Count) asset"
+    Assert-E2eEvidence -Condition ([string] $destinationAssets[0].name -eq 'v1.1.0.txt') -Check 'Destination release asset name is preserved' -FailureMessage 'Destination release asset name was not preserved.' -Actual ([string] $destinationAssets[0].name)
+    Assert-E2eEvidence -Condition ([string] $destinationAssets[0].label -eq 'stable-110') -Check 'Destination release asset label is preserved' -FailureMessage 'Destination release asset label was not preserved.' -Actual ([string] $destinationAssets[0].label)
 
     $destinationLatestJson = @(Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', 'github.com', "repos/$destinationRepository/releases/latest")) -join "`n"
     $destinationLatest = $destinationLatestJson | ConvertFrom-Json -Depth 50
-    if ([string] $destinationLatest.tag_name -ne 'v1.1.0') {
-        throw "Destination Latest release mismatch. Expected 'v1.1.0' but found '$($destinationLatest.tag_name)'."
-    }
+    Assert-E2eEvidence -Condition ([string] $destinationLatest.tag_name -eq 'v1.1.0') -Check 'GitHub API confirms destination Latest release' -FailureMessage "Destination Latest release mismatch. Expected 'v1.1.0' but found '$($destinationLatest.tag_name)'." -Actual ([string] $destinationLatest.tag_name)
 
     foreach ($tag in @('v1.0.0', 'v1.1.0-rc.1', 'v1.1.0')) {
         $sourceShaOutput = @(Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', 'github.com', "repos/$sourceRepository/commits/$tag", '--jq', '.sha'))
         $destinationShaOutput = @(Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', 'github.com', "repos/$destinationRepository/commits/$tag", '--jq', '.sha'))
-        if ($sourceShaOutput.Count -ne 1 -or $destinationShaOutput.Count -ne 1) {
-            throw "Expected one commit SHA response for tag '$tag' from both source and destination."
-        }
+        Assert-E2eEvidence -Condition ($sourceShaOutput.Count -eq 1 -and $destinationShaOutput.Count -eq 1) -Check "GitHub API resolves one source and destination SHA for $tag" -FailureMessage "Expected one commit SHA response for tag '$tag' from both source and destination."
         $sourceSha = ([string] $sourceShaOutput[0]).Trim()
         $destinationSha = ([string] $destinationShaOutput[0]).Trim()
-        if ($sourceSha -ne $destinationSha) {
-            throw "FullHistory tag target mismatch for '$tag'. Source=$sourceSha Destination=$destinationSha"
-        }
+        Assert-E2eEvidence -Condition ($sourceSha -eq $destinationSha) -Check "FullHistory tag target is preserved for $tag" -FailureMessage "FullHistory tag target mismatch for '$tag'. Source=$sourceSha Destination=$destinationSha" -Actual $sourceSha
     }
+
+    Assert-E2eEvidence -Condition (@($destinationReleases | Where-Object prerelease).Count -eq 0) -Check 'Filtered prerelease is not recreated at destination' -FailureMessage 'A prerelease was unexpectedly recreated at the destination.'
+
+    Write-Host ''
+    Write-Host ("E2E evidence: {0} checks passed." -f $evidence.Count)
+    Write-Host ''
 
     [pscustomobject] @{
         Scenario = 'Filtered FullHistory GitHub Release migration'
         SourceRepository = $sourceRepository
         DestinationRepository = $destinationRepository
+        EvidenceChecksPassed = $evidence.Count
         AvailableSourceReleases = $plan.ReleaseSelection.AvailableReleaseCount
         SelectedSourceReleases = $plan.ReleaseSelection.SelectedReleaseCount
         SelectedTag = $selectedReleases[0].TagName

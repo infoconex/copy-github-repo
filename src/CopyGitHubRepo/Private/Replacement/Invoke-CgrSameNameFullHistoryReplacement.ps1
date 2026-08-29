@@ -25,6 +25,8 @@ function Invoke-CgrSameNameFullHistoryReplacement {
     $copyResult = $null
     $repositoryIdentity = $null
     $sourceState = Get-CgrObjectProperty -InputObject $Plan -Name 'SourceState'
+    $includeReleases = [bool] (Get-CgrObjectProperty -InputObject $Plan -Name 'IncludeReleases')
+    $releaseSelection = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseSelection'
     $sourceRepositoryId = Get-CgrObjectProperty -InputObject $SourceRepository -Name 'Id'
     $sourceRepositoryNodeId = Get-CgrObjectProperty -InputObject $SourceRepository -Name 'NodeId'
     $failureStage = 'ValidateApprovedSourceState'
@@ -72,13 +74,13 @@ function Invoke-CgrSameNameFullHistoryReplacement {
         }
         $completedSteps.Add([pscustomobject] @{ Order = $completedSteps.Count + 1; Name = 'VerifyFullHistory'; MutatedGitHub = $false; Verified = $verification.IsSuccessful })
 
-        if ($Plan.IncludeReleases) {
+        if ($includeReleases) {
             $failureStage = 'RestoreGitHubReleases'
             $releases = Invoke-CgrActivityStage -Name 'RestoreGitHubReleases' -Message 'Restore approved GitHub Releases and assets' -Action {
                 Copy-CgrApprovedGitHubRelease `
                     -SourceRepository $archive `
                     -DestinationRepository $verifiedDestination `
-                    -ApprovedSelection $Plan.ReleaseSelection `
+                    -ApprovedSelection $releaseSelection `
                     -HostName $HostName
             }
             $releases | Add-Member -NotePropertyName Status -NotePropertyValue 'Restored' -Force
@@ -121,7 +123,7 @@ function Invoke-CgrSameNameFullHistoryReplacement {
         $archiveRepositoryNodeId = Get-CgrObjectProperty -InputObject $archive -Name 'NodeId'
         $destinationRepositoryNodeId = Get-CgrObjectProperty -InputObject $verifiedDestination -Name 'NodeId'
         $copiedSourceEvidence = Get-CgrObjectProperty -InputObject $copyResult -Name 'CopiedSourceEvidence'
-        $releaseSuccessful = -not $Plan.IncludeReleases -or $releases.IsSuccessful
+        $releaseSuccessful = -not $includeReleases -or $releases.IsSuccessful
         $executionResult = [pscustomobject] @{
             PSTypeName = 'CopyGitHubRepo.MigrationExecutionResult'
             SchemaVersion = 1
@@ -160,7 +162,7 @@ function Invoke-CgrSameNameFullHistoryReplacement {
             Plan = $Plan
             CompletedSteps = @($completedSteps)
             StoppedBeforeSettingsRestore = -not $verification.IsSuccessful
-            ReleasesRestored = [bool] ($Plan.IncludeReleases -and $releases.IsSuccessful)
+            ReleasesRestored = [bool] ($includeReleases -and $releases.IsSuccessful)
             SettingsRestored = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings -and $settings.IsSuccessful)
             ProtectionRestored = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings -and $protection.IsSuccessful -and $protection.IsComplete)
         }

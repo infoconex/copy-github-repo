@@ -65,7 +65,7 @@ function Assert-E2eEvidence {
     }
     $script:evidence.Add($record)
     $actualSuffix = if ([string]::IsNullOrWhiteSpace($Actual)) { '' } else { " [$Actual]" }
-    Write-Host ("PASS  {0}{1}" -f $Check, $actualSuffix)
+    Write-Information -MessageData ("PASS  {0}{1}" -f $Check, $actualSuffix) -InformationAction Continue
 }
 
 function Assert-E2eCleanupCapability {
@@ -116,22 +116,22 @@ function Remove-E2eRepository {
 
 if ($Owner -notmatch '^[A-Za-z0-9_.-]+$') { throw "Owner '$Owner' is not valid." }
 
-Write-Host 'GitHub Release End-to-End Validation'
-Write-Host '------------------------------------'
-Write-Host 'Use Case : UC-HIST-REL'
-Write-Host 'Scenarios: SCN-GHREL-HAPPY-01, SCN-GHREL-VERIFY-01'
-Write-Host 'Goal     : Preserve an approved filtered GitHub Release and asset during FullHistory migration.'
-Write-Host 'Expected : Select the newest stable matching release, exclude the prerelease, preserve release'
-Write-Host '           metadata/assets/Latest designation and FullHistory tag targets, then pass independent verification.'
-Write-Host ''
+Write-Information -MessageData 'GitHub Release End-to-End Validation' -InformationAction Continue
+Write-Information -MessageData '------------------------------------' -InformationAction Continue
+Write-Information -MessageData 'Use Case : UC-HIST-REL' -InformationAction Continue
+Write-Information -MessageData 'Scenarios: SCN-GHREL-HAPPY-01, SCN-GHREL-VERIFY-01' -InformationAction Continue
+Write-Information -MessageData 'Goal     : Preserve an approved filtered GitHub Release and asset during FullHistory migration.' -InformationAction Continue
+Write-Information -MessageData 'Expected : Select the newest stable matching release, exclude the prerelease, preserve release' -InformationAction Continue
+Write-Information -MessageData '           metadata/assets/Latest designation and FullHistory tag targets, then pass independent verification.' -InformationAction Continue
+Write-Information -MessageData '' -InformationAction Continue
 
 Assert-E2eCleanupCapability
 Import-Module $modulePath -Force -ErrorAction Stop
 New-Item -Path $tempRoot -ItemType Directory -Force | Out-Null
 
 try {
-    Write-Host 'Evidence'
-    Write-Host '--------'
+    Write-Information -MessageData 'Evidence' -InformationAction Continue
+    Write-Information -MessageData '--------' -InformationAction Continue
 
     Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('repo', 'create', $sourceRepository, '--private') | Out-Null
     $createdRepositories.Add($sourceRepository)
@@ -244,9 +244,9 @@ try {
 
     Assert-E2eEvidence -Condition (@($destinationReleases | Where-Object prerelease).Count -eq 0) -Check 'Filtered prerelease is not recreated at destination' -FailureMessage 'A prerelease was unexpectedly recreated at the destination.'
 
-    Write-Host ''
-    Write-Host ("E2E evidence: {0} checks passed." -f $evidence.Count)
-    Write-Host ''
+    Write-Information -MessageData '' -InformationAction Continue
+    Write-Information -MessageData ("E2E evidence: {0} checks passed." -f $evidence.Count) -InformationAction Continue
+    Write-Information -MessageData '' -InformationAction Continue
 
     [pscustomobject] @{
         Scenario = 'Filtered FullHistory GitHub Release migration'

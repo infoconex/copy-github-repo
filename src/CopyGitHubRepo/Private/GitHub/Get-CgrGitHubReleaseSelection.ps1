@@ -19,8 +19,7 @@ function Get-CgrGitHubReleaseSelection {
         [string] $HostName = 'github.com'
     )
 
-    $listResult = Invoke-CgrNativeCommand `
-        -FilePath 'gh' `
+    $listResult = Invoke-CgrGitHubApiReadRequest `
         -ArgumentList @(
             'api', '--hostname', $HostName,
             '--paginate', '--slurp',
@@ -28,7 +27,8 @@ function Get-CgrGitHubReleaseSelection {
         )
 
     if ($listResult.ExitCode -ne 0) {
-        $message = "GitHub CLI failed to enumerate releases for '$($Repository.FullName)'. $($listResult.ErrorText)"
+        $diagnostic = Protect-CgrDiagnosticText -Text ([string] $listResult.ErrorText)
+        $message = "GitHub CLI failed to enumerate releases for '$($Repository.FullName)'. $diagnostic"
         $exception = [System.InvalidOperationException]::new($message.Trim())
         $errorRecord = [System.Management.Automation.ErrorRecord]::new(
             $exception,
@@ -52,8 +52,7 @@ function Get-CgrGitHubReleaseSelection {
 
     $latestReleaseId = $null
     $latestReleaseTag = $null
-    $latestResult = Invoke-CgrNativeCommand `
-        -FilePath 'gh' `
+    $latestResult = Invoke-CgrGitHubApiReadRequest `
         -ArgumentList @('api', '--hostname', $HostName, "repos/$($Repository.FullName)/releases/latest")
     if ($latestResult.ExitCode -eq 0) {
         $latestJson = ($latestResult.Output | ForEach-Object { [string] $_ }) -join "`n"
@@ -64,7 +63,8 @@ function Get-CgrGitHubReleaseSelection {
         }
     }
     elseif ([string] $latestResult.ErrorText -notmatch '(?i)404|not found') {
-        $message = "GitHub CLI failed to determine the latest release for '$($Repository.FullName)'. $($latestResult.ErrorText)"
+        $diagnostic = Protect-CgrDiagnosticText -Text ([string] $latestResult.ErrorText)
+        $message = "GitHub CLI failed to determine the latest release for '$($Repository.FullName)'. $diagnostic"
         $exception = [System.InvalidOperationException]::new($message.Trim())
         $errorRecord = [System.Management.Automation.ErrorRecord]::new(
             $exception,
@@ -128,11 +128,11 @@ function Get-CgrGitHubReleaseSelection {
             $PSCmdlet.ThrowTerminatingError($errorRecord)
         }
 
-        $commitResult = Invoke-CgrNativeCommand `
-            -FilePath 'gh' `
+        $commitResult = Invoke-CgrGitHubApiReadRequest `
             -ArgumentList @('api', '--hostname', $HostName, "repos/$($Repository.FullName)/commits/$([uri]::EscapeDataString($tagName))", '--jq', '.sha')
         if ($commitResult.ExitCode -ne 0) {
-            $message = "Source release tag '$tagName' does not resolve to a commit and cannot be selected safely. $($commitResult.ErrorText)"
+            $diagnostic = Protect-CgrDiagnosticText -Text ([string] $commitResult.ErrorText)
+            $message = "Source release tag '$tagName' does not resolve to a commit and cannot be selected safely. $diagnostic"
             $exception = [System.InvalidOperationException]::new($message.Trim())
             $errorRecord = [System.Management.Automation.ErrorRecord]::new(
                 $exception,

@@ -104,6 +104,7 @@ Describe 'Approved GitHub Release execution' {
                         Assets = @()
                     })
             }
+            $script:destinationReleaseReads = 0
 
             Mock Invoke-CgrNativeCommand {
                 $joined = $ArgumentList -join ' '
@@ -116,14 +117,15 @@ Describe 'Approved GitHub Release execution' {
                 if ($joined -match 'repos/acme/destination/commits/v2.0.0') {
                     return [pscustomobject] @{ ExitCode = 0; Output = @('abc123'); ErrorText = '' }
                 }
-                if ($joined -match '^release view v2.0.0') {
-                    return [pscustomobject] @{ ExitCode = 1; Output = @(); ErrorText = 'not found' }
+                if ($joined -match 'repos/acme/destination/releases/tags/v2.0.0') {
+                    $script:destinationReleaseReads++
+                    if ($script:destinationReleaseReads -eq 1) {
+                        return [pscustomobject] @{ ExitCode = 1; Output = @(); ErrorText = 'HTTP 404: Not Found' }
+                    }
+                    return [pscustomobject] @{ ExitCode = 0; Output = @('{"id":20,"tag_name":"v2.0.0","name":"Release 2.0","body":"approved body","draft":false,"prerelease":false,"assets":[]}'); ErrorText = '' }
                 }
                 if ($joined -match '^release create v2.0.0') {
                     return [pscustomobject] @{ ExitCode = 0; Output = @('created'); ErrorText = '' }
-                }
-                if ($joined -match 'repos/acme/destination/releases/tags/v2.0.0') {
-                    return [pscustomobject] @{ ExitCode = 0; Output = @('{"id":20,"tag_name":"v2.0.0","name":"Release 2.0","body":"approved body","draft":false,"prerelease":false,"assets":[]}'); ErrorText = '' }
                 }
                 if ($joined -match 'repos/acme/destination/releases/latest') {
                     return [pscustomobject] @{ ExitCode = 0; Output = @('{"id":20,"tag_name":"v2.0.0"}'); ErrorText = '' }

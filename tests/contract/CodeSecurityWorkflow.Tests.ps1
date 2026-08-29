@@ -7,10 +7,10 @@ BeforeAll {
 }
 
 Describe 'Analyze Code Security workflow contract' {
-    It 'always appears for main pushes and pull requests and scopes expensive work internally' {
+    It 'always appears for main pushes and pull requests targeting main or release integration branches and scopes expensive work internally' {
         $script:workflow | Should -Match '(?m)^name: Analyze Code Security$'
         $script:workflow | Should -Match '(?ms)^  push:\s+branches:\s+- main\s*(?=^  pull_request:)'
-        $script:workflow | Should -Match '(?ms)^  pull_request:\s+branches:\s+- main\s*(?=^  workflow_dispatch:)'
+        $script:workflow | Should -Match "(?ms)^  pull_request:\s+branches:\s+- main\s+- 'release/\*\*'\s*(?=^  workflow_dispatch:)"
         $script:workflow | Should -Not -Match '(?m)^\s+paths:'
         $script:workflow | Should -Match 'Determine Security Scope'
         $script:workflow | Should -Match 'run-security'

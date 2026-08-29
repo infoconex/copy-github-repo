@@ -9,9 +9,9 @@ Describe 'Validate Project Quality workflow contract' {
         $script:workflow | Should -Match '(?m)^name: Validate Project Quality$'
     }
 
-    It 'always appears for pushes and pull requests targeting main' {
+    It 'always appears for main pushes and pull requests targeting main or release integration branches' {
         $script:workflow | Should -Match '(?ms)^  push:\s+branches:\s+- main\s*(?=^  pull_request:)'
-        $script:workflow | Should -Match '(?ms)^  pull_request:\s+branches:\s+- main\s*(?=^  workflow_dispatch:)'
+        $script:workflow | Should -Match "(?ms)^  pull_request:\s+branches:\s+- main\s+- 'release/\*\*'\s*(?=^  workflow_dispatch:)"
         $script:workflow | Should -Not -Match '(?m)^\s+paths-ignore:'
     }
 

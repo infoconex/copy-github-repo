@@ -27,6 +27,7 @@ name: Validate Documentation
   pull_request:
     branches:
       - main
+      - 'release/**'
     paths:
       - '_config.yml'
       - '_data/**'

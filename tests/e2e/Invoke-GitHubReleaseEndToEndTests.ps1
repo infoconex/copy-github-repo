@@ -70,6 +70,11 @@ function Assert-E2eCleanupCapability {
 }
 
 function Remove-E2eRepository {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions',
+        '',
+        Justification = 'This protected E2E cleanup helper deletes only repositories created under the current randomized harness prefix after cleanup capability has been verified.'
+    )]
     [CmdletBinding()]
     param([Parameter(Mandatory)] [string] $Repository)
 

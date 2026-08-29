@@ -45,6 +45,16 @@ function Invoke-E2eNativeCommand {
     }
 }
 
+function Write-E2eMessage {
+    [CmdletBinding()]
+    param(
+        [AllowEmptyString()]
+        [string] $Message = ''
+    )
+
+    Write-Information -MessageData $Message -InformationAction Continue
+}
+
 function Assert-E2eEvidence {
     [CmdletBinding()]
     param(
@@ -65,7 +75,7 @@ function Assert-E2eEvidence {
     }
     $script:evidence.Add($record)
     $actualSuffix = if ([string]::IsNullOrWhiteSpace($Actual)) { '' } else { " [$Actual]" }
-    Write-Information -MessageData ("PASS  {0}{1}" -f $Check, $actualSuffix) -InformationAction Continue
+    Write-E2eMessage -Message ("PASS  {0}{1}" -f $Check, $actualSuffix)
 }
 
 function Assert-E2eCleanupCapability {
@@ -116,22 +126,22 @@ function Remove-E2eRepository {
 
 if ($Owner -notmatch '^[A-Za-z0-9_.-]+$') { throw "Owner '$Owner' is not valid." }
 
-Write-Information -MessageData 'GitHub Release End-to-End Validation' -InformationAction Continue
-Write-Information -MessageData '------------------------------------' -InformationAction Continue
-Write-Information -MessageData 'Use Case : UC-HIST-REL' -InformationAction Continue
-Write-Information -MessageData 'Scenarios: SCN-GHREL-HAPPY-01, SCN-GHREL-VERIFY-01' -InformationAction Continue
-Write-Information -MessageData 'Goal     : Preserve an approved filtered GitHub Release and asset during FullHistory migration.' -InformationAction Continue
-Write-Information -MessageData 'Expected : Select the newest stable matching release, exclude the prerelease, preserve release' -InformationAction Continue
-Write-Information -MessageData '           metadata/assets/Latest designation and FullHistory tag targets, then pass independent verification.' -InformationAction Continue
-Write-Information -MessageData '' -InformationAction Continue
+Write-E2eMessage -Message 'GitHub Release End-to-End Validation'
+Write-E2eMessage -Message '------------------------------------'
+Write-E2eMessage -Message 'Use Case : UC-HIST-REL'
+Write-E2eMessage -Message 'Scenarios: SCN-GHREL-HAPPY-01, SCN-GHREL-VERIFY-01'
+Write-E2eMessage -Message 'Goal     : Preserve an approved filtered GitHub Release and asset during FullHistory migration.'
+Write-E2eMessage -Message 'Expected : Select the newest stable matching release, exclude the prerelease, preserve release'
+Write-E2eMessage -Message '           metadata/assets/Latest designation and FullHistory tag targets, then pass independent verification.'
+Write-E2eMessage
 
 Assert-E2eCleanupCapability
 Import-Module $modulePath -Force -ErrorAction Stop
 New-Item -Path $tempRoot -ItemType Directory -Force | Out-Null
 
 try {
-    Write-Information -MessageData 'Evidence' -InformationAction Continue
-    Write-Information -MessageData '--------' -InformationAction Continue
+    Write-E2eMessage -Message 'Evidence'
+    Write-E2eMessage -Message '--------'
 
     Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('repo', 'create', $sourceRepository, '--private') | Out-Null
     $createdRepositories.Add($sourceRepository)
@@ -244,9 +254,9 @@ try {
 
     Assert-E2eEvidence -Condition (@($destinationReleases | Where-Object prerelease).Count -eq 0) -Check 'Filtered prerelease is not recreated at destination' -FailureMessage 'A prerelease was unexpectedly recreated at the destination.'
 
-    Write-Information -MessageData '' -InformationAction Continue
-    Write-Information -MessageData ("E2E evidence: {0} checks passed." -f $evidence.Count) -InformationAction Continue
-    Write-Information -MessageData '' -InformationAction Continue
+    Write-E2eMessage
+    Write-E2eMessage -Message ("E2E evidence: {0} checks passed." -f $evidence.Count)
+    Write-E2eMessage
 
     [pscustomobject] @{
         Scenario = 'Filtered FullHistory GitHub Release migration'

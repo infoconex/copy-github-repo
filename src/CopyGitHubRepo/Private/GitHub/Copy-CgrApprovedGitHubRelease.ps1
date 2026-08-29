@@ -51,12 +51,13 @@ function Copy-CgrApprovedGitHubRelease {
             $tagName = [string] $approved.TagName
             $escapedTag = [uri]::EscapeDataString($tagName)
 
-            $sourceReleaseResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @(
+            $sourceReleaseResult = Invoke-CgrGitHubApiReadRequest -ArgumentList @(
                 'api', '--hostname', $HostName,
                 "repos/$($SourceRepository.FullName)/releases/tags/$escapedTag"
             )
             if ($sourceReleaseResult.ExitCode -ne 0) {
-                $message = "Approved source release '$tagName' is no longer available. Recreate and review the migration plan before execution. $($sourceReleaseResult.ErrorText)"
+                $diagnostic = Protect-CgrDiagnosticText -Text ([string] $sourceReleaseResult.ErrorText)
+                $message = "Approved source release '$tagName' is no longer available. Recreate and review the migration plan before execution. $diagnostic"
                 $exception = [System.InvalidOperationException]::new($message.Trim())
                 $errorRecord = [System.Management.Automation.ErrorRecord]::new(
                     $exception,
@@ -69,11 +70,11 @@ function Copy-CgrApprovedGitHubRelease {
 
             $sourceReleaseJson = ($sourceReleaseResult.Output | ForEach-Object { [string] $_ }) -join "`n"
             $sourceRelease = $sourceReleaseJson | ConvertFrom-Json -Depth 100
-            $sourceCommitResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @(
+            $sourceCommitResult = Invoke-CgrGitHubApiReadRequest -ArgumentList @(
                 'api', '--hostname', $HostName,
                 "repos/$($SourceRepository.FullName)/commits/$escapedTag", '--jq', '.sha'
             )
-            $destinationCommitResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @(
+            $destinationCommitResult = Invoke-CgrGitHubApiReadRequest -ArgumentList @(
                 'api', '--hostname', $HostName,
                 "repos/$($DestinationRepository.FullName)/commits/$escapedTag", '--jq', '.sha'
             )
@@ -139,7 +140,7 @@ function Copy-CgrApprovedGitHubRelease {
                 $PSCmdlet.ThrowTerminatingError($errorRecord)
             }
 
-            $existingReleaseResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @(
+            $existingReleaseResult = Invoke-CgrGitHubApiReadRequest -ArgumentList @(
                 'api', '--hostname', $HostName,
                 "repos/$($DestinationRepository.FullName)/releases/tags/$escapedTag"
             )
@@ -150,7 +151,8 @@ function Copy-CgrApprovedGitHubRelease {
                 $PSCmdlet.ThrowTerminatingError($errorRecord)
             }
             if ([string] $existingReleaseResult.ErrorText -notmatch '(?i)404|not found') {
-                $message = "Unable to determine whether destination '$($DestinationRepository.FullName)' already contains a GitHub Release for tag '$tagName'. Release creation was not attempted. $($existingReleaseResult.ErrorText)"
+                $diagnostic = Protect-CgrDiagnosticText -Text ([string] $existingReleaseResult.ErrorText)
+                $message = "Unable to determine whether destination '$($DestinationRepository.FullName)' already contains a GitHub Release for tag '$tagName'. Release creation was not attempted. $diagnostic"
                 $exception = [System.InvalidOperationException]::new($message.Trim())
                 $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationGitHubReleaseReadFailed', [System.Management.Automation.ErrorCategory]::ReadError, $tagName)
                 $PSCmdlet.ThrowTerminatingError($errorRecord)
@@ -165,7 +167,8 @@ function Copy-CgrApprovedGitHubRelease {
             if (@($approved.Assets).Count -gt 0) {
                 $downloadResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @('release', 'download', $tagName, '--repo', $SourceRepository.FullName, '--dir', $assetPath)
                 if ($downloadResult.ExitCode -ne 0) {
-                    $message = "GitHub CLI failed to download approved assets for release '$tagName'. $($downloadResult.ErrorText)"
+                    $diagnostic = Protect-CgrDiagnosticText -Text ([string] $downloadResult.ErrorText)
+                    $message = "GitHub CLI failed to download approved assets for release '$tagName'. $diagnostic"
                     $exception = [System.InvalidOperationException]::new($message.Trim())
                     $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'SourceGitHubReleaseAssetDownloadFailed', [System.Management.Automation.ErrorCategory]::ReadError, $tagName)
                     $PSCmdlet.ThrowTerminatingError($errorRecord)
@@ -188,7 +191,8 @@ function Copy-CgrApprovedGitHubRelease {
 
             $createResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList $createArguments.ToArray()
             if ($createResult.ExitCode -ne 0) {
-                $message = "GitHub CLI failed to create destination release '$tagName'. $($createResult.ErrorText)"
+                $diagnostic = Protect-CgrDiagnosticText -Text ([string] $createResult.ErrorText)
+                $message = "GitHub CLI failed to create destination release '$tagName'. $diagnostic"
                 $exception = [System.InvalidOperationException]::new($message.Trim())
                 $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationGitHubReleaseCreateFailed', [System.Management.Automation.ErrorCategory]::InvalidOperation, $tagName)
                 $PSCmdlet.ThrowTerminatingError($errorRecord)
@@ -200,22 +204,30 @@ function Copy-CgrApprovedGitHubRelease {
                 foreach ($asset in @($approved.Assets)) {
                     $assetFilePath = Join-Path $assetPath ([string] $asset.Name)
                     if (-not (Test-Path -LiteralPath $assetFilePath -PathType Leaf)) {
-                        throw [System.IO.FileNotFoundException]::new("Downloaded release asset '$($asset.Name)' was not found.", $assetFilePath)
+                        $message = "Downloaded release asset '$($asset.Name)' was not found at the expected workspace path."
+                        $exception = [System.IO.FileNotFoundException]::new($message, $assetFilePath)
+                        $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'SourceGitHubReleaseAssetMissingAfterDownload', [System.Management.Automation.ErrorCategory]::ObjectNotFound, $assetFilePath)
+                        $PSCmdlet.ThrowTerminatingError($errorRecord)
                     }
                     $uploadArguments.Add($(if ([string]::IsNullOrWhiteSpace([string] $asset.Label)) { $assetFilePath } else { "$assetFilePath#$($asset.Label)" }))
                 }
                 $uploadResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList $uploadArguments.ToArray()
                 if ($uploadResult.ExitCode -ne 0) {
-                    $message = "GitHub CLI failed to upload assets for destination release '$tagName'. $($uploadResult.ErrorText)"
+                    $diagnostic = Protect-CgrDiagnosticText -Text ([string] $uploadResult.ErrorText)
+                    $message = "GitHub CLI failed to upload assets for destination release '$tagName'. $diagnostic"
                     $exception = [System.InvalidOperationException]::new($message.Trim())
                     $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationGitHubReleaseAssetUploadFailed', [System.Management.Automation.ErrorCategory]::InvalidOperation, $tagName)
                     $PSCmdlet.ThrowTerminatingError($errorRecord)
                 }
             }
 
-            $destinationReleaseResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', $HostName, "repos/$($DestinationRepository.FullName)/releases/tags/$escapedTag")
+            $destinationReleaseResult = Invoke-CgrGitHubApiReadRequest -ArgumentList @('api', '--hostname', $HostName, "repos/$($DestinationRepository.FullName)/releases/tags/$escapedTag")
             if ($destinationReleaseResult.ExitCode -ne 0) {
-                throw "Unable to reload destination release '$tagName' for verification."
+                $diagnostic = Protect-CgrDiagnosticText -Text ([string] $destinationReleaseResult.ErrorText)
+                $message = "Unable to reload destination release '$tagName' for verification. $diagnostic"
+                $exception = [System.InvalidOperationException]::new($message.Trim())
+                $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationGitHubReleaseVerificationReadFailed', [System.Management.Automation.ErrorCategory]::ReadError, $tagName)
+                $PSCmdlet.ThrowTerminatingError($errorRecord)
             }
             $destinationReleaseJson = ($destinationReleaseResult.Output | ForEach-Object { [string] $_ }) -join "`n"
             $destinationRelease = $destinationReleaseJson | ConvertFrom-Json -Depth 100
@@ -255,12 +267,13 @@ function Copy-CgrApprovedGitHubRelease {
         }
 
         if ($approvedLatestIncluded) {
-            $destinationLatestResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @(
+            $destinationLatestResult = Invoke-CgrGitHubApiReadRequest -ArgumentList @(
                 'api', '--hostname', $HostName,
                 "repos/$($DestinationRepository.FullName)/releases/latest"
             )
             if ($destinationLatestResult.ExitCode -ne 0) {
-                $message = "Unable to verify destination latest-release designation for approved release '$approvedLatestTag'. $($destinationLatestResult.ErrorText)"
+                $diagnostic = Protect-CgrDiagnosticText -Text ([string] $destinationLatestResult.ErrorText)
+                $message = "Unable to verify destination latest-release designation for approved release '$approvedLatestTag'. $diagnostic"
                 $exception = [System.InvalidOperationException]::new($message.Trim())
                 $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationGitHubLatestReleaseVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $approvedLatestTag)
                 $PSCmdlet.ThrowTerminatingError($errorRecord)

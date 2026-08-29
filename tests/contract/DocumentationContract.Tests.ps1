@@ -24,7 +24,7 @@ Describe 'Normative documentation consistency' {
     }
 
     It 'documents expanded repository settings restoration as implemented and verified' {
-        $script:documents.Readme | Should -Match 'repository-level settings restoration are implemented and live-validated'
+        $script:documents.Readme | Should -Match 'supported repository-level settings restoration.*implemented'
         $script:documents.ProductContract | Should -Match 'ordinary supported repository settings are restored differentially and read back'
         $script:documents.Versioning | Should -Match 'expanded repository-settings restoration contract is live-validated'
         $script:documents.ProductContract | Should -Not -Match 'Pending validation.*expanded repository settings'

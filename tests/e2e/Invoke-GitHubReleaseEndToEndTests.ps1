@@ -116,13 +116,22 @@ function Remove-E2eRepository {
 
 if ($Owner -notmatch '^[A-Za-z0-9_.-]+$') { throw "Owner '$Owner' is not valid." }
 
+Write-Host 'GitHub Release End-to-End Validation'
+Write-Host '------------------------------------'
+Write-Host 'Use Case : UC-HIST-REL'
+Write-Host 'Scenarios: SCN-GHREL-HAPPY-01, SCN-GHREL-VERIFY-01'
+Write-Host 'Goal     : Preserve an approved filtered GitHub Release and asset during FullHistory migration.'
+Write-Host 'Expected : Select the newest stable matching release, exclude the prerelease, preserve release'
+Write-Host '           metadata/assets/Latest designation and FullHistory tag targets, then pass independent verification.'
+Write-Host ''
+
 Assert-E2eCleanupCapability
 Import-Module $modulePath -Force -ErrorAction Stop
 New-Item -Path $tempRoot -ItemType Directory -Force | Out-Null
 
 try {
-    Write-Host 'GitHub Release E2E evidence'
-    Write-Host '---------------------------'
+    Write-Host 'Evidence'
+    Write-Host '--------'
 
     Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('repo', 'create', $sourceRepository, '--private') | Out-Null
     $createdRepositories.Add($sourceRepository)

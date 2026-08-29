@@ -132,6 +132,8 @@ Describe 'GitHub Release migration orchestration' {
             }
             Mock Invoke-CgrActivityStage {
                 param($Name, $Message, $Action)
+                $null = $Name
+                $null = $Message
                 & $Action
             }
             Mock Set-CgrGitHubRepositorySetting { throw 'Settings must remain skipped.' }
@@ -179,6 +181,8 @@ Describe 'GitHub Release migration orchestration' {
             Mock Copy-CgrApprovedGitHubRelease { throw 'Release mutation must not run after failed content verification.' }
             Mock Invoke-CgrActivityStage {
                 param($Name, $Message, $Action)
+                $null = $Name
+                $null = $Message
                 & $Action
             }
 

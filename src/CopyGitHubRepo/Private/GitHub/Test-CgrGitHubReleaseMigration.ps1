@@ -43,7 +43,7 @@ function Test-CgrGitHubReleaseMigration {
         $escapedTag = [uri]::EscapeDataString($tagName)
         $mismatches = [System.Collections.Generic.List[string]]::new()
 
-        $destinationCommitResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @(
+        $destinationCommitResult = Invoke-CgrGitHubApiReadRequest -ArgumentList @(
             'api', '--hostname', $HostName,
             "repos/$($DestinationRepository.FullName)/commits/$escapedTag", '--jq', '.sha'
         )
@@ -54,7 +54,8 @@ function Test-CgrGitHubReleaseMigration {
             $null
         }
         else {
-            $message = "Unable to read destination tag commit '$tagName' while verifying GitHub Releases. $($destinationCommitResult.ErrorText)"
+            $diagnostic = Protect-CgrDiagnosticText -Text ([string] $destinationCommitResult.ErrorText)
+            $message = "Unable to read destination tag commit '$tagName' while verifying GitHub Releases. $diagnostic"
             $exception = [System.InvalidOperationException]::new($message.Trim())
             $errorRecord = [System.Management.Automation.ErrorRecord]::new(
                 $exception,
@@ -72,7 +73,7 @@ function Test-CgrGitHubReleaseMigration {
             $mismatches.Add('TagTarget')
         }
 
-        $destinationReleaseResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @(
+        $destinationReleaseResult = Invoke-CgrGitHubApiReadRequest -ArgumentList @(
             'api', '--hostname', $HostName,
             "repos/$($DestinationRepository.FullName)/releases/tags/$escapedTag"
         )
@@ -83,7 +84,8 @@ function Test-CgrGitHubReleaseMigration {
                 $mismatches.Add('DestinationReleaseMissing')
             }
             else {
-                $message = "Unable to read destination GitHub Release '$tagName' during verification. $($destinationReleaseResult.ErrorText)"
+                $diagnostic = Protect-CgrDiagnosticText -Text ([string] $destinationReleaseResult.ErrorText)
+                $message = "Unable to read destination GitHub Release '$tagName' during verification. $diagnostic"
                 $exception = [System.InvalidOperationException]::new($message.Trim())
                 $errorRecord = [System.Management.Automation.ErrorRecord]::new(
                     $exception,
@@ -100,7 +102,8 @@ function Test-CgrGitHubReleaseMigration {
                 $destinationRelease = $destinationReleaseJson | ConvertFrom-Json -Depth 100
             }
             catch {
-                $message = "Destination GitHub Release '$tagName' returned invalid JSON during verification. $($_.Exception.Message)"
+                $diagnostic = Protect-CgrDiagnosticText -Text $_.Exception.Message
+                $message = "Destination GitHub Release '$tagName' returned invalid JSON during verification. $diagnostic"
                 $exception = [System.InvalidOperationException]::new($message)
                 $errorRecord = [System.Management.Automation.ErrorRecord]::new(
                     $exception,
@@ -164,7 +167,7 @@ function Test-CgrGitHubReleaseMigration {
     $destinationLatestTag = $null
     $latestPassed = $true
     if ($sourceSelection.SourceLatestSelected) {
-        $destinationLatestResult = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @(
+        $destinationLatestResult = Invoke-CgrGitHubApiReadRequest -ArgumentList @(
             'api', '--hostname', $HostName,
             "repos/$($DestinationRepository.FullName)/releases/latest"
         )
@@ -175,7 +178,8 @@ function Test-CgrGitHubReleaseMigration {
                 $destinationLatestTag = [string] $destinationLatest.tag_name
             }
             catch {
-                $message = "Destination latest GitHub Release returned invalid JSON during verification. $($_.Exception.Message)"
+                $diagnostic = Protect-CgrDiagnosticText -Text $_.Exception.Message
+                $message = "Destination latest GitHub Release returned invalid JSON during verification. $diagnostic"
                 $exception = [System.InvalidOperationException]::new($message)
                 $errorRecord = [System.Management.Automation.ErrorRecord]::new(
                     $exception,
@@ -187,7 +191,8 @@ function Test-CgrGitHubReleaseMigration {
             }
         }
         elseif ([string] $destinationLatestResult.ErrorText -notmatch '(?i)404|not found') {
-            $message = "Unable to read the destination latest GitHub Release during verification. $($destinationLatestResult.ErrorText)"
+            $diagnostic = Protect-CgrDiagnosticText -Text ([string] $destinationLatestResult.ErrorText)
+            $message = "Unable to read the destination latest GitHub Release during verification. $diagnostic"
             $exception = [System.InvalidOperationException]::new($message.Trim())
             $errorRecord = [System.Management.Automation.ErrorRecord]::new(
                 $exception,

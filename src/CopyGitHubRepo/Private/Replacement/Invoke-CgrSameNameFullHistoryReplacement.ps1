@@ -107,40 +107,17 @@ function Invoke-CgrSameNameFullHistoryReplacement {
                 })
         }
 
-        $failureStage = 'RestoreSupportedSettings'
-        $settings = Invoke-CgrActivityStage -Name 'RestoreSupportedSettings' -Message 'Restore supported repository settings' -Action {
-            if (-not $verification.IsSuccessful) {
-                return [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.SettingsRestoreResult'; Repository = $destination.FullName; Restored = @(); Skipped = @('FullHistoryVerificationFailed'); Unsupported = @(); IsSuccessful = $false }
-            }
-            if ($Plan.SkipSettings) {
-                return [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.SettingsRestoreResult'; Repository = $destination.FullName; Restored = @(); Skipped = @('AllSettings'); Unsupported = @(); IsSuccessful = $true }
-            }
-            Set-CgrGitHubRepositorySetting -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -HostName $HostName
-        }
-        $completedSteps.Add([pscustomobject] @{ Order = $completedSteps.Count + 1; Name = 'RestoreSupportedSettings'; MutatedGitHub = -not $Plan.SkipSettings; Verified = $settings.IsSuccessful })
-
-        $failureStage = 'RestoreRepositoryProtection'
-        $planProtectionProperty = $Plan.PSObject.Properties['Protection']
-        $planProtection = if ($null -ne $planProtectionProperty) { $planProtectionProperty.Value } else { $null }
-        $protection = Invoke-CgrActivityStage -Name 'RestoreRepositoryProtection' -Message 'Restore transferable repository protection' -Action {
-            if (-not $verification.IsSuccessful) {
-                return [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'; Repository = $destination.FullName; Status = 'Failed'; Restored = @(); Skipped = @('FullHistoryVerificationFailed'); IsSuccessful = $false; IsComplete = $false }
-            }
-            if ($Plan.SkipSettings) {
-                return [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'; Repository = $destination.FullName; Status = 'Skipped'; Restored = @(); Skipped = @('AllSettings'); IsSuccessful = $true; IsComplete = $true }
-            }
-            if ($null -eq $planProtectionProperty) {
-                return Set-CgrRepositoryProtectionConfiguration -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -HostName $HostName
-            }
-            if ((Get-CgrObjectProperty -InputObject $planProtection -Name 'Status') -eq 'Captured') {
-                return Set-CgrRepositoryProtectionConfiguration -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -SourceConfiguration (Get-CgrObjectProperty -InputObject $planProtection -Name 'Configuration') -HostName $HostName
-            }
-
-            $planningStatus = [string] (Get-CgrObjectProperty -InputObject $planProtection -Name 'Status')
-            if ([string]::IsNullOrWhiteSpace($planningStatus)) { $planningStatus = 'Invalid' }
-            [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'; Repository = $destination.FullName; Status = 'Unsupported'; Restored = @(); Skipped = @("ProtectionPlanning:$planningStatus"); IsSuccessful = $true; IsComplete = $false }
-        }
-        $completedSteps.Add([pscustomobject] @{ Order = $completedSteps.Count + 1; Name = 'RestoreRepositoryProtection'; MutatedGitHub = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings); Verified = $protection.IsSuccessful })
+        $configuration = Invoke-CgrPostVerificationConfigurationRestore `
+            -Plan $Plan `
+            -SourceRepository $SourceRepository `
+            -DestinationRepository $verifiedDestination `
+            -Verification $verification `
+            -VerificationFailureReason 'FullHistoryVerificationFailed' `
+            -CompletedSteps $completedSteps `
+            -FailureStage ([ref] $failureStage) `
+            -HostName $HostName
+        $settings = $configuration.Settings
+        $protection = $configuration.Protection
 
         $archiveRepositoryNodeId = Get-CgrObjectProperty -InputObject $archive -Name 'NodeId'
         $destinationRepositoryNodeId = Get-CgrObjectProperty -InputObject $verifiedDestination -Name 'NodeId'
@@ -185,8 +162,8 @@ function Invoke-CgrSameNameFullHistoryReplacement {
             CompletedSteps = @($completedSteps)
             StoppedBeforeSettingsRestore = -not $verification.IsSuccessful
             ReleasesRestored = [bool] ($includeReleases -and $releases.IsSuccessful)
-            SettingsRestored = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings -and $settings.IsSuccessful)
-            ProtectionRestored = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings -and $protection.IsSuccessful -and $protection.IsComplete)
+            SettingsRestored = $configuration.SettingsRestored
+            ProtectionRestored = $configuration.ProtectionRestored
         }
 
         if ($ReportPath) { $failureStage = 'WriteCompletionReport'; Write-CgrMigrationExecutionReport -Result $executionResult -Path $ReportPath | Out-Null }

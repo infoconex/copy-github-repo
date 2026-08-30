@@ -72,6 +72,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Invoke-CgrNativeCommand` | Captures native-process stdout, stderr, and exit status without leaking stream implementation details. |
 | `Invoke-CgrNewDestinationFullHistory` | **Inline tier.** Orchestrates FullHistory copy, verification, optional approved-release restoration, settings/protection restoration, and recovery reporting for a new destination. |
 | `Invoke-CgrNewDestinationSnapshot` | **Inline tier.** Orchestrates Snapshot publication, verification, settings/protection restoration, and recovery reporting for a new destination. |
+| `Invoke-CgrPostVerificationConfigurationRestore` | Centralizes post-verification supported-settings and planned-protection restoration, including `SkipSettings`, structured completeness results, and precise recovery-stage evidence. |
 | `Invoke-CgrRepositoryCopyWizard` | Implements the testable wizard state machine while keeping prompts separate from migration execution. |
 | `Invoke-CgrRepositoryFullHistoryVerification` | Compares live source and destination history when immutable approved evidence is not supplied. |
 | `Invoke-CgrRepositorySnapshotVerification` | Verifies destination tree/root-history semantics against approved Snapshot evidence. |

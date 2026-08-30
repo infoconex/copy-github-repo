@@ -30,11 +30,33 @@ Describe 'Project PowerShell engineering policy' {
         $script:styleGuide | Should -Match 'structured objects on the success pipeline'
     }
 
-    It 'distinguishes required policy from readability preferences' {
-        $script:styleGuide | Should -Match '\*\*Required\*\*'
-        $script:styleGuide | Should -Match '\*\*Preferred\*\*'
-        $script:styleGuide | Should -Match 'Prefer splatting when an invocation has many arguments'
-        $script:styleGuide | Should -Match 'Do not convert stable readable calls to splatting solely for stylistic uniformity'
+    It 'defines policy categories used by engineering reviews' {
+        foreach ($category in @('Required', 'Preferred', 'Allowed', 'Discouraged', 'Prohibited')) {
+            $script:styleGuide | Should -Match ("\*\*{0}\*\*" -f $category)
+        }
+
+        $script:styleGuide | Should -Match 'Required.*mandatory engineering contract'
+        $script:styleGuide | Should -Match 'Preferred.*normal/default choice'
+        $script:styleGuide | Should -Match 'Allowed.*explicitly acceptable alternative'
+        $script:styleGuide | Should -Match 'Discouraged.*avoid in new or modified code'
+        $script:styleGuide | Should -Match 'Prohibited.*must not be introduced'
+    }
+
+    It 'documents the standards decision hierarchy without overriding deliberate project policy' {
+        $script:styleGuide | Should -Match 'documented CopyGitHubRepo rule.*takes precedence'
+        $script:styleGuide | Should -Match 'Microsoft PowerShell documentation and design guidance'
+        $script:styleGuide | Should -Match 'applicable PSScriptAnalyzer rules'
+        $script:styleGuide | Should -Match 'PowerShell Practice and Style'
+        $script:styleGuide | Should -Match 'established PowerShell community practice'
+        $script:styleGuide | Should -Match 'local consistency'
+        $script:styleGuide | Should -Match 'Before classifying an inconsistency as a defect'
+    }
+
+    It 'treats the configured Error and Warning analyzer policy as mandatory' {
+        $script:styleGuide | Should -Match 'configured PSScriptAnalyzer Error and Warning policy is mandatory'
+        $script:styleGuide | Should -Match 'no unsuppressed Error or Warning diagnostics'
+        $script:styleGuide | Should -Match '`PSScriptAnalyzerSettings.psd1` is the authoritative machine-readable analyzer configuration'
+        $script:styleGuide | Should -Match 'does not duplicate the complete PSScriptAnalyzer rule catalog'
     }
 
     It 'keeps the contributor guide linked to the project style guide' {
@@ -74,6 +96,11 @@ Describe 'Project PowerShell engineering policy' {
         $script:styleGuide | Should -Match 'Name the exact rule being suppressed'
         $script:styleGuide | Should -Match 'Include a nearby comment explaining why'
         $script:styleGuide | Should -Match 'Do not disable a useful rule globally'
+    }
+
+    It 'links to durable external PowerShell standards references' {
+        $script:styleGuide | Should -Match 'learn\.microsoft\.com/powershell/'
+        $script:styleGuide | Should -Match 'github\.com/PoshCode/PowerShellPracticeAndStyle'
     }
 
     It 'continues recursively analyzing the repository root' {

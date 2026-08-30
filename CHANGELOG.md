@@ -12,6 +12,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+No unreleased product changes.
+
+## [0.2.0] - 2026-08-30
+
 ### Added
 
 - Added opt-in GitHub Release preservation for `FullHistory` migrations with `-IncludeReleases`.
@@ -20,7 +24,13 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Added post-FullHistory restoration of release metadata and assets with tag-target, release metadata, asset name/label/size/content-type/digest verification where available, plus preservation of the selected source Latest release designation.
 - Added fail-closed release drift detection when a selected source release changes after planning, plus release provenance in migration/recovery results.
 - Added `Test-GitHubRepositoryMigration -IncludeReleases` with the same release-selection filters for independent read-only FullHistory release verification.
+- Added `Start-CopyGitHubRepositoryWizard -Version` to report the loaded module version without starting discovery, planning, or migration activity.
 - Added controlled unit, integration, and GitHub E2E coverage for filtered release selection, release assets, Latest designation, tag-target preservation, and independent post-migration verification.
+
+### Changed
+
+- Strengthened release-line safety and reliability by keeping repository-protection restoration bound to reviewed planning evidence, preserving fail-closed GitHub API read behavior, and maintaining verification-before-restoration and recovery-evidence ordering across supported copy paths.
+- Improved documentation discoverability and validation with page-specific search/social metadata, sitemap and robots support, structured-data checks, and clearer quality-gate diagnostics.
 
 ## [0.1.1] - 2026-08-25
 

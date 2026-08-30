@@ -52,7 +52,6 @@ Describe 'Required PSScriptAnalyzer Information policy' {
     It 'reports no findings for selectively promoted Information rules' {
         $findings = @(
             foreach ($powerShellFile in $script:governedPowerShellFiles) {
-                Write-Host "PSSA information policy analyzing: $powerShellFile"
                 Invoke-ScriptAnalyzer `
                     -Path $powerShellFile `
                     -Settings $script:informationSettings

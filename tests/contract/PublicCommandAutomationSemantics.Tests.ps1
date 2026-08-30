@@ -76,10 +76,11 @@ Describe 'Public command automation semantic contracts' {
                     continue
                 }
 
-                $cmdletBindingAttribute = @(
+                $cmdletBindingAttributes = @(
                     $functionAst.Body.ParamBlock.Attributes |
                         Where-Object { $_.TypeName.Name -ceq 'CmdletBinding' }
-                ) | Select-Object -First 1
+                )
+                $cmdletBindingAttribute = $cmdletBindingAttributes[0]
 
                 $attributeText = $cmdletBindingAttribute.Extent.Text
                 if ($attributeText -notmatch '(?i)SupportsShouldProcess') {
@@ -120,10 +121,11 @@ Describe 'Public command automation semantic contracts' {
 
         foreach ($commandName in $readOnlyCommands) {
             $functionAst = $script:commandAsts[$commandName]
-            $cmdletBindingAttribute = @(
+            $cmdletBindingAttributes = @(
                 $functionAst.Body.ParamBlock.Attributes |
                     Where-Object { $_.TypeName.Name -ceq 'CmdletBinding' }
-            ) | Select-Object -First 1
+            )
+            $cmdletBindingAttribute = $cmdletBindingAttributes[0]
 
             $cmdletBindingAttribute.Extent.Text | Should -Not -Match '(?i)SupportsShouldProcess' -Because "$commandName is read-only"
         }

@@ -160,7 +160,7 @@ Example:
 **Required**
 
 - Every manifest-exported public function uses `[CmdletBinding()]` so common-parameter and advanced-function semantics are explicit and testable.
-- Every state-changing exported command enables `SupportsShouldProcess`, declares an explicit `ConfirmImpact` appropriate to its risk, and calls `$PSCmdlet.ShouldProcess()` before mutation dispatch.
+- Every state-changing exported command enables `SupportsShouldProcess`, declares an explicit `ConfirmImpact` appropriate to its risk, and gates mutation through `ShouldProcess()` using the command's PowerShell cmdlet context before mutation dispatch. A delegated execution guard may use a captured `$PSCmdlet` reference when the public command retains ownership of the decision.
 - Supported automation scenarios must not depend on `Read-Host`, interactive host input, or wizard-only selection. A command that can prompt must expose and document a noninteractive path or identify the direct noninteractive public command that automation should use.
 - `Copy-GitHubRepository` is the automation boundary for repository-copy execution. Its `-NonInteractive` path requires the documented `-Force` acknowledgement for mutation while preserving independent exact replacement confirmations.
 - The interactive wizard may own host-oriented presentation and selection behavior, but automation uses the structured public commands directly rather than scraping wizard output.
@@ -238,7 +238,7 @@ The status word is intentionally redundant with both symbol and color. This keep
 
 **Required**
 
-- Public state-changing operations use `SupportsShouldProcess` and call `$PSCmdlet.ShouldProcess()` before mutation.
+- Public state-changing operations use `SupportsShouldProcess` and gate mutation through `ShouldProcess()` using their PowerShell cmdlet context before mutation. Direct commands normally call `$PSCmdlet.ShouldProcess()`; a delegated execution guard may call `ShouldProcess()` through a captured `$PSCmdlet` reference when the public command retains ownership of the decision.
 - `-WhatIf` must remain non-mutating.
 - `-Confirm:$false` may suppress routine PowerShell confirmation but must not bypass independent product safety requirements such as exact same-name or existing-destination replacement confirmation.
 - `-Force` may satisfy explicitly documented routine guards, but must not become a generic bypass for product safety invariants.
@@ -302,7 +302,7 @@ PSScriptAnalyzer remains the preferred mechanism for objective language and form
 
 `tests/contract/PowerShellSourceConventions.Tests.ps1` enforces the Required conventions that explicitly declared parameters use PascalCase, private functions use approved PowerShell verbs with the `Cgr` noun prefix, manifest-exported commands have exactly one matching public source file and do not use the private `Cgr` prefix, and governed Public/Private PowerShell source does not use tab indentation. Public command coverage is derived from `FunctionsToExport`; the contract does not maintain a second hard-coded command inventory.
 
-`tests/contract/PublicCommandAutomationSemantics.Tests.ps1` derives the exported public command set from `FunctionsToExport` and enforces `[CmdletBinding()]` on every export. It also verifies the explicit state-changing command classification, `SupportsShouldProcess`/`ConfirmImpact`/`ShouldProcess()` behavior, the direct noninteractive copy path, and the documented automation alternative to the interactive wizard.
+`tests/contract/PublicCommandAutomationSemantics.Tests.ps1` derives the exported public command set from `FunctionsToExport` and requires every export to have an explicit automation classification. It enforces `[CmdletBinding()]` on every export, verifies state-changing `SupportsShouldProcess`/`ConfirmImpact` semantics and command-specific mutation gating, checks the direct noninteractive copy path, and verifies the documented automation alternative to the interactive wizard.
 
 These AST/Pester checks complement the analyzer configuration rather than replacing it. They are intentionally narrow so project-specific structure can be enforced without enabling broader analyzer behavior that would create unrelated formatting churn or false positives.
 

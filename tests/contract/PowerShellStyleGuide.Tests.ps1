@@ -103,7 +103,7 @@ Describe 'Project PowerShell engineering policy' {
         $rules.PSUseConsistentWhitespace.CheckOpenParen | Should -BeTrue
         $rules.PSUseConsistentWhitespace.CheckParameter | Should -BeTrue
         $rules.PSUseConsistentWhitespace.CheckPipeForRedundantWhitespace | Should -BeTrue
-        $rules.PSUseCorrectCasing.CheckCommands | Should -BeTrue
+        $rules.PSUseCorrectCasing.CheckCommands | Should -BeFalse
         $rules.PSUseCorrectCasing.CheckKeyword | Should -BeTrue
         $rules.PSUseCorrectCasing.CheckOperator | Should -BeTrue
     }

@@ -1,5 +1,6 @@
 BeforeAll {
     $script:repositoryRoot = Split-Path -Parent $PSScriptRoot
+    $script:executionRoot = Join-Path $script:repositoryRoot '.pester-execution'
     Import-Module PSScriptAnalyzer -ErrorAction Stop
 
     $script:requiredInformationRules = @(
@@ -25,6 +26,18 @@ BeforeAll {
             }
         }
     }
+
+    $script:governedPowerShellFiles = @(
+        Get-ChildItem -LiteralPath $script:repositoryRoot -Recurse -File |
+            Where-Object {
+                $_.Extension -in @('.ps1', '.psm1', '.psd1') -and
+                -not $_.FullName.StartsWith(
+                    $script:executionRoot + [IO.Path]::DirectorySeparatorChar,
+                    [StringComparison]::OrdinalIgnoreCase
+                )
+            } |
+            Select-Object -ExpandProperty FullName
+    )
 }
 
 Describe 'Required PSScriptAnalyzer Information policy' {
@@ -38,10 +51,11 @@ Describe 'Required PSScriptAnalyzer Information policy' {
 
     It 'reports no findings for selectively promoted Information rules' {
         $findings = @(
-            Invoke-ScriptAnalyzer `
-                -Path $script:repositoryRoot `
-                -Settings $script:informationSettings `
-                -Recurse
+            foreach ($powerShellFile in $script:governedPowerShellFiles) {
+                Invoke-ScriptAnalyzer `
+                    -Path $powerShellFile `
+                    -Settings $script:informationSettings
+            }
         )
 
         if ($findings.Count -gt 0) {

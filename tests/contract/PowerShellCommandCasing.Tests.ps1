@@ -27,7 +27,7 @@ BeforeAll {
         }
     }
 
-    function Get-CgrCommandCasingFindings {
+    function Get-CgrCommandCasingFinding {
         param(
             [Parameter(Mandatory)]
             [System.Management.Automation.Language.Ast] $Ast,
@@ -146,7 +146,7 @@ Describe 'PowerShell command casing contract' {
     It 'accepts canonical casing for a governed command' {
         $parsed = Get-CgrParsedCommandData -Text 'Get-ChildItem -Path .'
         $findings = @(
-            Get-CgrCommandCasingFindings `
+            Get-CgrCommandCasingFinding `
                 -Ast $parsed.Ast `
                 -CanonicalCommands $script:canonicalCommands `
                 -Path '<positive>'
@@ -159,7 +159,7 @@ Describe 'PowerShell command casing contract' {
     It 'rejects deliberately mis-cased governed command names' {
         $parsed = Get-CgrParsedCommandData -Text 'get-childitem -Path .'
         $findings = @(
-            Get-CgrCommandCasingFindings `
+            Get-CgrCommandCasingFinding `
                 -Ast $parsed.Ast `
                 -CanonicalCommands $script:canonicalCommands `
                 -Path '<negative>'
@@ -175,7 +175,7 @@ Describe 'PowerShell command casing contract' {
     It 'ignores dynamic invocations whose command name is not statically knowable' {
         $parsed = Get-CgrParsedCommandData -Text '$commandName = ''Get-ChildItem''; & $commandName -Path .'
         $findings = @(
-            Get-CgrCommandCasingFindings `
+            Get-CgrCommandCasingFinding `
                 -Ast $parsed.Ast `
                 -CanonicalCommands $script:canonicalCommands `
                 -Path '<dynamic>'
@@ -197,28 +197,35 @@ Describe 'PowerShell command casing contract' {
 
         $findings = @(
             foreach ($parsedFile in $script:parsedFiles) {
-                Get-CgrCommandCasingFindings `
+                Get-CgrCommandCasingFinding `
                     -Ast $parsedFile.Ast `
                     -CanonicalCommands $script:canonicalCommands `
                     -Path $parsedFile.File.FullName
             }
         )
 
-        if ($findings.Count -gt 0) {
-            $details = $findings |
-                Sort-Object Kind, Actual, Path, Line |
+        $unknownCommands = @(
+            $findings |
+                Where-Object Kind -EQ 'Unknown' |
+                Select-Object -ExpandProperty Actual -Unique |
+                Sort-Object
+        )
+
+        if ($unknownCommands.Count -gt 0) {
+            throw ('Unknown literal commands require canonical entries in tests/CommandCasing.psd1: {0}' -f ($unknownCommands -join ', '))
+        }
+
+        $casingFindings = @($findings | Where-Object Kind -EQ 'Casing')
+        if ($casingFindings.Count -gt 0) {
+            $details = $casingFindings |
+                Sort-Object Actual, Path, Line |
                 ForEach-Object {
-                    if ($_.Kind -eq 'Unknown') {
-                        '{0}:{1} unknown command {2}; add its canonical casing to tests/CommandCasing.psd1.' -f $_.Path, $_.Line, $_.Actual
-                    }
-                    else {
-                        '{0}:{1} command {2} must use canonical casing {3}.' -f $_.Path, $_.Line, $_.Actual, $_.Expected
-                    }
+                    '{0}:{1} command {2} must use canonical casing {3}.' -f $_.Path, $_.Line, $_.Actual, $_.Expected
                 }
 
             $details -join [Environment]::NewLine | Write-Output
         }
 
-        $findings | Should -BeNullOrEmpty
+        $casingFindings | Should -BeNullOrEmpty
     }
 }

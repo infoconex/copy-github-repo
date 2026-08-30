@@ -8,7 +8,7 @@ BeforeAll {
     $script:documentationWorkflow = (Get-Content -LiteralPath $script:documentationWorkflowPath -Raw) -replace "`r`n?", "`n"
     $script:deploymentWorkflow = (Get-Content -LiteralPath $script:deploymentWorkflowPath -Raw) -replace "`r`n?", "`n"
 
-    $siteOnlyPatternMatch = [regex]::Match($script:workflow, "(?m)^\s*\$siteOnlyPattern = '([^']+)'$")
+    $siteOnlyPatternMatch = [regex]::Match($script:workflow, '(?m)^\s*\$siteOnlyPattern = ''([^'']+)''$')
     if (-not $siteOnlyPatternMatch.Success) {
         throw 'Unable to locate the site-only quality-scope pattern.'
     }

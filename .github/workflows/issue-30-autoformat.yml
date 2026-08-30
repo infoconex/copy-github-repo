@@ -1,0 +1,52 @@
+name: Issue 30 Autoformat
+
+'on':
+  push:
+    branches:
+      - issue-30/powershell-analyzer-policy
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: ${{ !contains(github.event.head_commit.message, '[skip autoformat]') }}
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          ref: issue-30/powershell-analyzer-policy
+
+      - name: Install development dependencies
+        shell: pwsh
+        run: ./build/Install-DevelopmentDependencies.ps1
+
+      - name: Apply repository formatter policy
+        shell: pwsh
+        run: |
+          Import-Module PSScriptAnalyzer -ErrorAction Stop
+          $settings = Join-Path $PWD 'PSScriptAnalyzerSettings.psd1'
+          $files = Get-ChildItem -Path $PWD -Recurse -File |
+              Where-Object {
+                  $_.Extension -in @('.ps1', '.psm1') -and
+                  $_.FullName -notmatch '[\\/]\.git[\\/]'
+              }
+
+          foreach ($file in $files) {
+              $formatted = Invoke-Formatter -ScriptDefinition (Get-Content -LiteralPath $file.FullName -Raw) -Settings $settings
+              [IO.File]::WriteAllText($file.FullName, $formatted, [Text.UTF8Encoding]::new($false))
+          }
+
+      - name: Commit formatter changes
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- '*.ps1' '*.psm1'
+          if (-not (git diff --cached --quiet)) {
+              git commit -m 'Apply adopted PowerShell formatting policy [skip autoformat]'
+              git push origin HEAD:issue-30/powershell-analyzer-policy
+          }

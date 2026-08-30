@@ -111,10 +111,15 @@ function Invoke-CgrNewDestinationFullHistory {
             if ($Plan.SkipSettings) {
                 return [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'; Repository = $DestinationRepository.FullName; Status = 'Skipped'; Restored = @(); Skipped = @('AllSettings'); IsSuccessful = $true; IsComplete = $true }
             }
-            if ($planProtection -and (Get-CgrObjectProperty -InputObject $planProtection -Name 'Status') -eq 'Captured') {
+            if ($null -eq $planProtection) {
+                return Set-CgrRepositoryProtectionConfiguration -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -HostName $HostName
+            }
+            if ((Get-CgrObjectProperty -InputObject $planProtection -Name 'Status') -eq 'Captured') {
                 return Set-CgrRepositoryProtectionConfiguration -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -SourceConfiguration (Get-CgrObjectProperty -InputObject $planProtection -Name 'Configuration') -HostName $HostName
             }
-            Set-CgrRepositoryProtectionConfiguration -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -HostName $HostName
+
+            $planningStatus = [string] (Get-CgrObjectProperty -InputObject $planProtection -Name 'Status')
+            [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'; Repository = $DestinationRepository.FullName; Status = 'Unsupported'; Restored = @(); Skipped = @("ProtectionPlanning:$planningStatus"); IsSuccessful = $true; IsComplete = $false }
         }
         $completedSteps.Add([pscustomobject] @{ Order = $completedSteps.Count + 1; Name = 'RestoreRepositoryProtection'; MutatedGitHub = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings); Verified = $protection.IsSuccessful })
 

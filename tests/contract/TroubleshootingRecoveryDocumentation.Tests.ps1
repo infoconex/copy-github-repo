@@ -26,20 +26,20 @@ Describe 'Troubleshooting and recovery documentation' {
 
     It 'covers required symptom-oriented troubleshooting areas' {
         foreach ($text in @(
-            'GitHub CLI is not authenticated'
-            'host is rejected'
-            'SourceStateChangedSincePlanning'
-            'destination already exists'
-            'archive name is already in use'
-            'Exact replacement confirmation is rejected'
-            'Git or Git LFS fails before publication'
-            'Content publication or push fails'
-            'Content verification fails'
-            'Ordinary settings restoration fails'
-            'Protection restoration is skipped or fails'
-            'wizard cancels or returns to planning'
-            'Report or recovery-evidence output cannot be written'
-        )) {
+                'GitHub CLI is not authenticated'
+                'host is rejected'
+                'SourceStateChangedSincePlanning'
+                'destination already exists'
+                'archive name is already in use'
+                'Exact replacement confirmation is rejected'
+                'Git or Git LFS fails before publication'
+                'Content publication or push fails'
+                'Content verification fails'
+                'Ordinary settings restoration fails'
+                'Protection restoration is skipped or fails'
+                'wizard cancels or returns to planning'
+                'Report or recovery-evidence output cannot be written'
+            )) {
             $script:guide | Should -Match ([regex]::Escape($text))
         }
     }
@@ -56,16 +56,16 @@ Describe 'Troubleshooting and recovery documentation' {
 
     It 'reuses the canonical scenario taxonomy' {
         foreach ($id in @(
-            'SCN-PLAN-SAFETY-01'
-            'SCN-DEST-SAFETY-01'
-            'SCN-DEST-PARTIAL-01'
-            'SCN-SAME-SAFETY-01'
-            'SCN-SNAP-VERIFY-01'
-            'SCN-HIST-VERIFY-01'
-            'SCN-SET-PARTIAL-01'
-            'SCN-WIZ-NOOP-01'
-            'SCN-RECOVER-RECOVERY-01'
-        )) {
+                'SCN-PLAN-SAFETY-01'
+                'SCN-DEST-SAFETY-01'
+                'SCN-DEST-PARTIAL-01'
+                'SCN-SAME-SAFETY-01'
+                'SCN-SNAP-VERIFY-01'
+                'SCN-HIST-VERIFY-01'
+                'SCN-SET-PARTIAL-01'
+                'SCN-WIZ-NOOP-01'
+                'SCN-RECOVER-RECOVERY-01'
+            )) {
             $script:guide | Should -Match ([regex]::Escape($id))
         }
     }

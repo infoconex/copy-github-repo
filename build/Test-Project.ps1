@@ -72,7 +72,7 @@ function ConvertTo-CgrCoverageCommandKey {
 if ($CoverageOnly) {
     $coverageSnapshots = @(
         foreach ($coverageCategory in $coverageCategories) {
-            $snapshotPath = Join-Path $testResultsPath ("coverage-{0}.json" -f $coverageCategory.ToLowerInvariant())
+            $snapshotPath = Join-Path $testResultsPath ('coverage-{0}.json' -f $coverageCategory.ToLowerInvariant())
             if (-not (Test-Path -LiteralPath $snapshotPath -PathType Leaf)) {
                 throw "Coverage snapshot '$snapshotPath' was not created by the categorized test phase."
             }
@@ -194,7 +194,7 @@ if ($Category -eq 'All') {
 }
 else {
     $sourceTestPaths = @($categoryFiles[$Category])
-    $testResultPath = Join-Path $testResultsPath ("test-results-{0}.xml" -f $Category.ToLowerInvariant())
+    $testResultPath = Join-Path $testResultsPath ('test-results-{0}.xml' -f $Category.ToLowerInvariant())
 }
 
 $missingTests = @($sourceTestPaths + $infrastructureTests | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
@@ -206,7 +206,7 @@ $duplicateNames = @(
     $sourceTestPaths |
         ForEach-Object { Split-Path -Leaf $_ } |
         Group-Object |
-        Where-Object Count -gt 1
+        Where-Object Count -GT 1
 )
 if ($duplicateNames.Count -gt 0) {
     throw "Categorized Pester suites must have unique filenames for execution: $($duplicateNames.Name -join ', ')"
@@ -253,7 +253,7 @@ try {
             Join-Path $testResultsPath 'coverage.xml'
         }
         else {
-            Join-Path $testResultsPath ("coverage-{0}.xml" -f $Category.ToLowerInvariant())
+            Join-Path $testResultsPath ('coverage-{0}.xml' -f $Category.ToLowerInvariant())
         }
 
         $pesterConfiguration.CodeCoverage.Enabled = $true
@@ -274,7 +274,7 @@ if ($pesterResult.FailedCount -gt 0) {
 }
 
 if ($CollectCoverage) {
-    $coverageSnapshotPath = Join-Path $testResultsPath ("coverage-{0}.json" -f $Category.ToLowerInvariant())
+    $coverageSnapshotPath = Join-Path $testResultsPath ('coverage-{0}.json' -f $Category.ToLowerInvariant())
     $coverageSnapshot = [ordered] @{
         Category = $Category
         CommandsAnalyzedCount = [int] $pesterResult.CodeCoverage.CommandsAnalyzedCount

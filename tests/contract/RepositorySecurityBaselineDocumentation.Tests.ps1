@@ -21,13 +21,13 @@ Describe 'Repository security baseline documentation contract' {
 
     It 'keeps integration permission limits distinct from security state' {
         foreach ($term in @(
-            'Dependabot alerts',
-            'Dependabot security updates',
-            'Secret scanning',
-            'Push protection for secrets',
-            'Code scanning alert state',
-            'Default GitHub Actions workflow permissions'
-        )) {
+                'Dependabot alerts',
+                'Dependabot security updates',
+                'Secret scanning',
+                'Push protection for secrets',
+                'Code scanning alert state',
+                'Default GitHub Actions workflow permissions'
+            )) {
             $script:baseline | Should -Match ([regex]::Escape($term))
         }
 

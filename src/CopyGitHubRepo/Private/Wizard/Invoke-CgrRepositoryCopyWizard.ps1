@@ -254,20 +254,20 @@ function Invoke-CgrRepositoryCopyWizard {
 
                 Write-CgrWizardMessage
                 Write-CgrWizardMessage -Message 'Repository copy plan' -Style Heading
-                Write-CgrWizardMessage -Message ("  Source: {0}" -f $plan.SourceRepository) -Style Value
-                Write-CgrWizardMessage -Message ("  Destination: {0}" -f $plan.DestinationRepository) -Style Value
-                Write-CgrWizardMessage -Message ("  Content mode: {0}" -f $plan.ContentMode)
+                Write-CgrWizardMessage -Message ('  Source: {0}' -f $plan.SourceRepository) -Style Value
+                Write-CgrWizardMessage -Message ('  Destination: {0}' -f $plan.DestinationRepository) -Style Value
+                Write-CgrWizardMessage -Message ('  Content mode: {0}' -f $plan.ContentMode)
                 if ($plan.ContentMode -eq 'Snapshot') {
                     Write-CgrWizardMessage -Message '  Snapshot publishes the approved default-branch content as one new root commit without prior Git history.' -Style Hint
-                    Write-CgrWizardMessage -Message ("  Approved source commit: {0}" -f $plan.SourceState.CommitSha) -Style Hint
-                    Write-CgrWizardMessage -Message ("  Commit message: {0}" -f $plan.CommitMessage) -Style Hint
+                    Write-CgrWizardMessage -Message ('  Approved source commit: {0}' -f $plan.SourceState.CommitSha) -Style Hint
+                    Write-CgrWizardMessage -Message ('  Commit message: {0}' -f $plan.CommitMessage) -Style Hint
 
                     $historicalRecords = Get-CgrObjectProperty -InputObject $plan.SourceState -Name 'HistoricalRecords'
                     if ($historicalRecords) {
                         $tagCount = [int] (Get-CgrObjectProperty -InputObject $historicalRecords -Name 'TagCount')
                         $releaseCount = [int] (Get-CgrObjectProperty -InputObject $historicalRecords -Name 'ReleaseCount')
-                        Write-CgrWizardMessage -Message ("  Git tags: {0} (not copied)" -f $tagCount) -Style Hint
-                        Write-CgrWizardMessage -Message ("  GitHub Releases: {0} (not copied)" -f $releaseCount) -Style Hint
+                        Write-CgrWizardMessage -Message ('  Git tags: {0} (not copied)' -f $tagCount) -Style Hint
+                        Write-CgrWizardMessage -Message ('  GitHub Releases: {0} (not copied)' -f $releaseCount) -Style Hint
                         if ($plan.Mode -eq 'SameNameReplacement' -and ($tagCount -gt 0 -or $releaseCount -gt 0)) {
                             Write-CgrWizardMessage -Message 'Existing tags and GitHub Releases remain with the archived original repository; they are not recreated on the clean replacement.' -Status Warning
                             Write-CgrWizardMessage -Message 'Create the new release tag and GitHub Release only after the clean replacement has completed and been verified.' -Style Hint
@@ -276,15 +276,15 @@ function Invoke-CgrRepositoryCopyWizard {
                 }
                 else {
                     Write-CgrWizardMessage -Message '  FullHistory preserves the approved branches, tags, commits, and reachable Git LFS objects.' -Style Hint
-                    Write-CgrWizardMessage -Message ("  Approved refs: {0}; reachable commits: {1}" -f @($plan.SourceState.Refs).Count, $plan.SourceState.ReachableCommitCount) -Style Hint
+                    Write-CgrWizardMessage -Message ('  Approved refs: {0}; reachable commits: {1}' -f @($plan.SourceState.Refs).Count, $plan.SourceState.ReachableCommitCount) -Style Hint
                 }
-                Write-CgrWizardMessage -Message ("  Visibility: {0}" -f $plan.DestinationVisibility)
+                Write-CgrWizardMessage -Message ('  Visibility: {0}' -f $plan.DestinationVisibility)
                 if (-not [string]::IsNullOrWhiteSpace([string] $plan.ArchiveRepository)) {
-                    Write-CgrWizardMessage -Message ("  Archive: {0}" -f $plan.ArchiveRepository) -Style Value
+                    Write-CgrWizardMessage -Message ('  Archive: {0}' -f $plan.ArchiveRepository) -Style Value
                 }
                 Write-CgrWizardMessage -Message '  Planned steps:' -Style Heading
                 foreach ($plannedStep in @($plan.Steps)) {
-                    Write-CgrWizardMessage -Message ("    - {0}" -f $plannedStep.Description)
+                    Write-CgrWizardMessage -Message ('    - {0}' -f $plannedStep.Description)
                 }
 
                 $confirmation = Read-CgrWizardChoice `

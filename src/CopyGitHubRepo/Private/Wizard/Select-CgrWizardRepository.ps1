@@ -30,14 +30,14 @@ function Select-CgrWizardRepository {
 
     while ($true) {
         $visibleRepositories = @(if ([string]::IsNullOrWhiteSpace($filter)) {
-            $Repositories
-        }
-        else {
-            $Repositories | Where-Object {
-                $fullName = [string] $_.FullName
-                $fullName.IndexOf($filter, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+                $Repositories
             }
-        })
+            else {
+                $Repositories | Where-Object {
+                    $fullName = [string] $_.FullName
+                    $fullName.IndexOf($filter, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+                }
+            })
 
         $pageCount = [Math]::Max(1, [int] [Math]::Ceiling($visibleRepositories.Count / [double] $PageSize))
         if ($pageIndex -ge $pageCount) { $pageIndex = $pageCount - 1 }
@@ -58,10 +58,10 @@ function Select-CgrWizardRepository {
         Write-CgrWizardMessage
         Write-CgrWizardMessage -Message $Title -Style Heading
         if (-not [string]::IsNullOrWhiteSpace($filter)) {
-            Write-CgrWizardMessage -Message ("Filter: {0}" -f $filter) -Style Hint
+            Write-CgrWizardMessage -Message ('Filter: {0}' -f $filter) -Style Hint
         }
         if ($visibleRepositories.Count -gt $PageSize) {
-            Write-CgrWizardMessage -Message ("Showing {0}-{1} of {2} repositories (page {3} of {4})." -f ($pageStart + 1), [Math]::Min($pageStart + $PageSize, $visibleRepositories.Count), $visibleRepositories.Count, ($pageIndex + 1), $pageCount) -Style Hint
+            Write-CgrWizardMessage -Message ('Showing {0}-{1} of {2} repositories (page {3} of {4}).' -f ($pageStart + 1), [Math]::Min($pageStart + $PageSize, $visibleRepositories.Count), $visibleRepositories.Count, ($pageIndex + 1), $pageCount) -Style Hint
         }
 
         if ($visibleRepositories.Count -eq 0) {

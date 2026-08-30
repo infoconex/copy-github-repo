@@ -25,8 +25,8 @@ Describe 'Get-GitHubRepository parameter sets' {
 
     It 'keeps Repository exclusive to ByRepository and filters exclusive to Search' {
         $command = Get-Command Get-GitHubRepository
-        $byRepository = $command.ParameterSets | Where-Object Name -eq 'ByRepository'
-        $search = $command.ParameterSets | Where-Object Name -eq 'Search'
+        $byRepository = $command.ParameterSets | Where-Object Name -EQ 'ByRepository'
+        $search = $command.ParameterSets | Where-Object Name -EQ 'Search'
 
         @($byRepository.Parameters.Name) | Should -Contain 'Repository'
         @($byRepository.Parameters.Name) | Should -Contain 'HostName'

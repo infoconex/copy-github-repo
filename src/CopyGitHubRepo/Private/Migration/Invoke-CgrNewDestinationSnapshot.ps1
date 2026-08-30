@@ -141,7 +141,8 @@ function Invoke-CgrNewDestinationSnapshot {
                 DestinationTreeSha = if ($snapshot) { Get-CgrObjectProperty -InputObject $snapshot -Name 'TreeSha' } else { $null }
             }
             $recoveryReportPath = Write-CgrMigrationRecoveryReport -Plan $Plan -DestinationRepository $DestinationRepository -FailureStage $failureStage -ErrorRecord $_ -CompletedSteps @($completedSteps) -Provenance $recoveryProvenance -PreferredReportPath $ReportPath
-        } catch { Write-Warning "Migration failed after destination creation, and the recovery report could not be written. Recovery reporting error: $($_.Exception.Message)" }
+        }
+        catch { Write-Warning "Migration failed after destination creation, and the recovery report could not be written. Recovery reporting error: $($_.Exception.Message)" }
         if ($recoveryReportPath) { Write-Warning "Migration failed after destination creation. Recovery report: $recoveryReportPath" }
         throw
     }

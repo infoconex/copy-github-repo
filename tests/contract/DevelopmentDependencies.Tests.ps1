@@ -101,7 +101,7 @@ Describe 'Automated dependency and supply-chain monitoring' {
         $content = Get-Content -LiteralPath $script:dependencyMonitorWorkflowPath -Raw
 
         $content | Should -Match '(?m)^name: Monitor Dependencies\r?$'
-        $content | Should -Match "cron:"
+        $content | Should -Match 'cron:'
         $content | Should -Match 'workflow_dispatch:'
         $content | Should -Match '(?s)permissions:.*contents:\s*read'
         $content | Should -Match 'actions/checkout@[0-9a-f]{40}'

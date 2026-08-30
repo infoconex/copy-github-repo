@@ -21,10 +21,10 @@ function Get-CgrGitHubReleaseSelection {
 
     $listResult = Invoke-CgrGitHubApiReadRequest `
         -ArgumentList @(
-            'api', '--hostname', $HostName,
-            '--paginate', '--slurp',
-            "repos/$($Repository.FullName)/releases?per_page=100"
-        )
+        'api', '--hostname', $HostName,
+        '--paginate', '--slurp',
+        "repos/$($Repository.FullName)/releases?per_page=100"
+    )
 
     if ($listResult.ExitCode -ne 0) {
         $diagnostic = Protect-CgrDiagnosticText -Text ([string] $listResult.ErrorText)
@@ -104,10 +104,11 @@ function Get-CgrGitHubReleaseSelection {
     }
 
     $selected = @($selected | Sort-Object -Property @{ Expression = {
-                    if ($_.published_at) { [datetimeoffset] $_.published_at }
-                    elseif ($_.created_at) { [datetimeoffset] $_.created_at }
-                    else { [datetimeoffset]::MinValue }
-                }; Descending = $true }, @{ Expression = { [string] $_.tag_name }; Descending = $false })
+                if ($_.published_at) { [datetimeoffset] $_.published_at }
+                elseif ($_.created_at) { [datetimeoffset] $_.created_at }
+                else { [datetimeoffset]::MinValue }
+            }; Descending = $true 
+        }, @{ Expression = { [string] $_.tag_name }; Descending = $false })
 
     if ($PSBoundParameters.ContainsKey('ReleaseCount')) {
         $selected = @($selected | Select-Object -First $ReleaseCount)

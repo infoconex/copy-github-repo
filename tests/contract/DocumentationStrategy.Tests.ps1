@@ -12,14 +12,14 @@ BeforeAll {
 Describe 'Documentation strategy contract' {
     It 'defines the seven primary personas and keeps Industry Expert cross-cutting' {
         foreach ($persona in @(
-            'User / Operator'
-            'Contributor / Maintainer'
-            'Quality Engineer'
-            'Architect / Engineering Reviewer'
-            'Security Reviewer'
-            'Governance / Compliance Reviewer'
-            'Product / Program Manager'
-        )) {
+                'User / Operator'
+                'Contributor / Maintainer'
+                'Quality Engineer'
+                'Architect / Engineering Reviewer'
+                'Security Reviewer'
+                'Governance / Compliance Reviewer'
+                'Product / Program Manager'
+            )) {
             $script:strategy | Should -Match ([regex]::Escape($persona))
         }
 
@@ -47,21 +47,21 @@ Describe 'Documentation strategy contract' {
 
     It 'distinguishes implementation and evidence states' {
         foreach ($state in @(
-            'Implemented'
-            'Automatically tested'
-            'E2E-capable'
-            'Live-validated'
-            'Documented'
-            'Planned'
-            'Unsupported / deferred'
-        )) {
+                'Implemented'
+                'Automatically tested'
+                'E2E-capable'
+                'Live-validated'
+                'Documented'
+                'Planned'
+                'Unsupported / deferred'
+            )) {
             $script:strategy | Should -Match ([regex]::Escape($state))
         }
     }
 
     It 'keeps documentation organized by topic with README landing pages' {
         $docsRoot = Join-Path $repositoryRoot 'docs'
-        @(Get-ChildItem -LiteralPath $docsRoot -Filter '*.md' -File | Where-Object Name -ne 'README.md').Count | Should -Be 0
+        @(Get-ChildItem -LiteralPath $docsRoot -Filter '*.md' -File | Where-Object Name -NE 'README.md').Count | Should -Be 0
 
         foreach ($area in @('user', 'reference', 'product', 'engineering', 'security', 'release')) {
             Test-Path -LiteralPath (Join-Path $docsRoot "$area/README.md") -PathType Leaf | Should -BeTrue

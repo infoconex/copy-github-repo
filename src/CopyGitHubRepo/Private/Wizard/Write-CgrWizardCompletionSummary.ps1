@@ -82,7 +82,7 @@ function Write-CgrWizardCompletionSummary {
             }
             'Unsupported' {
                 $detail = if ($skippedProtection.Count -gt 0) { ': ' + ($skippedProtection -join ', ') } else { '.' }
-                Write-CgrWizardMessage -Message ("Repository protection was not transferable{0}" -f $detail) -Status Warning
+                Write-CgrWizardMessage -Message ('Repository protection was not transferable{0}' -f $detail) -Status Warning
             }
             'Partial' {
                 Write-CgrWizardMessage -Message 'Repository protection was only partially restored.' -Status Warning
@@ -99,13 +99,13 @@ function Write-CgrWizardCompletionSummary {
         $identityPreserved = [bool] (Get-CgrObjectProperty -InputObject $Result -Name 'ArchivedOriginalIdentityPreserved')
         $replacementDistinct = [bool] (Get-CgrObjectProperty -InputObject $Result -Name 'ReplacementHasDistinctIdentity')
         if ($identityPreserved) {
-            Write-CgrWizardMessage -Message ("Archived original identity preserved (repository ID {0})." -f $archiveRepositoryId) -Status Success
+            Write-CgrWizardMessage -Message ('Archived original identity preserved (repository ID {0}).' -f $archiveRepositoryId) -Status Success
         }
         else {
             Write-CgrWizardMessage -Message 'Archived original repository identity could not be confirmed.' -Status Error
         }
         if ($replacementDistinct) {
-            Write-CgrWizardMessage -Message ("Replacement uses a new repository identity (repository ID {0})." -f $replacementRepositoryId) -Status Success
+            Write-CgrWizardMessage -Message ('Replacement uses a new repository identity (repository ID {0}).' -f $replacementRepositoryId) -Status Success
         }
         else {
             Write-CgrWizardMessage -Message 'Replacement repository identity is not distinct from the original.' -Status Error
@@ -122,16 +122,16 @@ function Write-CgrWizardCompletionSummary {
     }
 
     if (-not [string]::IsNullOrWhiteSpace($destination)) {
-        Write-CgrWizardMessage -Message ("  Destination: {0}" -f $destination) -Style Value
+        Write-CgrWizardMessage -Message ('  Destination: {0}' -f $destination) -Style Value
     }
     if (-not [string]::IsNullOrWhiteSpace($destinationUrl)) {
-        Write-CgrWizardMessage -Message ("  URL: {0}" -f $destinationUrl) -Style Hint
+        Write-CgrWizardMessage -Message ('  URL: {0}' -f $destinationUrl) -Style Hint
     }
     if (-not [string]::IsNullOrWhiteSpace($archive)) {
-        Write-CgrWizardMessage -Message ("  Archive: {0}" -f $archive) -Style Value
+        Write-CgrWizardMessage -Message ('  Archive: {0}' -f $archive) -Style Value
     }
     if (-not [string]::IsNullOrWhiteSpace($contentMode)) {
-        Write-CgrWizardMessage -Message ("  Mode: {0}" -f $contentMode)
+        Write-CgrWizardMessage -Message ('  Mode: {0}' -f $contentMode)
     }
 
     if ($contentMode -eq 'Snapshot' -and $provenance) {
@@ -139,17 +139,17 @@ function Write-CgrWizardCompletionSummary {
         $sourceTree = [string] (Get-CgrObjectProperty -InputObject $provenance -Name 'SourceTreeSha')
         $destinationCommit = [string] (Get-CgrObjectProperty -InputObject $provenance -Name 'DestinationRootCommitSha')
         if (-not [string]::IsNullOrWhiteSpace($sourceCommit)) {
-            Write-CgrWizardMessage -Message ("  Source commit: {0}" -f $sourceCommit) -Style Hint
+            Write-CgrWizardMessage -Message ('  Source commit: {0}' -f $sourceCommit) -Style Hint
         }
         if (-not [string]::IsNullOrWhiteSpace($sourceTree)) {
-            Write-CgrWizardMessage -Message ("  Source tree: {0}" -f $sourceTree) -Style Hint
+            Write-CgrWizardMessage -Message ('  Source tree: {0}' -f $sourceTree) -Style Hint
         }
         if (-not [string]::IsNullOrWhiteSpace($destinationCommit)) {
-            Write-CgrWizardMessage -Message ("  Snapshot root commit: {0}" -f $destinationCommit) -Style Hint
+            Write-CgrWizardMessage -Message ('  Snapshot root commit: {0}' -f $destinationCommit) -Style Hint
         }
     }
 
     if (-not [string]::IsNullOrWhiteSpace($ReportPath)) {
-        Write-CgrWizardMessage -Message ("  Report: {0}" -f $ReportPath) -Style Hint
+        Write-CgrWizardMessage -Message ('  Report: {0}' -f $ReportPath) -Style Hint
     }
 }

@@ -22,7 +22,7 @@ Describe 'Command reference documentation' {
         foreach ($commandName in $script:publicCommands) {
             Test-Path -LiteralPath (Join-Path $script:referenceRoot "$commandName.md") -PathType Leaf | Should -BeTrue
         }
-        @(Get-ChildItem -LiteralPath $script:referenceRoot -Filter '*.md' -File | Where-Object Name -ne 'README.md').Count | Should -Be $script:publicCommands.Count
+        @(Get-ChildItem -LiteralPath $script:referenceRoot -Filter '*.md' -File | Where-Object Name -NE 'README.md').Count | Should -Be $script:publicCommands.Count
     }
 
     It 'links every command from the reference index' {

@@ -15,7 +15,7 @@ function Write-CgrWizardActivityEvent {
         if ($state.Interactive) {
             $frame = $state.SpinnerFrames[$state.SpinnerIndex % $state.SpinnerFrames.Count]
             $state.SpinnerIndex++
-            Write-Progress -Id $state.ProgressId -Activity 'Repository copy' -Status ("{0} {1}" -f $frame, $ActivityEvent.Message)
+            Write-Progress -Id $state.ProgressId -Activity 'Repository copy' -Status ('{0} {1}' -f $frame, $ActivityEvent.Message)
         }
         else {
             Write-CgrWizardMessage -Message $ActivityEvent.Message -Status Info
@@ -33,7 +33,7 @@ function Write-CgrWizardActivityEvent {
             else {
                 $frame = $state.SpinnerFrames[$state.SpinnerIndex % $state.SpinnerFrames.Count]
                 $state.SpinnerIndex++
-                Write-Progress -Id $state.ProgressId -Activity 'Repository copy' -Status ("{0} {1}" -f $frame, $ActivityEvent.Message)
+                Write-Progress -Id $state.ProgressId -Activity 'Repository copy' -Status ('{0} {1}' -f $frame, $ActivityEvent.Message)
             }
         }
         return
@@ -50,7 +50,7 @@ function Write-CgrWizardActivityEvent {
         $state.StartedAt.Remove($ActivityEvent.Name)
     }
 
-    $message = "{0}{1}" -f $ActivityEvent.Message, $elapsedSuffix
+    $message = '{0}{1}' -f $ActivityEvent.Message, $elapsedSuffix
     switch ($ActivityEvent.State) {
         'Completed' {
             Write-CgrWizardMessage -Message $message -Status Success

@@ -146,10 +146,10 @@ function Test-GitHubRepositoryMigration {
     Assert-CgrSupportedHostName -HostName $HostName
 
     $releaseFilterWasSpecified = $PSBoundParameters.ContainsKey('ReleaseTag') -or
-        $PSBoundParameters.ContainsKey('ReleaseExcludeTag') -or
-        $IncludePrerelease -or
-        $IncludeDraftReleases -or
-        $PSBoundParameters.ContainsKey('ReleaseCount')
+    $PSBoundParameters.ContainsKey('ReleaseExcludeTag') -or
+    $IncludePrerelease -or
+    $IncludeDraftReleases -or
+    $PSBoundParameters.ContainsKey('ReleaseCount')
 
     if ($releaseFilterWasSpecified -and -not $IncludeReleases) {
         $message = 'Release verification filter parameters require -IncludeReleases.'

@@ -32,7 +32,7 @@ Describe 'Project PowerShell engineering policy' {
 
     It 'defines policy categories used by engineering reviews' {
         foreach ($category in @('Required', 'Preferred', 'Allowed', 'Discouraged', 'Prohibited')) {
-            $script:styleGuide | Should -Match ("\*\*{0}\*\*" -f $category)
+            $script:styleGuide | Should -Match ('\*\*{0}\*\*' -f $category)
         }
 
         $script:styleGuide | Should -Match 'Required.*mandatory engineering contract'

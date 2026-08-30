@@ -62,9 +62,9 @@ Describe 'Repository settings restoration' {
                 -DestinationRepository $DestinationFixture
 
             $result.IsSuccessful | Should -BeTrue
-            @($result.Restored | Where-Object Name -eq 'Description')[0].Changed | Should -BeTrue
-            @($result.Restored | Where-Object Name -eq 'HasIssues')[0].Changed | Should -BeTrue
-            @($result.Restored | Where-Object Name -eq 'AllowMergeCommit')[0].Changed | Should -BeFalse
+            @($result.Restored | Where-Object Name -EQ 'Description')[0].Changed | Should -BeTrue
+            @($result.Restored | Where-Object Name -EQ 'HasIssues')[0].Changed | Should -BeTrue
+            @($result.Restored | Where-Object Name -EQ 'AllowMergeCommit')[0].Changed | Should -BeFalse
 
             Should -Invoke Invoke-CgrNativeCommand -Times 1 -Exactly -ParameterFilter {
                 $FilePath -eq 'gh' -and
@@ -94,8 +94,8 @@ Describe 'Repository settings restoration' {
             Mock Get-CgrRepository { $matchingDestination }
 
             $output = @(Set-CgrGitHubRepositorySetting `
-                -SourceRepository $SourceFixture `
-                -DestinationRepository $destinationWithDifferentTopics)
+                    -SourceRepository $SourceFixture `
+                    -DestinationRepository $destinationWithDifferentTopics)
             $result = $output |
                 Where-Object {
                     (Get-CgrObjectProperty -InputObject $_ -Name 'IsSuccessful') -eq $true -and
@@ -105,7 +105,7 @@ Describe 'Repository settings restoration' {
 
             $result | Should -Not -BeNullOrEmpty
             $result.IsSuccessful | Should -BeTrue
-            @($result.Restored | Where-Object Name -eq 'Topics')[0].Changed | Should -BeTrue
+            @($result.Restored | Where-Object Name -EQ 'Topics')[0].Changed | Should -BeTrue
             Should -Invoke Set-Content -Times 1 -Exactly
             Should -Invoke Invoke-CgrNativeCommand -Times 1 -Exactly -ParameterFilter {
                 $FilePath -eq 'gh' -and

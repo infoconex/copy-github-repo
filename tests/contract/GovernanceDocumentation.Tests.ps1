@@ -21,14 +21,14 @@ Describe 'Project governance and ownership documentation contract' {
 
     It 'assigns ownership for the required decision areas' {
         foreach ($area in @(
-            'Product scope and public behavior',
-            'Public API compatibility',
-            'Architecture',
-            'Security policy and security architecture',
-            'Documentation system',
-            'Release readiness decision',
-            'Release/publishing execution'
-        )) {
+                'Product scope and public behavior',
+                'Public API compatibility',
+                'Architecture',
+                'Security policy and security architecture',
+                'Documentation system',
+                'Release readiness decision',
+                'Release/publishing execution'
+            )) {
             $script:governance | Should -Match ([regex]::Escape($area))
         }
     }

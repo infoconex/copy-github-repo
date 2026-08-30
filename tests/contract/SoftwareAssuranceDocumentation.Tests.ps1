@@ -18,13 +18,13 @@ Describe 'Software assurance review package documentation contract' {
 
     It 'covers product identity supported scope and current stable release evidence state' {
         foreach ($term in @(
-            'Copy GitHub Repository / CopyGitHubRepo',
-            'PowerShell 7.4+',
-            'GitHub.com only',
-            'Snapshot',
-            'FullHistory',
-            'Exact release-candidate live evidence'
-        )) {
+                'Copy GitHub Repository / CopyGitHubRepo',
+                'PowerShell 7.4+',
+                'GitHub.com only',
+                'Snapshot',
+                'FullHistory',
+                'Exact release-candidate live evidence'
+            )) {
             $script:assurance | Should -Match ([regex]::Escape($term))
         }
 
@@ -32,11 +32,11 @@ Describe 'Software assurance review package documentation contract' {
         $script:assurance | Should -Not -Match 'first stable release has not yet been published'
 
         foreach ($command in @(
-            'Copy-GitHubRepository',
-            'Get-GitHubRepository',
-            'Start-CopyGitHubRepositoryWizard',
-            'Test-GitHubRepositoryMigration'
-        )) {
+                'Copy-GitHubRepository',
+                'Get-GitHubRepository',
+                'Start-CopyGitHubRepositoryWizard',
+                'Test-GitHubRepositoryMigration'
+            )) {
             $script:assurance | Should -Match ([regex]::Escape($command))
         }
     }
@@ -51,15 +51,15 @@ Describe 'Software assurance review package documentation contract' {
 
     It 'separates shipped runtime external development CI and distribution dependencies' {
         foreach ($class in @(
-            'Product payload',
-            'Runtime PowerShell modules',
-            'Runtime platform',
-            'Runtime native prerequisite',
-            'Conditional runtime prerequisite',
-            'Development/test',
-            'CI/release automation',
-            'Distribution'
-        )) {
+                'Product payload',
+                'Runtime PowerShell modules',
+                'Runtime platform',
+                'Runtime native prerequisite',
+                'Conditional runtime prerequisite',
+                'Development/test',
+                'CI/release automation',
+                'Distribution'
+            )) {
             $script:assurance | Should -Match ([regex]::Escape($class))
         }
         $script:assurance | Should -Match 'Pester 6\.1\.0, PSScriptAnalyzer 1\.25\.0'
@@ -90,14 +90,14 @@ Describe 'Software assurance review package documentation contract' {
 
     It 'links the security quality release and vulnerability authorities without overstating evidence' {
         foreach ($path in @(
-            'security-architecture.md',
-            '../engineering/quality-strategy.md',
-            'repository-security-baseline.md',
-            'release-sbom.md',
-            'installation-security.md',
-            '../../SECURITY.md',
-            '../product/non-functional-requirements.md'
-        )) {
+                'security-architecture.md',
+                '../engineering/quality-strategy.md',
+                'repository-security-baseline.md',
+                'release-sbom.md',
+                'installation-security.md',
+                '../../SECURITY.md',
+                '../product/non-functional-requirements.md'
+            )) {
             $script:assurance | Should -Match ([regex]::Escape($path))
         }
         $script:assurance | Should -Match 'not.*proof that the product is vulnerability-free'

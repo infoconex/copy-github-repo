@@ -99,13 +99,13 @@ function Copy-CgrApprovedGitHubRelease {
                 })
 
             $stateChanged = [long] $sourceRelease.id -ne [long] $approved.ReleaseId -or
-                [string] $sourceRelease.tag_name -ne $tagName -or
-                [string] $sourceRelease.name -ne [string] $approved.Name -or
-                [string] $sourceRelease.body -ne [string] $approved.Body -or
-                [bool] $sourceRelease.draft -ne [bool] $approved.Draft -or
-                [bool] $sourceRelease.prerelease -ne [bool] $approved.Prerelease -or
-                $sourceCommitSha -ne [string] $approved.TargetCommitSha -or
-                $currentAssets.Count -ne @($approved.Assets).Count
+            [string] $sourceRelease.tag_name -ne $tagName -or
+            [string] $sourceRelease.name -ne [string] $approved.Name -or
+            [string] $sourceRelease.body -ne [string] $approved.Body -or
+            [bool] $sourceRelease.draft -ne [bool] $approved.Draft -or
+            [bool] $sourceRelease.prerelease -ne [bool] $approved.Prerelease -or
+            $sourceCommitSha -ne [string] $approved.TargetCommitSha -or
+            $currentAssets.Count -ne @($approved.Assets).Count
 
             if (-not $stateChanged) {
                 foreach ($approvedAsset in @($approved.Assets)) {

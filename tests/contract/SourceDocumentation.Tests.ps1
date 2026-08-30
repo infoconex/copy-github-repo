@@ -43,13 +43,13 @@ Describe 'Source documentation policy' {
         @($required | Sort-Object -Unique).Count | Should -Be $required.Count
 
         foreach ($functionName in $required) {
-            @($script:privateFiles | Where-Object BaseName -eq $functionName).Count |
+            @($script:privateFiles | Where-Object BaseName -EQ $functionName).Count |
                 Should -Be 1 -Because "$functionName is classified as an inline-help safety boundary"
         }
     }
 
     It '<FunctionName> carries attached comment-based help at the mutation or planning boundary' -ForEach $inlineHelpCases {
-        $matchingFiles = @($script:privateFiles | Where-Object BaseName -eq $FunctionName)
+        $matchingFiles = @($script:privateFiles | Where-Object BaseName -EQ $FunctionName)
         $matchingFiles.Count | Should -Be 1 -Because "$FunctionName should map to one private source file"
         $source = Get-Content -LiteralPath $matchingFiles[0].FullName -Raw
         $pattern = '(?ms)function\s+' + [regex]::Escape($FunctionName) + '\s*\{\s*<#.*?\.SYNOPSIS\b.*?\.DESCRIPTION\b.*?#>'

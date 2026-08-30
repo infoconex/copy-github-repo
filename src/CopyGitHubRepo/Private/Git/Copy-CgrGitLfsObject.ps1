@@ -23,7 +23,7 @@ function Copy-CgrGitLfsObject {
 
     $attributeFiles = if ([System.IO.Directory]::Exists($SourcePath)) {
         @([System.IO.Directory]::EnumerateFiles($SourcePath, '.gitattributes', [System.IO.SearchOption]::AllDirectories) |
-            Where-Object { $_ -notmatch '[\\/]\.git[\\/]' })
+                Where-Object { $_ -notmatch '[\\/]\.git[\\/]' })
     }
     else {
         @()

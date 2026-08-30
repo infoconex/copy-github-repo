@@ -19,9 +19,9 @@ Describe 'Wizard activity presentation' {
             $sink = { param($ActivityEvent) $script:events.Add($ActivityEvent) }
 
             $output = @(Invoke-CgrWithActivitySink -Sink $sink -Action {
-                Send-CgrActivityEvent -Name Clone -State Started -Message 'Clone source'
-                Send-CgrActivityEvent -Name Clone -State Completed -Message 'Clone source'
-            })
+                    Send-CgrActivityEvent -Name Clone -State Started -Message 'Clone source'
+                    Send-CgrActivityEvent -Name Clone -State Completed -Message 'Clone source'
+                })
 
             $output.Count | Should -Be 0
             $script:events.Count | Should -Be 2
@@ -85,8 +85,8 @@ Describe 'Wizard activity presentation' {
             $sink = { param($ActivityEvent) $script:events.Add($ActivityEvent) }
 
             { Invoke-CgrWithActivitySink -Sink $sink -Action {
-                Invoke-CgrActivityStage -Name Verify -Message 'Verify content' -Action { throw 'failure' }
-            } } | Should -Throw
+                    Invoke-CgrActivityStage -Name Verify -Message 'Verify content' -Action { throw 'failure' }
+                } } | Should -Throw
 
             (@($script:events.State) -join ',') | Should -Be 'Started,Failed'
         }

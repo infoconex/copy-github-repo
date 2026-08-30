@@ -141,8 +141,8 @@ Describe 'FullHistory release orchestration' {
             $result.ReleasesRestored | Should -BeFalse
             $result.Releases.Status | Should -Be 'FullHistoryVerificationFailed'
             $result.StoppedBeforeSettingsRestore | Should -BeTrue
-            @($result.CompletedSteps | Where-Object Name -eq 'RestoreGitHubReleases')[0].MutatedGitHub | Should -BeFalse
-            @($result.CompletedSteps | Where-Object Name -eq 'RestoreGitHubReleases')[0].Verified | Should -BeFalse
+            @($result.CompletedSteps | Where-Object Name -EQ 'RestoreGitHubReleases')[0].MutatedGitHub | Should -BeFalse
+            @($result.CompletedSteps | Where-Object Name -EQ 'RestoreGitHubReleases')[0].Verified | Should -BeFalse
             Should -Invoke Copy-CgrApprovedGitHubRelease -Times 0
         }
     }

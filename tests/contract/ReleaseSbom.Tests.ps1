@@ -43,7 +43,7 @@ Describe 'Stable release SPDX SBOM' {
             $package.sourceInfo | Should -Match ([regex]::Escape($sourceCommit))
 
             $artifactSha256 = (Get-FileHash -LiteralPath $artifact.ArtifactPath -Algorithm SHA256).Hash.ToLowerInvariant()
-            ($package.checksums | Where-Object algorithm -eq 'SHA256').checksumValue | Should -Be $artifactSha256
+            ($package.checksums | Where-Object algorithm -EQ 'SHA256').checksumValue | Should -Be $artifactSha256
 
             $archive = [System.IO.Compression.ZipFile]::OpenRead($artifact.ArtifactPath)
             try {
@@ -55,8 +55,8 @@ Describe 'Stable release SPDX SBOM' {
 
             $sbomNames = @($sbom.files.fileName | Sort-Object)
             ($sbomNames -join "`n") | Should -Be ($entryNames -join "`n")
-            @($sbom.files | Where-Object { @($_.checksums | Where-Object algorithm -eq 'SHA256').Count -ne 1 }).Count | Should -Be 0
-            @($sbom.relationships | Where-Object relationshipType -eq 'CONTAINS').Count | Should -Be $entryNames.Count
+            @($sbom.files | Where-Object { @($_.checksums | Where-Object algorithm -EQ 'SHA256').Count -ne 1 }).Count | Should -Be 0
+            @($sbom.relationships | Where-Object relationshipType -EQ 'CONTAINS').Count | Should -Be $entryNames.Count
         }
         finally {
             Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
@@ -77,7 +77,7 @@ Describe 'Stable release SPDX SBOM' {
             $serialized = $sbom | ConvertTo-Json -Depth 20
 
             @($sbom.packages).Count | Should -Be 1 -Because 'only the shipped CopyGitHubRepo package belongs in the runtime SBOM package graph'
-            @($sbom.relationships | Where-Object relationshipType -eq 'DEPENDS_ON').Count | Should -Be 0
+            @($sbom.relationships | Where-Object relationshipType -EQ 'DEPENDS_ON').Count | Should -Be 0
             $sbom.packages[0].comment | Should -Match 'Runtime PowerShell module dependencies: none'
             $sbom.packages[0].comment | Should -Match 'PowerShell 7\.4\+, Git, GitHub CLI, and Git LFS'
             $sbom.packages[0].comment | Should -Match 'Development-only dependencies such as Pester and PSScriptAnalyzer'
@@ -118,7 +118,7 @@ Describe 'Release SBOM attestation workflow' {
         $content | Should -Match 'id-token: write'
         $content | Should -Match 'attestations: write'
         $content | Should -Match 'New-ReleaseSbom\.ps1'
-        $content | Should -Match "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6"
+        $content | Should -Match 'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6'
         $content | Should -Match 'subject-path: dist/CopyGitHubRepo-\*\.zip'
         $content | Should -Match '(?m)^\s*id: sbom\s*$'
         $content | Should -Match '\$sbomPath = "dist/CopyGitHubRepo-\$version\.spdx\.json"'

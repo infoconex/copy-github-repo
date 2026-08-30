@@ -50,7 +50,7 @@ function Get-CgrRepositoryDefaultBranchTree {
         $gitLfsObjectsAvailable = $true
         $attributeFiles = if ([System.IO.Directory]::Exists($tempPath)) {
             @([System.IO.Directory]::EnumerateFiles($tempPath, '.gitattributes', [System.IO.SearchOption]::AllDirectories) |
-                Where-Object { $_ -notmatch '[\\/]\.git[\\/]' })
+                    Where-Object { $_ -notmatch '[\\/]\.git[\\/]' })
         }
         else {
             @()
@@ -101,7 +101,7 @@ function Get-CgrRepositoryDefaultBranchTree {
         $workspaceBytes = 0L
         if ([System.IO.Directory]::Exists($tempPath)) {
             $measuredWorkspaceBytes = (Get-ChildItem -LiteralPath $tempPath -File -Recurse -Force |
-                Measure-Object -Property Length -Sum).Sum
+                    Measure-Object -Property Length -Sum).Sum
             if ($null -ne $measuredWorkspaceBytes) {
                 $workspaceBytes = [long] $measuredWorkspaceBytes
             }

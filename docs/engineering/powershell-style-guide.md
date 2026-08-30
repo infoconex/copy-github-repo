@@ -5,9 +5,9 @@ description: "Follow CopyGitHubRepo's PowerShell conventions for terminology, na
 
 # PowerShell style guide
 
-This guide defines the PowerShell engineering conventions for Copy GitHub Repository. It records conventions already established by the codebase and distinguishes enforceable rules from readability preferences.
+This guide defines the PowerShell engineering conventions for Copy GitHub Repository. It records conventions already established by the codebase, identifies deliberate project decisions, distinguishes mandatory engineering contracts from readability preferences, and defines how external PowerShell guidance applies when the project has not already made a deliberate choice.
 
-The repository targets PowerShell 7.4 or newer. `PSScriptAnalyzerSettings.psd1` is the machine-enforced policy; this guide is the human-readable contract.
+The repository targets PowerShell 7.4 or newer. `PSScriptAnalyzerSettings.psd1` is the authoritative machine-readable analyzer configuration; this guide is the human-readable engineering contract.
 
 ## Product terminology
 
@@ -23,8 +23,27 @@ The repository targets PowerShell 7.4 or newer. `PSScriptAnalyzerSettings.psd1` 
 
 ## Rule categories
 
-- **Required** conventions protect correctness, public API consistency, safety, or maintainability. PSScriptAnalyzer or Pester should enforce them when practical.
-- **Preferred** conventions improve readability where PowerShell permits more than one reasonable form. Reviewers should use judgment rather than demand churn with no functional or maintenance benefit.
+- **Required** means a mandatory engineering contract. Violations must be corrected or covered by an explicitly permitted and documented exception. PSScriptAnalyzer, Pester, or another deterministic quality check should enforce an objective Required rule when practical and low-noise.
+- **Preferred** means the normal/default choice when PowerShell permits more than one technically valid approach. A deviation is not, by itself, a quality-gate failure, and reviewers should not demand churn without a concrete readability or maintenance benefit.
+- **Allowed** means an explicitly acceptable alternative. Code using an Allowed form should not be rewritten merely to make it match a Preferred form elsewhere.
+- **Discouraged** means avoid in new or modified code unless there is a concrete technical, compatibility, or architectural reason to use it.
+- **Prohibited** means the form must not be introduced. Any retained existing use requires an explicit compatibility, exception, or remediation disposition.
+
+## Standards and decision hierarchy
+
+A documented CopyGitHubRepo rule, compatibility contract, ADR, or deliberate architectural boundary takes precedence for this repository unless the project explicitly revisits that decision. External guidance informs unresolved decisions; it does not silently override established project policy.
+
+When no documented project rule resolves a PowerShell engineering decision, use the following order of guidance:
+
+1. Microsoft PowerShell documentation and design guidance.
+2. Applicable PSScriptAnalyzer rules and their documented intent.
+3. PowerShell Practice and Style guidance.
+4. Established PowerShell community practice.
+5. Local consistency when multiple valid approaches remain.
+
+This hierarchy is a decision aid, not a command to apply every external recommendation mechanically. A PSScriptAnalyzer rule is an enforcement mechanism for a documented engineering concern; the existence of a rule does not automatically make every optional configuration or Information-level recommendation appropriate for this repository.
+
+Before classifying an inconsistency as a defect, determine whether it is explained by an existing project rule, ADR, compatibility requirement, architectural boundary, or documented exception. Only unexplained divergence should be treated as accidental inconsistency. Avoid cosmetic churn where multiple forms are already valid under this guide.
 
 ## Naming
 
@@ -232,7 +251,11 @@ The status word is intentionally redundant with both symbol and color. This keep
 
 ## PSScriptAnalyzer policy
 
-`PSScriptAnalyzerSettings.psd1` retains the default Error/Warning rule set and explicitly enables two additional rules:
+The configured PSScriptAnalyzer Error and Warning policy is mandatory. Code must produce no unsuppressed Error or Warning diagnostics under the repository's analyzer configuration. Any suppression must satisfy the documented suppression requirements below.
+
+`PSScriptAnalyzerSettings.psd1` is the authoritative machine-readable analyzer configuration. This guide documents the project-specific baseline, additions, exclusions, configuration choices, suppression policy, and rationale; it does not duplicate the complete PSScriptAnalyzer rule catalog.
+
+The settings retain the default Error/Warning rule set and explicitly enable two additional rules:
 
 | Rule | Why it is enabled |
 | --- | --- |
@@ -258,3 +281,15 @@ Any suppression must continue to follow these rules:
 5. Add a test when the exception protects an important product behavior or compatibility contract.
 
 A suppression is an explicit engineering decision, not a shortcut for making the quality gate green.
+
+## External references
+
+Use durable upstream documentation as the primary external reference for unresolved PowerShell engineering questions:
+
+- [PowerShell documentation](https://learn.microsoft.com/powershell/)
+- [PowerShell cmdlet development guidelines](https://learn.microsoft.com/powershell/scripting/developer/cmdlet/cmdlet-development-guidelines)
+- [Approved verbs for PowerShell commands](https://learn.microsoft.com/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands)
+- [PSScriptAnalyzer documentation](https://learn.microsoft.com/powershell/utility-modules/psscriptanalyzer/overview)
+- [PowerShell Practice and Style](https://github.com/PoshCode/PowerShellPracticeAndStyle)
+
+These references guide decisions where CopyGitHubRepo has not already established an intentional project contract. They do not replace this guide, compatibility requirements, ADRs, or deliberate architectural boundaries.

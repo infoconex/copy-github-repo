@@ -19,7 +19,7 @@ function Get-CgrGitHubApi {
     $arguments += $Path
 
     $result = Invoke-CgrGitHubApiReadRequest -ArgumentList $arguments
-    $response = Resolve-CgrGitHubApiReadResponse -Result $result -Path $Path
+    $response = & $script:ResolveCgrGitHubApiReadResponse -Result $result -Path $Path
     if ($response.Status -eq 'Error') {
         $PSCmdlet.ThrowTerminatingError($response.ErrorRecord)
     }

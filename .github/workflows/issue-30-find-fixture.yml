@@ -1,0 +1,34 @@
+name: Issue 30 Find Fixture
+
+'on':
+  push:
+    branches:
+      - issue-30/powershell-analyzer-policy
+
+permissions:
+  contents: write
+
+jobs:
+  locate:
+    if: ${{ !contains(github.event.head_commit.message, '[skip fixture locator]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: issue-30/powershell-analyzer-policy
+      - name: Locate fixture calls
+        shell: pwsh
+        run: |
+          $matches = Get-ChildItem -Path $PWD -Recurse -File -Include *.ps1,*.psm1,*.psd1 |
+              Select-String -Pattern 'Invoke-DemoNativeCommand' |
+              ForEach-Object { '{0}:{1}: {2}' -f $_.Path, $_.LineNumber, $_.Line.Trim() }
+          $matches | Set-Content -LiteralPath './issue-30-fixture-locations.txt' -Encoding utf8NoBOM
+      - name: Commit locations
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- issue-30-fixture-locations.txt
+          git commit -m 'Record issue 30 fixture locations [skip fixture locator]'
+          git push origin HEAD:issue-30/powershell-analyzer-policy

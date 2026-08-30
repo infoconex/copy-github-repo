@@ -97,6 +97,15 @@ Describe 'Project PowerShell engineering policy' {
         $rules.ContainsKey('PSUseConstrainedLanguageMode') | Should -BeFalse
     }
 
+    It 'documents the analyzer and AST/Pester enforcement boundary' {
+        $script:styleGuide | Should -Match '### Pester and AST enforcement'
+        $script:styleGuide | Should -Match '`tests/contract/PowerShellSourceConventions\.Tests\.ps1`'
+        $script:styleGuide | Should -Match 'explicitly declared parameters use PascalCase'
+        $script:styleGuide | Should -Match 'private functions use approved PowerShell verbs with the `Cgr` noun prefix'
+        $script:styleGuide | Should -Match 'Public/Private PowerShell source does not use tab indentation'
+        $script:styleGuide | Should -Match 'Public command coverage is derived from `FunctionsToExport`'
+    }
+
     It 'requires narrow justified analyzer suppressions' {
         $script:styleGuide | Should -Match 'Scope it to the narrowest function, parameter, or statement practical'
         $script:styleGuide | Should -Match 'Name the exact rule being suppressed'

@@ -30,7 +30,7 @@ Monitoring is advisory/review automation, not automatic adoption. Repository wor
 
 The reviewed-version baseline is deliberately separate from the installed pin. This lets the project intentionally retain an older compatible version without creating a permanently failing monitor. A later stable release beyond the reviewed baseline still fails the scheduled monitor and requires a new review.
 
-The current reviewed stable baseline and exact installed pins are **Pester 6.1.0** and **PSScriptAnalyzer 1.25.0**. The project completed the Pester 6 migration and now validates the repository test suite on Pester 6.1.0. `build/DevelopmentDependencies.psd1` and `build/DevelopmentDependencyMonitoring.psd1` are the machine-readable sources of truth for the installed and reviewed versions.
+The current reviewed stable baselines are **Pester 6.1.0** and **PSScriptAnalyzer 1.25.0**. The exact installed pins are **Pester 6.1.0** and **PSScriptAnalyzer 1.24.0**. PSScriptAnalyzer 1.24.0 is intentionally retained temporarily because 1.25.0 has an upstream GitHub Actions command-resolution regression tracked in [PowerShell/PSScriptAnalyzer#2205](https://github.com/PowerShell/PSScriptAnalyzer/issues/2205). Keeping the reviewed baseline at 1.25.0 ensures a later stable release still requires explicit review while the project uses the last known stable CI version. `build/DevelopmentDependencies.psd1` and `build/DevelopmentDependencyMonitoring.psd1` are the machine-readable sources of truth for the installed and reviewed versions.
 
 ## Freshness findings
 

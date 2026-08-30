@@ -84,7 +84,7 @@ The `Cgr` prefix is an intentional project convention and must not be expanded o
 - Put spaces around operators and after separators, and use normal spacing around braces and pipelines.
 - Existing compact PowerShell forms such as `param()` are acceptable; the project does not require inserting a space before every opening parenthesis.
 
-The four-space/no-tabs indentation convention is a required review standard, but `PSUseConsistentIndentation` is intentionally not enabled. Evaluation against the existing repository showed that the rule also normalizes established multiline continuation layouts and produced widespread warnings even with pipeline indentation normalization disabled. Enabling it would therefore require broad cosmetic rewrites unrelated to correctness or maintainability. The deliberately scoped `PSUseConsistentWhitespace` configuration enforces the objective whitespace checks that fit the existing codebase without that churn.
+The four-space/no-tabs indentation convention is machine-enforced with `PSUseConsistentIndentation`. The project uses spaces, four-space indentation, and `IncreaseIndentationForFirstPipeline` so multiline pipelines follow the standard first-pipeline indentation behavior. Existing source has been normalized to this policy rather than weakening the rule.
 
 ### Multiline parameter declarations
 
@@ -114,7 +114,7 @@ Example:
 
 ### Quoting
 
-**Preferred**
+**Required**
 
 - Use single-quoted strings for literals.
 - Use double-quoted strings when interpolation or PowerShell escape processing is required.
@@ -255,18 +255,26 @@ The configured PSScriptAnalyzer Error and Warning policy is mandatory. Code must
 
 `PSScriptAnalyzerSettings.psd1` is the authoritative machine-readable analyzer configuration. This guide documents the project-specific baseline, additions, exclusions, configuration choices, suppression policy, and rationale; it does not duplicate the complete PSScriptAnalyzer rule catalog.
 
-The settings retain the default Error/Warning rule set and explicitly enable two additional rules:
+The normal analyzer pass retains the default Error/Warning rule set and explicitly configures the objective rules adopted by this project:
 
-| Rule | Why it is enabled |
+| Rule | Project policy |
 | --- | --- |
-| `PSUseConsistentWhitespace` | Enforces useful whitespace consistency around braces, operators, separators, and pipelines. The opening-parenthesis check is intentionally disabled because established, readable forms such as `param()` are widespread and changing them would create cosmetic churn without improving safety or maintainability. Parameter-alignment checks are also disabled to avoid alignment-only rewrites. |
-| `PSAvoidExclaimOperator` | Prevents the `!` alias and keeps boolean negation explicit as `-not`. |
+| `PSAvoidExclaimOperator` | Requires explicit `-not` rather than the `!` alias. |
+| `PSAvoidSemicolonsAsLineTerminators` | Prohibits semicolons used only as line terminators. |
+| `PSPlaceOpenBrace` / `PSPlaceCloseBrace` | Enforces same-line opening braces, normal newline behavior, and no empty line immediately before a closing brace while leaving one-line blocks intact. |
+| `PSUseConsistentIndentation` | Enforces spaces, four-space indentation, and `IncreaseIndentationForFirstPipeline`. |
+| `PSUseConsistentWhitespace` | Enforces the adopted brace, parenthesis, operator, pipeline, separator, parameter, and redundant-pipeline-whitespace checks. |
+| `PSUseConsistentParameterSetName` | Requires consistent parameter-set naming. |
+| `PSUseConsistentParametersKind` | Requires parameter declarations to use the `ParamBlock` form. |
+| `PSUseSingleValueFromPipelineParameter` | Prevents ambiguous multiple value-from-pipeline parameters. |
+| `PSUseCorrectCasing` | Enforces command, keyword, and operator casing through the focused Information-rule contract. |
+| `PSAvoidUsingDoubleQuotesForConstantString` | Requires single quotes for constant strings through the focused Information-rule contract. |
 
-`PSUseConsistentIndentation` was evaluated but is not enabled. With the repository's existing multiline continuations it reports widespread indentation warnings even when pipeline normalization is disabled, so enforcing it would primarily mandate cosmetic rewrites rather than prevent a concrete defect class. Four-space, space-based indentation remains a required project convention and review expectation.
+The main recursive analyzer gate intentionally remains limited to Error and Warning diagnostics. The Required Information-severity conventions `PSUseCorrectCasing`, `PSAvoidUsingDoubleQuotesForConstantString`, and `PSAvoidUsingPositionalParameters` are promoted by a focused contract test instead of enabling every Information diagnostic globally.
 
-`PSUseCorrectCasing` is not enabled because it reports at Information severity while this repository intentionally gates Error and Warning findings. Expanding the quality gate to Information severity solely for casing would make the analyzer policy substantially noisier without a corresponding correctness benefit.
+`PSAvoidLongLines`, `PSAlignAssignmentStatement`, and `PSUseConstrainedLanguageMode` remain outside the mandatory policy because they are subjective or specialized for this repository. Compatibility is established by the PowerShell 7.4+ contract and the actual Windows, Linux, and macOS CI matrix rather than by obsolete analyzer compatibility profiles.
 
-Formatting rules or subchecks that would mainly force alignment or broad cosmetic rewrites are not enabled merely because they exist. Additional rules should be evaluated against this repository, enabled only when they prevent a concrete class of defect or materially improve maintainability, and documented here when adopted.
+Additional rules should be evaluated against this repository and adopted when they express an objective engineering contract with acceptable signal-to-noise characteristics.
 
 ## Suppressions
 

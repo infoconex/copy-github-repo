@@ -30,6 +30,22 @@ Describe 'Project PowerShell engineering policy' {
         $script:styleGuide | Should -Match 'structured objects on the success pipeline'
     }
 
+    It 'documents public advanced-function and automation semantics' {
+        $script:styleGuide | Should -Match 'Every manifest-exported public function uses `\[CmdletBinding\(\)\]`'
+        $script:styleGuide | Should -Match 'Every state-changing exported command enables `SupportsShouldProcess`'
+        $script:styleGuide | Should -Match 'declares an explicit `ConfirmImpact`'
+        $script:styleGuide | Should -Match 'Supported automation scenarios must not depend on `Read-Host`'
+        $script:styleGuide | Should -Match '`Copy-GitHubRepository` is the automation boundary'
+        $script:styleGuide | Should -Match 'Routine confirmation bypass and independent safety confirmation are distinct contracts'
+        $script:styleGuide | Should -Match 'Use `\[OutputType\(\)\]` when it accurately and stably describes'
+    }
+
+    It 'documents deliberate positional-parameter policy rather than analyzer-severity accident' {
+        $script:styleGuide | Should -Match 'Avoid positional-parameter invocation where `PSAvoidUsingPositionalParameters` applies'
+        $script:styleGuide | Should -Match '`PSAvoidUsingPositionalParameters` promotion is a deliberate project decision'
+        (@($script:analyzerSettings.Severity) -join ',') | Should -Be 'Error,Warning'
+    }
+
     It 'defines policy categories used by engineering reviews' {
         foreach ($category in @('Required', 'Preferred', 'Allowed', 'Discouraged', 'Prohibited')) {
             $script:styleGuide | Should -Match ('\*\*{0}\*\*' -f $category)
@@ -104,6 +120,7 @@ Describe 'Project PowerShell engineering policy' {
         $script:styleGuide | Should -Match 'private functions use approved PowerShell verbs with the `Cgr` noun prefix'
         $script:styleGuide | Should -Match 'Public/Private PowerShell source does not use tab indentation'
         $script:styleGuide | Should -Match 'Public command coverage is derived from `FunctionsToExport`'
+        $script:styleGuide | Should -Match '`tests/contract/PublicCommandAutomationSemantics\.Tests\.ps1`'
     }
 
     It 'requires narrow justified analyzer suppressions' {

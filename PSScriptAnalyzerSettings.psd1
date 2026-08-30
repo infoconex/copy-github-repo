@@ -12,17 +12,66 @@
             Enable = $true
         }
 
+        PSAvoidSemicolonsAsLineTerminators = @{
+            Enable = $true
+        }
+
+        PSPlaceOpenBrace = @{
+            Enable = $true
+            OnSameLine = $true
+            NewLineAfter = $true
+            IgnoreOneLineBlock = $true
+        }
+
+        PSPlaceCloseBrace = @{
+            Enable = $true
+            NoEmptyLineBefore = $true
+            IgnoreOneLineBlock = $true
+            NewLineAfter = $true
+        }
+
+        PSUseConsistentIndentation = @{
+            Enable = $true
+            Kind = 'space'
+            IndentationSize = 4
+            PipelineIndentation = 'IncreaseIndentationForFirstPipeline'
+        }
+
         PSUseConsistentWhitespace = @{
             Enable = $true
             CheckInnerBrace = $true
             CheckOpenBrace = $true
-            CheckOpenParen = $false
+            CheckOpenParen = $true
             CheckOperator = $true
             CheckPipe = $true
-            CheckPipeForRedundantWhitespace = $false
+            CheckPipeForRedundantWhitespace = $true
             CheckSeparator = $true
-            CheckParameter = $false
+            CheckParameter = $true
             IgnoreAssignmentOperatorInsideHashTable = $false
+        }
+
+        PSUseConsistentParameterSetName = @{
+            Enable = $true
+        }
+
+        PSUseConsistentParametersKind = @{
+            Enable = $true
+            ParametersKind = 'ParamBlock'
+        }
+
+        PSUseSingleValueFromPipelineParameter = @{
+            Enable = $true
+        }
+
+        PSUseCorrectCasing = @{
+            Enable = $true
+            CheckCommands = $true
+            CheckKeyword = $true
+            CheckOperator = $true
+        }
+
+        PSAvoidUsingDoubleQuotesForConstantString = @{
+            Enable = $true
         }
     }
 }

@@ -27,14 +27,20 @@ function Invoke-CgrPostVerificationConfigurationRestore {
         [ValidateNotNullOrEmpty()] [string] $HostName = 'github.com'
     )
 
+    # PSScriptAnalyzer does not count closure-only parameter references as usage.
+    $sourceRepositoryForRestore = $SourceRepository
+    $destinationRepositoryForRestore = $DestinationRepository
+    $verificationFailureReasonForRestore = $VerificationFailureReason
+    $hostNameForRestore = $HostName
+
     $FailureStage.Value = 'RestoreSupportedSettings'
     $settings = Invoke-CgrActivityStage -Name 'RestoreSupportedSettings' -Message 'Restore supported repository settings' -Action {
         if (-not $Verification.IsSuccessful) {
             return [pscustomobject] @{
                 PSTypeName = 'CopyGitHubRepo.SettingsRestoreResult'
-                Repository = $DestinationRepository.FullName
+                Repository = $destinationRepositoryForRestore.FullName
                 Restored = @()
-                Skipped = @($VerificationFailureReason)
+                Skipped = @($verificationFailureReasonForRestore)
                 Unsupported = @()
                 IsSuccessful = $false
             }
@@ -42,7 +48,7 @@ function Invoke-CgrPostVerificationConfigurationRestore {
         if ($Plan.SkipSettings) {
             return [pscustomobject] @{
                 PSTypeName = 'CopyGitHubRepo.SettingsRestoreResult'
-                Repository = $DestinationRepository.FullName
+                Repository = $destinationRepositoryForRestore.FullName
                 Restored = @()
                 Skipped = @('AllSettings')
                 Unsupported = @()
@@ -51,9 +57,9 @@ function Invoke-CgrPostVerificationConfigurationRestore {
         }
 
         Set-CgrGitHubRepositorySetting `
-            -SourceRepository $SourceRepository `
-            -DestinationRepository $DestinationRepository `
-            -HostName $HostName
+            -SourceRepository $sourceRepositoryForRestore `
+            -DestinationRepository $destinationRepositoryForRestore `
+            -HostName $hostNameForRestore
     }
     $CompletedSteps.Add([pscustomobject] @{
             Order = $CompletedSteps.Count + 1
@@ -69,10 +75,10 @@ function Invoke-CgrPostVerificationConfigurationRestore {
         if (-not $Verification.IsSuccessful) {
             return [pscustomobject] @{
                 PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'
-                Repository = $DestinationRepository.FullName
+                Repository = $destinationRepositoryForRestore.FullName
                 Status = 'Failed'
                 Restored = @()
-                Skipped = @($VerificationFailureReason)
+                Skipped = @($verificationFailureReasonForRestore)
                 IsSuccessful = $false
                 IsComplete = $false
             }
@@ -80,7 +86,7 @@ function Invoke-CgrPostVerificationConfigurationRestore {
         if ($Plan.SkipSettings) {
             return [pscustomobject] @{
                 PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'
-                Repository = $DestinationRepository.FullName
+                Repository = $destinationRepositoryForRestore.FullName
                 Status = 'Skipped'
                 Restored = @()
                 Skipped = @('AllSettings')
@@ -90,16 +96,16 @@ function Invoke-CgrPostVerificationConfigurationRestore {
         }
         if ($null -eq $planProtectionProperty) {
             return Set-CgrRepositoryProtectionConfiguration `
-                -SourceRepository $SourceRepository `
-                -DestinationRepository $DestinationRepository `
-                -HostName $HostName
+                -SourceRepository $sourceRepositoryForRestore `
+                -DestinationRepository $destinationRepositoryForRestore `
+                -HostName $hostNameForRestore
         }
         if ((Get-CgrObjectProperty -InputObject $planProtection -Name 'Status') -eq 'Captured') {
             return Set-CgrRepositoryProtectionConfiguration `
-                -SourceRepository $SourceRepository `
-                -DestinationRepository $DestinationRepository `
+                -SourceRepository $sourceRepositoryForRestore `
+                -DestinationRepository $destinationRepositoryForRestore `
                 -SourceConfiguration (Get-CgrObjectProperty -InputObject $planProtection -Name 'Configuration') `
-                -HostName $HostName
+                -HostName $hostNameForRestore
         }
 
         $planningStatus = [string] (Get-CgrObjectProperty -InputObject $planProtection -Name 'Status')
@@ -108,7 +114,7 @@ function Invoke-CgrPostVerificationConfigurationRestore {
         }
         [pscustomobject] @{
             PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'
-            Repository = $DestinationRepository.FullName
+            Repository = $destinationRepositoryForRestore.FullName
             Status = 'Unsupported'
             Restored = @()
             Skipped = @("ProtectionPlanning:$planningStatus")

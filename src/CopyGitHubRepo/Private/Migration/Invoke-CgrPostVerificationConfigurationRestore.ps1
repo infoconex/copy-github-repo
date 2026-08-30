@@ -6,7 +6,8 @@ function Invoke-CgrPostVerificationConfigurationRestore {
     .DESCRIPTION
     Centralizes the shared execution contract for supported repository settings and
     repository protection restoration. Content-mode orchestrators retain ownership of
-    copy, verification, release, completed-step, result, and recovery sequencing.
+    copy, verification, release, final result, and recovery sequencing. This boundary
+    records each completed configuration stage so recovery evidence remains precise.
     Planned repository-protection evidence remains authoritative when present.
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
@@ -21,6 +22,7 @@ function Invoke-CgrPostVerificationConfigurationRestore {
         [Parameter(Mandatory)] [psobject] $DestinationRepository,
         [Parameter(Mandatory)] [psobject] $Verification,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $VerificationFailureReason,
+        [Parameter(Mandatory)] [System.Collections.IList] $CompletedSteps,
         [Parameter(Mandatory)] [ref] $FailureStage,
         [ValidateNotNullOrEmpty()] [string] $HostName = 'github.com'
     )
@@ -53,6 +55,12 @@ function Invoke-CgrPostVerificationConfigurationRestore {
             -DestinationRepository $DestinationRepository `
             -HostName $HostName
     }
+    $CompletedSteps.Add([pscustomobject] @{
+            Order = $CompletedSteps.Count + 1
+            Name = 'RestoreSupportedSettings'
+            MutatedGitHub = -not $Plan.SkipSettings
+            Verified = $settings.IsSuccessful
+        })
 
     $FailureStage.Value = 'RestoreRepositoryProtection'
     $planProtectionProperty = $Plan.PSObject.Properties['Protection']
@@ -108,6 +116,12 @@ function Invoke-CgrPostVerificationConfigurationRestore {
             IsComplete = $false
         }
     }
+    $CompletedSteps.Add([pscustomobject] @{
+            Order = $CompletedSteps.Count + 1
+            Name = 'RestoreRepositoryProtection'
+            MutatedGitHub = [bool] ($Verification.IsSuccessful -and -not $Plan.SkipSettings)
+            Verified = $protection.IsSuccessful
+        })
 
     $settingsRestored = [bool] ($Verification.IsSuccessful -and -not $Plan.SkipSettings -and $settings.IsSuccessful)
     $protectionRestored = [bool] ($Verification.IsSuccessful -and -not $Plan.SkipSettings -and $protection.IsSuccessful -and $protection.IsComplete)

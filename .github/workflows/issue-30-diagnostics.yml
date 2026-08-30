@@ -24,34 +24,13 @@ jobs:
         shell: pwsh
         run: ./build/Install-DevelopmentDependencies.ps1
 
-      - name: Record promoted Information findings
+      - name: Capture Information contract output
         shell: pwsh
         run: |
-          Import-Module PSScriptAnalyzer -ErrorAction Stop
-          $rules = @(
-              'PSAvoidUsingDoubleQuotesForConstantString'
-              'PSAvoidUsingPositionalParameters'
-              'PSUseCorrectCasing'
-          )
-          $settings = @{
-              Severity = @('Information')
-              IncludeDefaultRules = $true
-              IncludeRules = $rules
-              Rules = @{
-                  PSAvoidUsingDoubleQuotesForConstantString = @{ Enable = $true }
-                  PSUseCorrectCasing = @{
-                      Enable = $true
-                      CheckCommands = $true
-                      CheckKeyword = $true
-                      CheckOperator = $true
-                  }
-              }
-          }
-          $findings = @(Invoke-ScriptAnalyzer -Path $PWD -Settings $settings -Recurse)
-          @(
-              "FindingCount=$($findings.Count)"
-              $findings | ForEach-Object { $_.ToString() }
-          ) | Set-Content -LiteralPath (Join-Path $PWD 'issue-30-information-findings.txt') -Encoding utf8NoBOM
+          $command = "Invoke-Pester -Path './tests/contract/PSScriptAnalyzerInformationPolicy.Tests.ps1' -Output Detailed"
+          $output = & pwsh -NoLogo -NoProfile -Command $command 2>&1
+          $output | Out-File -LiteralPath './issue-30-information-findings.txt' -Encoding utf8
+          exit 0
 
       - name: Commit diagnostics
         shell: pwsh

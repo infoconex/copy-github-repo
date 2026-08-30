@@ -5,9 +5,21 @@ BeforeAll {
     $script:manifestPath = Join-Path $script:moduleRoot 'CopyGitHubRepo.psd1'
     $script:manifest = Import-PowerShellDataFile -LiteralPath $script:manifestPath
     $script:exportedCommands = @($script:manifest.FunctionsToExport)
-    $script:stateChangingCommands = @{
-        'Copy-GitHubRepository' = 'High'
-        'Start-CopyGitHubRepositoryWizard' = 'Low'
+    $script:commandContracts = @{
+        'Copy-GitHubRepository' = @{
+            Semantics = 'StateChanging'
+            ConfirmImpact = 'High'
+        }
+        'Get-GitHubRepository' = @{
+            Semantics = 'ReadOnly'
+        }
+        'Start-CopyGitHubRepositoryWizard' = @{
+            Semantics = 'StateChanging'
+            ConfirmImpact = 'Low'
+        }
+        'Test-GitHubRepositoryMigration' = @{
+            Semantics = 'ReadOnly'
+        }
     }
 
     function Get-PublicCommandAst {
@@ -42,6 +54,21 @@ BeforeAll {
         return $functionAst
     }
 
+    function Get-ShouldProcessInvocationAst {
+        param(
+            [Parameter(Mandatory)]
+            [System.Management.Automation.Language.FunctionDefinitionAst] $FunctionAst
+        )
+
+        return @(
+            $FunctionAst.FindAll({
+                    param($node)
+                    $node -is [System.Management.Automation.Language.InvokeMemberExpressionAst] -and
+                    $node.Member.Extent.Text -ceq 'ShouldProcess'
+                }, $true)
+        )
+    }
+
     $script:commandAsts = @{}
     foreach ($commandName in $script:exportedCommands) {
         $script:commandAsts[$commandName] = Get-PublicCommandAst -CommandName $commandName
@@ -49,6 +76,31 @@ BeforeAll {
 }
 
 Describe 'Public command automation semantic contracts' {
+    It 'requires an explicit exhaustive automation classification for every exported command' {
+        $classifiedCommands = @($script:commandContracts.Keys)
+        $violations = @(
+            foreach ($commandName in $script:exportedCommands) {
+                if ($commandName -cnotin $classifiedCommands) {
+                    "$commandName is manifest-exported but has no explicit automation classification."
+                }
+            }
+
+            foreach ($commandName in $classifiedCommands) {
+                if ($commandName -cnotin $script:exportedCommands) {
+                    "$commandName has an automation classification but is not manifest-exported."
+                    continue
+                }
+
+                $semantics = $script:commandContracts[$commandName].Semantics
+                if ($semantics -cnotin @('ReadOnly', 'StateChanging')) {
+                    "$commandName has unsupported automation semantics '$semantics'."
+                }
+            }
+        )
+
+        $violations | Should -BeNullOrEmpty
+    }
+
     It 'requires every manifest-exported function to use CmdletBinding' {
         $violations = @(
             foreach ($commandName in $script:exportedCommands) {
@@ -68,33 +120,38 @@ Describe 'Public command automation semantic contracts' {
     }
 
     It 'requires state-changing exported commands to use ShouldProcess with the expected ConfirmImpact' {
+        $stateChangingCommands = @(
+            $script:commandContracts.Keys |
+                Where-Object { $script:commandContracts[$_].Semantics -ceq 'StateChanging' } |
+                Sort-Object
+        )
         $violations = @(
-            foreach ($commandName in $script:stateChangingCommands.Keys) {
+            foreach ($commandName in $stateChangingCommands) {
                 $functionAst = $script:commandAsts[$commandName]
-                if ($null -eq $functionAst) {
-                    "$commandName is classified as state-changing but is not manifest-exported."
-                    continue
-                }
-
                 $cmdletBindingAttributes = @(
                     $functionAst.Body.ParamBlock.Attributes |
                         Where-Object { $_.TypeName.Name -ceq 'CmdletBinding' }
                 )
-                $cmdletBindingAttribute = $cmdletBindingAttributes[0]
 
-                $attributeText = $cmdletBindingAttribute.Extent.Text
+                if ($cmdletBindingAttributes.Count -ne 1) {
+                    "$commandName must declare exactly one [CmdletBinding()] attribute before state-changing semantics can be verified."
+                    continue
+                }
+
+                $attributeText = $cmdletBindingAttributes[0].Extent.Text
                 if ($attributeText -notmatch '(?i)SupportsShouldProcess') {
                     "$commandName must enable SupportsShouldProcess."
                 }
 
-                $expectedConfirmImpact = $script:stateChangingCommands[$commandName]
+                $expectedConfirmImpact = $script:commandContracts[$commandName].ConfirmImpact
                 $confirmImpactPattern = "(?i)ConfirmImpact\s*=\s*'$([regex]::Escape($expectedConfirmImpact))'"
                 if ($attributeText -notmatch $confirmImpactPattern) {
                     "$commandName must declare ConfirmImpact = '$expectedConfirmImpact'."
                 }
 
-                if ($functionAst.Extent.Text -notmatch '(?i)\.ShouldProcess\s*\(') {
-                    "$commandName must call ShouldProcess() before mutation dispatch."
+                $shouldProcessCalls = @(Get-ShouldProcessInvocationAst -FunctionAst $functionAst)
+                if ($shouldProcessCalls.Count -eq 0) {
+                    "$commandName must call ShouldProcess()."
                 }
             }
         )
@@ -102,22 +159,46 @@ Describe 'Public command automation semantic contracts' {
         $violations | Should -BeNullOrEmpty
     }
 
-    It 'keeps the wizard ShouldProcess decision in its execution guard' {
-        $wizardText = $script:commandAsts['Start-CopyGitHubRepositoryWizard'].Extent.Text
+    It 'requires the copy command ShouldProcess decision to gate mutation dispatch' {
+        $copyAst = $script:commandAsts['Copy-GitHubRepository']
+        $shouldProcessCalls = @(Get-ShouldProcessInvocationAst -FunctionAst $copyAst)
+        $mutationDispatch = $copyAst.Find({
+                param($node)
+                $node -is [System.Management.Automation.Language.CommandAst] -and
+                $node.GetCommandName() -ceq 'Invoke-CgrApprovedMigrationPlan'
+            }, $true)
 
+        $shouldProcessCalls.Count | Should -Be 1
+        $mutationDispatch | Should -Not -BeNullOrEmpty
+        $shouldProcessCalls[0].Extent.StartOffset | Should -BeLessThan $mutationDispatch.Extent.StartOffset
+        $copyAst.Extent.Text | Should -Match '(?ms)if\s*\(\s*-not\s+\$PSCmdlet\.ShouldProcess\s*\(\s*\$target,\s*\$action\s*\)\s*\)\s*\{\s*return\s+\$plan\s*\}'
+    }
+
+    It 'keeps the wizard ShouldProcess decision in its delegated execution guard' {
+        $wizardAst = $script:commandAsts['Start-CopyGitHubRepositoryWizard']
+        $wizardText = $wizardAst.Extent.Text
+        $shouldProcessCalls = @(Get-ShouldProcessInvocationAst -FunctionAst $wizardAst)
+        $wizardDispatch = $wizardAst.Find({
+                param($node)
+                $node -is [System.Management.Automation.Language.CommandAst] -and
+                $node.GetCommandName() -ceq 'Invoke-CgrRepositoryCopyWizard'
+            }, $true)
+
+        $shouldProcessCalls.Count | Should -Be 1
+        $wizardDispatch | Should -Not -BeNullOrEmpty
+        $shouldProcessCalls[0].Expression.Extent.Text | Should -Be '$callerPSCmdlet'
+        $shouldProcessCalls[0].Extent.StartOffset | Should -BeLessThan $wizardDispatch.Extent.StartOffset
         $wizardText | Should -Match '\$callerPSCmdlet\s*=\s*\$PSCmdlet'
-        $wizardText | Should -Match '\$callerPSCmdlet\.ShouldProcess\s*\('
+        $wizardText | Should -Match '(?ms)\$executionGuard\s*=\s*\{.*?\$callerPSCmdlet\.ShouldProcess\s*\('
         $wizardText | Should -Match 'Invoke-CgrRepositoryCopyWizard\s+-HostName\s+\$resolvedHostName\s+-ExecutionGuard\s+\$executionGuard'
     }
 
-    It 'keeps read-only exported commands outside the state-changing classification' {
+    It 'keeps explicitly classified read-only commands outside ShouldProcess semantics' {
         $readOnlyCommands = @(
-            $script:exportedCommands |
-                Where-Object { $_ -cnotin @($script:stateChangingCommands.Keys) }
+            $script:commandContracts.Keys |
+                Where-Object { $script:commandContracts[$_].Semantics -ceq 'ReadOnly' } |
+                Sort-Object
         )
-
-        $readOnlyCommands | Should -Contain 'Get-GitHubRepository'
-        $readOnlyCommands | Should -Contain 'Test-GitHubRepositoryMigration'
 
         foreach ($commandName in $readOnlyCommands) {
             $functionAst = $script:commandAsts[$commandName]
@@ -125,9 +206,10 @@ Describe 'Public command automation semantic contracts' {
                 $functionAst.Body.ParamBlock.Attributes |
                     Where-Object { $_.TypeName.Name -ceq 'CmdletBinding' }
             )
-            $cmdletBindingAttribute = $cmdletBindingAttributes[0]
 
-            $cmdletBindingAttribute.Extent.Text | Should -Not -Match '(?i)SupportsShouldProcess' -Because "$commandName is read-only"
+            $cmdletBindingAttributes.Count | Should -Be 1 -Because "$commandName must remain an advanced function"
+            $cmdletBindingAttributes[0].Extent.Text | Should -Not -Match '(?i)SupportsShouldProcess' -Because "$commandName is explicitly classified read-only"
+            @(Get-ShouldProcessInvocationAst -FunctionAst $functionAst) | Should -BeNullOrEmpty -Because "$commandName is explicitly classified read-only"
         }
     }
 

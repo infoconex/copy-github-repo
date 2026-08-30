@@ -35,6 +35,7 @@
         'uninstall.ps1'
         'tests/e2e/Invoke-CleanSnapshotDemonstration.ps1'
         'tests/e2e/Invoke-FullHistoryEndToEndTests.ps1'
+        'tests/e2e/Invoke-GitHubReleaseEndToEndTests.ps1'
         'tests/e2e/Invoke-GitLfsEndToEndTests.ps1'
         'tests/e2e/Invoke-RecoveryEndToEndTests.ps1'
         'tests/e2e/Invoke-RepositorySettingsEndToEndTests.ps1'

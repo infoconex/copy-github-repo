@@ -35,12 +35,13 @@ Describe 'Stable release readiness validation' {
         $unreleased.Success | Should -BeTrue
     }
 
-    It 'accepts an empty Unreleased section at the stable publication boundary' {
+    It 'allows Unreleased development entries but blocks them at the stable publication boundary' {
         $manifest = Import-PowerShellDataFile -LiteralPath $script:manifestPath
         $version = [string] $manifest.ModuleVersion
 
         { & $script:releaseReadinessPath -Tag "v$version" } | Should -Not -Throw
-        { & $script:releaseReadinessPath -Tag "v$version" -RequireEmptyUnreleased } | Should -Not -Throw
+        { & $script:releaseReadinessPath -Tag "v$version" -RequireEmptyUnreleased } |
+            Should -Throw -ExpectedMessage '*contains Unreleased entries that would ship*'
     }
 
     It 'keeps real Unreleased entries blocked by release readiness' {

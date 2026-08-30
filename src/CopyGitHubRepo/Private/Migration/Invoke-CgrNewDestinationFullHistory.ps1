@@ -4,10 +4,10 @@ function Invoke-CgrNewDestinationFullHistory {
     Orchestrates verified FullHistory publication to a newly created destination.
 
     .DESCRIPTION
-    Copies approved history, reloads and verifies the destination, restores supported
-    settings and protection only after content verification, and records ordered
-    completion or recovery evidence. Verification failure intentionally stops the
-    configuration-restore stages.
+    Copies approved history, reloads and verifies the destination, optionally
+    restores the exact GitHub Releases approved during planning, then restores
+    supported settings and protection. Release restoration never runs before
+    FullHistory verification succeeds.
 
     .NOTES
     The destination repository has already been created when this function begins.
@@ -29,10 +29,21 @@ function Invoke-CgrNewDestinationFullHistory {
     $failureStage = 'CopyFullHistory'
     $sourceState = Get-CgrObjectProperty -InputObject $Plan -Name 'SourceState'
     $copyResult = $null
+    $releases = [pscustomobject] @{
+        PSTypeName = 'CopyGitHubRepo.ReleaseMigrationResult'
+        SourceRepository = $SourceRepository.FullName
+        DestinationRepository = $DestinationRepository.FullName
+        ApprovedReleaseCount = 0
+        DestinationReleaseCount = 0
+        Releases = @()
+        Unsupported = @()
+        IsSuccessful = $true
+        Status = 'NotRequested'
+    }
 
     try {
         $copyResult = Copy-CgrRepositoryFullHistory -SourceRepository $SourceRepository -DestinationRepository $DestinationRepository -HostName $HostName -ApprovedSourceState $sourceState
-        $completedSteps.Add([pscustomobject] @{ Order = 2; Name = 'CopyFullHistory'; MutatedGitHub = $true; Verified = $copyResult.IsSuccessful })
+        $completedSteps.Add([pscustomobject] @{ Order = $completedSteps.Count + 1; Name = 'CopyFullHistory'; MutatedGitHub = $true; Verified = $copyResult.IsSuccessful })
 
         $failureStage = 'ReloadDestination'
         $verifiedDestination = Get-CgrRepository -Repository $DestinationRepository.FullName -HostName $HostName
@@ -44,7 +55,40 @@ function Invoke-CgrNewDestinationFullHistory {
             }
             Invoke-CgrRepositoryFullHistoryVerification -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination
         }
-        $completedSteps.Add([pscustomobject] @{ Order = 3; Name = 'VerifyFullHistory'; MutatedGitHub = $false; Verified = $verification.IsSuccessful })
+        $completedSteps.Add([pscustomobject] @{ Order = $completedSteps.Count + 1; Name = 'VerifyFullHistory'; MutatedGitHub = $false; Verified = $verification.IsSuccessful })
+
+        if ($Plan.IncludeReleases) {
+            $failureStage = 'RestoreGitHubReleases'
+            if (-not $verification.IsSuccessful) {
+                $releases = [pscustomobject] @{
+                    PSTypeName = 'CopyGitHubRepo.ReleaseMigrationResult'
+                    SourceRepository = $SourceRepository.FullName
+                    DestinationRepository = $verifiedDestination.FullName
+                    ApprovedReleaseCount = @($Plan.ReleaseSelection.Releases).Count
+                    DestinationReleaseCount = 0
+                    Releases = @()
+                    Unsupported = @()
+                    IsSuccessful = $false
+                    Status = 'FullHistoryVerificationFailed'
+                }
+            }
+            else {
+                $releases = Invoke-CgrActivityStage -Name 'RestoreGitHubReleases' -Message 'Restore approved GitHub Releases and assets' -Action {
+                    Copy-CgrApprovedGitHubRelease `
+                        -SourceRepository $SourceRepository `
+                        -DestinationRepository $verifiedDestination `
+                        -ApprovedSelection $Plan.ReleaseSelection `
+                        -HostName $HostName
+                }
+                $releases | Add-Member -NotePropertyName Status -NotePropertyValue 'Restored' -Force
+            }
+            $completedSteps.Add([pscustomobject] @{
+                    Order = $completedSteps.Count + 1
+                    Name = 'RestoreGitHubReleases'
+                    MutatedGitHub = [bool] $verification.IsSuccessful
+                    Verified = $releases.IsSuccessful
+                })
+        }
 
         $failureStage = 'RestoreSupportedSettings'
         $settings = Invoke-CgrActivityStage -Name 'RestoreSupportedSettings' -Message 'Restore supported repository settings' -Action {
@@ -56,7 +100,7 @@ function Invoke-CgrNewDestinationFullHistory {
             }
             Set-CgrGitHubRepositorySetting -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -HostName $HostName
         }
-        $completedSteps.Add([pscustomobject] @{ Order = 4; Name = 'RestoreSupportedSettings'; MutatedGitHub = -not $Plan.SkipSettings; Verified = $settings.IsSuccessful })
+        $completedSteps.Add([pscustomobject] @{ Order = $completedSteps.Count + 1; Name = 'RestoreSupportedSettings'; MutatedGitHub = -not $Plan.SkipSettings; Verified = $settings.IsSuccessful })
 
         $failureStage = 'RestoreRepositoryProtection'
         $planProtection = Get-CgrObjectProperty -InputObject $Plan -Name 'Protection'
@@ -72,13 +116,14 @@ function Invoke-CgrNewDestinationFullHistory {
             }
             Set-CgrRepositoryProtectionConfiguration -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -HostName $HostName
         }
-        $completedSteps.Add([pscustomobject] @{ Order = 5; Name = 'RestoreRepositoryProtection'; MutatedGitHub = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings); Verified = $protection.IsSuccessful })
+        $completedSteps.Add([pscustomobject] @{ Order = $completedSteps.Count + 1; Name = 'RestoreRepositoryProtection'; MutatedGitHub = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings); Verified = $protection.IsSuccessful })
 
         $copiedSourceEvidence = Get-CgrObjectProperty -InputObject $copyResult -Name 'CopiedSourceEvidence'
+        $releaseSuccessful = -not $Plan.IncludeReleases -or $releases.IsSuccessful
         $executionResult = [pscustomobject] @{
             PSTypeName = 'CopyGitHubRepo.MigrationExecutionResult'
             SchemaVersion = 1
-            Status = if (-not $verification.IsSuccessful) { 'FullHistoryVerificationFailed' } elseif ($Plan.SkipSettings) { 'FullHistoryVerifiedSettingsSkipped' } elseif ($settings.IsSuccessful -and $protection.IsSuccessful) { 'CompletedWithSupportedSettings' } elseif (-not $settings.IsSuccessful) { 'SettingsRestoreFailed' } else { 'ProtectionRestoreFailed' }
+            Status = if (-not $verification.IsSuccessful) { 'FullHistoryVerificationFailed' } elseif (-not $releaseSuccessful) { 'ReleaseRestoreFailed' } elseif ($Plan.SkipSettings) { 'FullHistoryVerifiedSettingsSkipped' } elseif ($settings.IsSuccessful -and $protection.IsSuccessful) { 'CompletedWithSupportedSettings' } elseif (-not $settings.IsSuccessful) { 'SettingsRestoreFailed' } else { 'ProtectionRestoreFailed' }
             SourceRepository = $Plan.SourceRepository
             ApprovedSourceState = $sourceState
             ActualCopiedSourceState = $copiedSourceEvidence
@@ -88,13 +133,15 @@ function Invoke-CgrNewDestinationFullHistory {
             DestinationHtmlUrl = $DestinationRepository.HtmlUrl
             DestinationBranch = $copyResult.DefaultBranch
             SnapshotCommitSha = $null
-            IsVerified = $verification.IsSuccessful
+            IsVerified = $verification.IsSuccessful -and $releaseSuccessful
             Verification = $verification
+            Releases = $releases
             Settings = $settings
             Protection = $protection
             Plan = $Plan
             CompletedSteps = @($completedSteps)
             StoppedBeforeSettingsRestore = -not $verification.IsSuccessful
+            ReleasesRestored = [bool] ($Plan.IncludeReleases -and $releases.IsSuccessful)
             SettingsRestored = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings -and $settings.IsSuccessful)
             ProtectionRestored = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings -and $protection.IsSuccessful -and $protection.IsComplete)
         }
@@ -111,6 +158,8 @@ function Invoke-CgrNewDestinationFullHistory {
             $recoveryProvenance = [pscustomobject] @{
                 ContentMode = 'FullHistory'
                 PlannedSourceState = $sourceState
+                PlannedReleaseSelection = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseSelection'
+                ReleaseRestoreResult = $releases
                 ActualCopiedSourceState = if ($copyResult) { Get-CgrObjectProperty -InputObject $copyResult -Name 'CopiedSourceEvidence' } else { $null }
             }
             $recoveryReportPath = Write-CgrMigrationRecoveryReport -Plan $Plan -DestinationRepository $DestinationRepository -FailureStage $failureStage -ErrorRecord $_ -CompletedSteps @($completedSteps) -Provenance $recoveryProvenance -PreferredReportPath $ReportPath

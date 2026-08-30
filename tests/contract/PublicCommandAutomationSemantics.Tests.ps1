@@ -92,13 +92,21 @@ Describe 'Public command automation semantic contracts' {
                     "$commandName must declare ConfirmImpact = '$expectedConfirmImpact'."
                 }
 
-                if ($functionAst.Extent.Text -notmatch '\$PSCmdlet\.ShouldProcess\s*\(') {
-                    "$commandName must call `$PSCmdlet.ShouldProcess() before mutation dispatch."
+                if ($functionAst.Extent.Text -notmatch '(?i)\.ShouldProcess\s*\(') {
+                    "$commandName must call ShouldProcess() before mutation dispatch."
                 }
             }
         )
 
         $violations | Should -BeNullOrEmpty
+    }
+
+    It 'keeps the wizard ShouldProcess decision in its execution guard' {
+        $wizardText = $script:commandAsts['Start-CopyGitHubRepositoryWizard'].Extent.Text
+
+        $wizardText | Should -Match '\$callerPSCmdlet\s*=\s*\$PSCmdlet'
+        $wizardText | Should -Match '\$callerPSCmdlet\.ShouldProcess\s*\('
+        $wizardText | Should -Match 'Invoke-CgrRepositoryCopyWizard\s+-HostName\s+\$resolvedHostName\s+-ExecutionGuard\s+\$executionGuard'
     }
 
     It 'keeps read-only exported commands outside the state-changing classification' {

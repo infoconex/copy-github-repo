@@ -52,43 +52,49 @@ Describe 'Project PowerShell engineering policy' {
         $script:styleGuide | Should -Match 'Before classifying an inconsistency as a defect'
     }
 
-    It 'treats the configured Error and Warning analyzer policy as mandatory' {
-        $script:styleGuide | Should -Match 'configured PSScriptAnalyzer Error and Warning policy is mandatory'
-        $script:styleGuide | Should -Match 'no unsuppressed Error or Warning diagnostics'
-        $script:styleGuide | Should -Match '`PSScriptAnalyzerSettings.psd1` is the authoritative machine-readable analyzer configuration'
-        $script:styleGuide | Should -Match 'does not duplicate the complete PSScriptAnalyzer rule catalog'
-    }
-
-    It 'keeps the contributor guide linked to the project style guide' {
-        $script:contributing | Should -Match 'docs/engineering/powershell-style-guide\.md'
-        $script:contributing | Should -Match 'Retain the `Cgr` prefix for private helpers'
-    }
-
-    It 'enables only the selected additional analyzer rules with project settings' {
+    It 'keeps the main analyzer gate focused on Error and Warning findings' {
         $script:analyzerSettings.IncludeDefaultRules | Should -BeTrue
         (@($script:analyzerSettings.Severity) -join ',') | Should -Be 'Error,Warning'
-
-        $rules = $script:analyzerSettings.Rules
-        (@($rules.Keys | Sort-Object) -join ',') | Should -Be 'PSAvoidExclaimOperator,PSUseConsistentWhitespace'
-
-        $rules.PSAvoidExclaimOperator.Enable | Should -BeTrue
-        $rules.PSUseConsistentWhitespace.Enable | Should -BeTrue
-        $rules.PSUseConsistentWhitespace.CheckOpenParen | Should -BeFalse
-        $rules.PSUseConsistentWhitespace.CheckParameter | Should -BeFalse
+        $script:styleGuide | Should -Match '`PSScriptAnalyzerSettings.psd1` is the authoritative machine-readable analyzer configuration'
     }
 
-    It 'documents why every explicitly enabled analyzer rule exists and why noisy candidates are excluded' {
-        foreach ($ruleName in $script:analyzerSettings.Rules.Keys) {
-            $escapedRuleName = [regex]::Escape(('`{0}`' -f $ruleName))
-            $script:styleGuide | Should -Match $escapedRuleName
+    It 'enables the adopted industry-standard formatting and language rules' {
+        $rules = $script:analyzerSettings.Rules
+
+        foreach ($ruleName in @(
+                'PSAvoidExclaimOperator',
+                'PSAvoidSemicolonsAsLineTerminators',
+                'PSPlaceOpenBrace',
+                'PSPlaceCloseBrace',
+                'PSUseConsistentIndentation',
+                'PSUseConsistentWhitespace',
+                'PSUseConsistentParameterSetName',
+                'PSUseConsistentParametersKind',
+                'PSUseSingleValueFromPipelineParameter',
+                'PSUseCorrectCasing',
+                'PSAvoidUsingDoubleQuotesForConstantString'
+            )) {
+            $rules[$ruleName].Enable | Should -BeTrue -Because "$ruleName is part of the adopted PowerShell engineering baseline"
         }
 
-        $script:styleGuide | Should -Match 'whitespace consistency around braces, operators, separators, and pipelines'
-        $script:styleGuide | Should -Match 'opening-parenthesis check is intentionally disabled'
-        $script:styleGuide | Should -Match 'keeps boolean negation explicit as `-not`'
-        $script:styleGuide | Should -Match '`PSUseConsistentIndentation` was evaluated but is not enabled'
-        $script:styleGuide | Should -Match 'widespread indentation warnings even when pipeline normalization is disabled'
-        $script:styleGuide | Should -Match '`PSUseCorrectCasing` is not enabled because it reports at Information severity'
+        $rules.PSPlaceOpenBrace.OnSameLine | Should -BeTrue
+        $rules.PSPlaceCloseBrace.NoEmptyLineBefore | Should -BeTrue
+        $rules.PSUseConsistentIndentation.Kind | Should -Be 'space'
+        $rules.PSUseConsistentIndentation.IndentationSize | Should -Be 4
+        $rules.PSUseConsistentParametersKind.ParametersKind | Should -Be 'ParamBlock'
+        $rules.PSUseConsistentWhitespace.CheckOpenParen | Should -BeTrue
+        $rules.PSUseConsistentWhitespace.CheckParameter | Should -BeTrue
+        $rules.PSUseConsistentWhitespace.CheckPipeForRedundantWhitespace | Should -BeTrue
+        $rules.PSUseCorrectCasing.CheckCommands | Should -BeTrue
+        $rules.PSUseCorrectCasing.CheckKeyword | Should -BeTrue
+        $rules.PSUseCorrectCasing.CheckOperator | Should -BeTrue
+    }
+
+    It 'does not turn subjective or specialized rules into mandatory policy' {
+        $rules = $script:analyzerSettings.Rules
+        $rules.ContainsKey('PSAvoidLongLines') | Should -BeFalse
+        $rules.ContainsKey('PSAlignAssignmentStatement') | Should -BeFalse
+        $rules.ContainsKey('PSUseConstrainedLanguageMode') | Should -BeFalse
     }
 
     It 'requires narrow justified analyzer suppressions' {

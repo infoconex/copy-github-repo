@@ -17,20 +17,20 @@ Describe 'Validate Project Quality workflow contract' {
 
     It 'uses an internal scope decision while preserving the required Windows check for site-only changes' {
         foreach ($term in @(
-            'Determine Quality Scope',
-            'run-quality',
-            '_config\\.yml',
-            '_data/',
-            '_layouts/',
-            'assets/',
-            'docs/',
-            'README\\.md',
-            'CHANGELOG\\.md',
-            'SECURITY\\.md',
-            'deploy-documentation-site',
-            'validate-documentation',
-            'Record documentation-only validation'
-        )) {
+                'Determine Quality Scope',
+                'run-quality',
+                '_config\\.yml',
+                '_data/',
+                '_layouts/',
+                'assets/',
+                'docs/',
+                'README\\.md',
+                'CHANGELOG\\.md',
+                'SECURITY\\.md',
+                'deploy-documentation-site',
+                'validate-documentation',
+                'Record documentation-only validation'
+            )) {
             $script:workflow | Should -Match $term
         }
 
@@ -61,14 +61,14 @@ Describe 'Validate Project Quality workflow contract' {
         $script:workflow | Should -Match '(?m)^\s+fail-fast: false$'
         $script:workflow | Should -Match '(?m)^\s+run: \./build/Install-DevelopmentDependencies\.ps1$'
         foreach ($category in @('Unit', 'Integration', 'Contract')) {
-            $script:workflow | Should -Match ("(?m)^\s+run: \./build/Test-Project\.ps1 -Category {0} -SkipAnalysis(?: -CollectCoverage)?$" -f $category)
+            $script:workflow | Should -Match ('(?m)^\s+run: \./build/Test-Project\.ps1 -Category {0} -SkipAnalysis(?: -CollectCoverage)?$' -f $category)
         }
         $script:workflow | Should -Match '(?m)^\s+name: Validate PowerShell \(\$\{\{ matrix\.os \}\}\)$'
     }
 
     It 'collects Windows coverage during categorized tests and aggregates without rerunning tests' {
         foreach ($category in @('Unit', 'Integration', 'Contract')) {
-            $script:workflow | Should -Match ("(?m)^\s+run: \./build/Test-Project\.ps1 -Category {0} -SkipAnalysis -CollectCoverage$" -f $category)
+            $script:workflow | Should -Match ('(?m)^\s+run: \./build/Test-Project\.ps1 -Category {0} -SkipAnalysis -CollectCoverage$' -f $category)
         }
 
         $script:workflow | Should -Match '(?m)^\s+run: \./build/Test-Project\.ps1 -CoverageOnly$'
@@ -77,14 +77,14 @@ Describe 'Validate Project Quality workflow contract' {
 
     It 'separates Windows static analysis, tests, coverage, and package validation into visible phases' {
         foreach ($stepName in @(
-            'Static analysis',
-            'Unit tests',
-            'Integration tests',
-            'Contract tests',
-            'Code coverage',
-            'Build and validate PowerShell Gallery package'
-        )) {
-            $script:workflow | Should -Match ("(?m)^      - name: {0}$" -f [regex]::Escape($stepName))
+                'Static analysis',
+                'Unit tests',
+                'Integration tests',
+                'Contract tests',
+                'Code coverage',
+                'Build and validate PowerShell Gallery package'
+            )) {
+            $script:workflow | Should -Match ('(?m)^      - name: {0}$' -f [regex]::Escape($stepName))
         }
 
         $script:workflow | Should -Match '(?m)^\s+run: \./build/Test-Project\.ps1 -AnalysisOnly$'

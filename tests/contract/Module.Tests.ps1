@@ -170,7 +170,8 @@ InModuleScope CopyGitHubRepo {
                         DefaultBranch = 'main'; Refs = @('refs/heads/main source-commit'); ReachableCommitCount = 1
                         BranchTrees = @('refs/heads/main source-tree'); GitLfsObjectsAvailable = $true
                     }
-                } else { $script:sourceState }
+                }
+                else { $script:sourceState }
             }
             Mock Assert-CgrApprovedSourceState { $SourceState }
             Mock Invoke-CgrApprovedMigrationPlan {
@@ -238,10 +239,10 @@ InModuleScope CopyGitHubRepo {
             } -ParameterFilter { $Plan.Mode -eq 'SameNameReplacement' }
 
             { Copy-GitHubRepository `
-                -SourceRepository infoconex/source `
-                -DestinationRepository infoconex/source `
-                -ArchiveRepositoryName source-archive `
-                -Confirm:$false } |
+                    -SourceRepository infoconex/source `
+                    -DestinationRepository infoconex/source `
+                    -ArchiveRepositoryName source-archive `
+                    -Confirm:$false } |
                 Should -Throw -ErrorId 'SameNameReplacementConfirmationRequired,Assert-CgrSameNameReplacementConfirmation'
         }
 

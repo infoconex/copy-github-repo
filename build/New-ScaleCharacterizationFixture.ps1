@@ -156,10 +156,10 @@ $stopwatch.Stop()
 
 $gitDirectory = Join-Path $resolvedPath '.git'
 $workingTreeBytes = (Get-ChildItem -LiteralPath $resolvedPath -File -Recurse -Force |
-    Where-Object { $_.FullName -notlike "$gitDirectory*" } |
-    Measure-Object -Property Length -Sum).Sum
+        Where-Object { $_.FullName -notlike "$gitDirectory*" } |
+        Measure-Object -Property Length -Sum).Sum
 $gitBytes = (Get-ChildItem -LiteralPath $gitDirectory -File -Recurse -Force |
-    Measure-Object -Property Length -Sum).Sum
+        Measure-Object -Property Length -Sum).Sum
 
 [pscustomobject] @{
     SchemaVersion = 1

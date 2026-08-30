@@ -22,7 +22,7 @@ Describe 'Test taxonomy' {
     It 'keeps product Pester suites out of the tests infrastructure root' {
         $unexpected = @(
             Get-ChildItem -LiteralPath $script:testsRoot -Filter '*.Tests.ps1' -File |
-                Where-Object Name -ne 'TestTaxonomy.Tests.ps1'
+                Where-Object Name -NE 'TestTaxonomy.Tests.ps1'
         )
         $unexpected.Count | Should -Be 0
     }

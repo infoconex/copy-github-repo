@@ -75,7 +75,7 @@ function Assert-E2eEvidence {
     }
     $script:evidence.Add($record)
     $actualSuffix = if ([string]::IsNullOrWhiteSpace($Actual)) { '' } else { " [$Actual]" }
-    Write-E2eMessage -Message ("PASS  {0}{1}" -f $Check, $actualSuffix)
+    Write-E2eMessage -Message ('PASS  {0}{1}' -f $Check, $actualSuffix)
 }
 
 function Assert-E2eCleanupCapability {
@@ -255,7 +255,7 @@ try {
     Assert-E2eEvidence -Condition (@($destinationReleases | Where-Object prerelease).Count -eq 0) -Check 'Filtered prerelease is not recreated at destination' -FailureMessage 'A prerelease was unexpectedly recreated at the destination.'
 
     Write-E2eMessage
-    Write-E2eMessage -Message ("E2E evidence: {0} checks passed." -f $evidence.Count)
+    Write-E2eMessage -Message ('E2E evidence: {0} checks passed.' -f $evidence.Count)
     Write-E2eMessage
 
     [pscustomobject] @{

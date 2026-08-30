@@ -74,8 +74,8 @@ Describe 'GitHub Release migration planning' {
             $plan.ReleaseSelection.SelectedAssetCount | Should -Be 2
             $plan.ReleaseSelection.Releases[0].TagName | Should -Be 'v2.0.0'
             $plan.ReleaseSelection.Releases[0].TargetCommitSha | Should -Be 'abc123'
-            @($plan.Steps | Where-Object Name -eq 'RestoreGitHubReleases').Count | Should -Be 1
-            @($plan.Steps | Where-Object Name -eq 'RestoreGitHubReleases')[0].Description | Should -Match '1 approved GitHub Release\(s\).*2 release asset\(s\)'
+            @($plan.Steps | Where-Object Name -EQ 'RestoreGitHubReleases').Count | Should -Be 1
+            @($plan.Steps | Where-Object Name -EQ 'RestoreGitHubReleases')[0].Description | Should -Match '1 approved GitHub Release\(s\).*2 release asset\(s\)'
 
             Should -Invoke Get-CgrGitHubReleaseSelection -Times 1 -Exactly -ParameterFilter {
                 $Repository.FullName -eq 'acme/source' -and
@@ -145,7 +145,7 @@ Describe 'GitHub Release migration orchestration' {
             $result.Releases.IsSuccessful | Should -BeTrue
             $result.Releases.DestinationReleaseCount | Should -Be 1
             $result.ReleasesRestored | Should -BeTrue
-            @($result.CompletedSteps | Where-Object Name -eq 'RestoreGitHubReleases').Count | Should -Be 1
+            @($result.CompletedSteps | Where-Object Name -EQ 'RestoreGitHubReleases').Count | Should -Be 1
             ($script:stageOrder -join ',') | Should -Be 'VerifyFullHistory,RestoreGitHubReleases'
 
             Should -Invoke Copy-CgrApprovedGitHubRelease -Times 1 -Exactly -ParameterFilter {

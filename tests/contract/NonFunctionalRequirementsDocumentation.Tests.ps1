@@ -14,18 +14,18 @@ Describe 'Non-functional requirements documentation contract' {
 
     It 'covers the required operational dimensions' {
         foreach ($term in @(
-            'repository-size',
-            'branch/tag',
-            'Git LFS',
-            'Disk/temp',
-            'Memory',
-            'pagination',
-            'rate limiting',
-            'Native process timeout',
-            'Concurrency',
-            'Retry/idempotency',
-            'Process interruption'
-        )) {
+                'repository-size',
+                'branch/tag',
+                'Git LFS',
+                'Disk/temp',
+                'Memory',
+                'pagination',
+                'rate limiting',
+                'Native process timeout',
+                'Concurrency',
+                'Retry/idempotency',
+                'Process interruption'
+            )) {
             $script:document | Should -Match ([regex]::Escape($term))
         }
     }
@@ -40,27 +40,27 @@ Describe 'Non-functional requirements documentation contract' {
 
     It 'records the durable resilience controls and accepted limitations directly' {
         foreach ($term in @(
-            'InfiniteTimeSpan',
-            'no hard repository-size',
-            'known lower-bound disk shortage',
-            'mutations are never automatically replayed',
-            'raw Ctrl\+C',
-            'no distributed lock'
-        )) {
+                'InfiniteTimeSpan',
+                'no hard repository-size',
+                'known lower-bound disk shortage',
+                'mutations are never automatically replayed',
+                'raw Ctrl\+C',
+                'no distributed lock'
+            )) {
             $script:document | Should -Match $term
         }
     }
 
     It 'links to canonical product recovery characterization and readiness authorities' {
         foreach ($path in @(
-            'product-contract.md',
-            'user-guide.md',
-            'troubleshooting-recovery.md',
-            'product-model.md',
-            'architecture.md',
-            'scale-characterization.md',
-            'release-readiness.md'
-        )) {
+                'product-contract.md',
+                'user-guide.md',
+                'troubleshooting-recovery.md',
+                'product-model.md',
+                'architecture.md',
+                'scale-characterization.md',
+                'release-readiness.md'
+            )) {
             $script:document | Should -Match ([regex]::Escape($path))
         }
     }

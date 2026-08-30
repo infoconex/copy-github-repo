@@ -41,7 +41,7 @@ Describe 'Public command help completeness' {
 
         foreach ($parameterName in $declaredParameters) {
             $helpParameterNames | Should -Contain $parameterName
-            $parameterHelp = @($helpParameters | Where-Object Name -eq $parameterName)[0]
+            $parameterHelp = @($helpParameters | Where-Object Name -EQ $parameterName)[0]
             $parameterHelp | Should -Not -BeNullOrEmpty
             [string]::IsNullOrWhiteSpace([string] ($parameterHelp.Description.Text -join ' ')) |
                 Should -BeFalse -Because "$CommandName -$parameterName must have useful parameter help"
@@ -68,8 +68,8 @@ Describe 'Public command help completeness' {
     It 'documents copy defaults, immutable plan binding, and destructive safety semantics' {
         $help = Get-Help Copy-GitHubRepository -Full
         $helpText = (Get-Help Copy-GitHubRepository -Full | Out-String) -replace '\s+', ' '
-        $restorePagesHelp = @($help.Parameters.Parameter | Where-Object Name -eq 'RestorePages')[0].Description.Text -replace '\s+', ' '
-        $actionsHelp = @($help.Parameters.Parameter | Where-Object Name -eq 'EnableActionsAfterMigration')[0].Description.Text -replace '\s+', ' '
+        $restorePagesHelp = @($help.Parameters.Parameter | Where-Object Name -EQ 'RestorePages')[0].Description.Text -replace '\s+', ' '
+        $actionsHelp = @($help.Parameters.Parameter | Where-Object Name -EQ 'EnableActionsAfterMigration')[0].Description.Text -replace '\s+', ' '
 
         $helpText | Should -Match 'Snapshot is the default'
         $helpText | Should -Match 'clean-publication|clean current-state|unrelated root commit'

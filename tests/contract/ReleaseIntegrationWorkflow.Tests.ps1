@@ -33,7 +33,7 @@ Describe 'Release integration pull request validation' {
 
         $publish | Should -Match "(?ms)^'on':\s+push:\s+tags:\s+- 'v\*'\s+workflow_dispatch:"
         $publish | Should -Not -Match '(?m)^\s*pull_request:'
-        $publish | Should -Not -Match "(?ms)^\s+push:\s+branches:"
+        $publish | Should -Not -Match '(?ms)^\s+push:\s+branches:'
     }
 
     It 'keeps documentation deployment limited to main pushes' {

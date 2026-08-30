@@ -157,7 +157,7 @@ foreach ($htmlFile in $htmlFiles) {
 
     $idMatches = [regex]::Matches($html, '(?i)\bid\s*=\s*["''](?<id>[^"'']+)["'']')
     $ids = @($idMatches | ForEach-Object { $_.Groups['id'].Value })
-    foreach ($duplicateId in @($ids | Group-Object | Where-Object Count -gt 1 | Select-Object -ExpandProperty Name)) {
+    foreach ($duplicateId in @($ids | Group-Object | Where-Object Count -GT 1 | Select-Object -ExpandProperty Name)) {
         Add-GeneratedSiteFailure -Source $relativeSource -Message "duplicate id: $duplicateId"
     }
 
@@ -233,9 +233,9 @@ foreach ($htmlFile in $htmlFiles) {
     }
 
     $canonicalTags = @($linkTags | Where-Object {
-        $rel = & $htmlAttributeValue -Tag $_ -Name 'rel'
-        $rel -and (@($rel -split '\s+') -icontains 'canonical')
-    })
+            $rel = & $htmlAttributeValue -Tag $_ -Name 'rel'
+            $rel -and (@($rel -split '\s+') -icontains 'canonical')
+        })
     $canonicalValue = $null
     if ($canonicalTags.Count -ne 1) {
         Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one canonical link, found $($canonicalTags.Count)"
@@ -301,12 +301,12 @@ foreach ($htmlFile in $htmlFiles) {
     }
 }
 
-foreach ($duplicateTitle in @($titleRecords | Group-Object Value | Where-Object Count -gt 1)) {
+foreach ($duplicateTitle in @($titleRecords | Group-Object Value | Where-Object Count -GT 1)) {
     $sources = @($duplicateTitle.Group.Source) -join ', '
     Add-GeneratedSiteFailure -Source 'SEO metadata' -Message "duplicate title '$($duplicateTitle.Name)' on: $sources"
 }
 
-foreach ($duplicateDescription in @($descriptionRecords | Group-Object Value | Where-Object Count -gt 1)) {
+foreach ($duplicateDescription in @($descriptionRecords | Group-Object Value | Where-Object Count -GT 1)) {
     $sources = @($duplicateDescription.Group.Source) -join ', '
     Add-GeneratedSiteFailure -Source 'SEO metadata' -Message "duplicate meta description on: $sources"
 }
@@ -318,8 +318,8 @@ if (-not (Test-Path -LiteralPath $sitemapPath -PathType Leaf)) {
 else {
     $sitemapContent = Get-Content -LiteralPath $sitemapPath -Raw
     $sitemapUrls = @([regex]::Matches($sitemapContent, '(?is)<loc>\s*(?<value>[^<]+?)\s*</loc>') | ForEach-Object {
-        [System.Net.WebUtility]::HtmlDecode($_.Groups['value'].Value.Trim())
-    })
+            [System.Net.WebUtility]::HtmlDecode($_.Groups['value'].Value.Trim())
+        })
 
     foreach ($canonicalRecord in $canonicalRecords) {
         if ($sitemapUrls -cnotcontains $canonicalRecord.Value) {

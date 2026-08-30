@@ -8,20 +8,20 @@ Describe 'Public structured output contracts' {
     It 'preserves repository type names and important scalar/property types' {
         InModuleScope CopyGitHubRepo {
             $repository = ConvertTo-CgrRepository -HostName 'github.com' -Repository ([pscustomobject] @{
-                id = 42
-                node_id = 'R_42'
-                name = 'widget'
-                full_name = 'acme/widget'
-                owner = [pscustomobject] @{ login = 'acme' }
-                visibility = 'public'
-                private = $false
-                archived = $false
-                fork = $false
-                default_branch = 'main'
-                topics = @('two', 'one')
-                permissions = [pscustomobject] @{ admin = $true; push = $true; pull = $true }
-                updated_at = '2026-08-15T00:00:00Z'
-            })
+                    id = 42
+                    node_id = 'R_42'
+                    name = 'widget'
+                    full_name = 'acme/widget'
+                    owner = [pscustomobject] @{ login = 'acme' }
+                    visibility = 'public'
+                    private = $false
+                    archived = $false
+                    fork = $false
+                    default_branch = 'main'
+                    topics = @('two', 'one')
+                    permissions = [pscustomobject] @{ admin = $true; push = $true; pull = $true }
+                    updated_at = '2026-08-15T00:00:00Z'
+                })
 
             $repository.PSObject.TypeNames | Should -Contain 'CopyGitHubRepo.Repository'
             $repository.Id | Should -BeOfType ([long])
@@ -40,11 +40,11 @@ Describe 'Public structured output contracts' {
         InModuleScope CopyGitHubRepo -Parameters @{ Topics = $_.Topics; Expected = $_.Expected } {
             param($Topics, $Expected)
             $repository = ConvertTo-CgrRepository -HostName 'github.com' -Repository ([pscustomobject] @{
-                id = 42; node_id = 'R_42'; name = 'widget'; full_name = 'acme/widget'
-                owner = [pscustomobject] @{ login = 'acme' }; visibility = 'public'; private = $false
-                archived = $false; fork = $false; default_branch = 'main'; topics = $Topics
-                permissions = [pscustomobject] @{}
-            })
+                    id = 42; node_id = 'R_42'; name = 'widget'; full_name = 'acme/widget'
+                    owner = [pscustomobject] @{ login = 'acme' }; visibility = 'public'; private = $false
+                    archived = $false; fork = $false; default_branch = 'main'; topics = $Topics
+                    permissions = [pscustomobject] @{}
+                })
 
             @($repository.Topics | Where-Object { $null -ne $_ }).Count | Should -Be $Expected
         }

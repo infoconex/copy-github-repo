@@ -27,10 +27,10 @@ function Get-CgrActivityCompletionMessage {
         }
 
         if ($objectsCopied) {
-            return ("Transferred Git LFS objects for {0} tracked path(s)." -f $pointerFiles.Count)
+            return ('Transferred Git LFS objects for {0} tracked path(s).' -f $pointerFiles.Count)
         }
 
-        return ("Git LFS content was detected for {0} tracked path(s), but no objects were transferred." -f $pointerFiles.Count)
+        return ('Git LFS content was detected for {0} tracked path(s), but no objects were transferred.' -f $pointerFiles.Count)
     }
 
     if ($Name -eq 'VerifyDestinationContent') {

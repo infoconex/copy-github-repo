@@ -40,7 +40,7 @@ function Resolve-CgrWizardDestinationRepository {
         $selectedRepositoryName = [string] $selectedRepository.FullName
         Write-CgrWizardMessage
         Write-CgrWizardMessage -Message 'Destination repository' -Style Heading
-        Write-CgrWizardMessage -Message ("  Selected: {0}" -f $selectedRepositoryName) -Style Value
+        Write-CgrWizardMessage -Message ('  Selected: {0}' -f $selectedRepositoryName) -Style Value
 
         $selectionAction = Read-CgrWizardChoice `
             -Title 'Use selected destination' `

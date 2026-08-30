@@ -95,13 +95,13 @@ function Assert-CgrNotFileSystemLink {
     $item = Get-Item -LiteralPath $Path -Force
     $hasLinkType = -not [string]::IsNullOrWhiteSpace([string] $item.LinkType)
     $hasLinkTarget = @($item.Target).Count -gt 0 -and
-        -not [string]::IsNullOrWhiteSpace((@($item.Target) -join ''))
+    -not [string]::IsNullOrWhiteSpace((@($item.Target) -join ''))
 
     if ($hasLinkType -or $hasLinkTarget) {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "$Description '$Path' is a symbolic link or junction and will not be removed." `
-            -ErrorId 'CopyGitHubRepo.UnsafeUninstallPath' `
-            -TargetObject $Path)
+                -Message "$Description '$Path' is a symbolic link or junction and will not be removed." `
+                -ErrorId 'CopyGitHubRepo.UnsafeUninstallPath' `
+                -TargetObject $Path)
     }
 }
 
@@ -121,9 +121,9 @@ function Get-CgrInstalledModuleVersion {
         $parsedVersion = $null
         if (-not [version]::TryParse($directory.Name, [ref] $parsedVersion)) {
             throw (ConvertTo-CgrApplicationErrorRecord `
-                -Message "Unexpected directory '$($directory.FullName)' exists under the CopyGitHubRepo module root. No files were removed." `
-                -ErrorId 'CopyGitHubRepo.UnsafeInstallationLayout' `
-                -TargetObject $directory.FullName)
+                    -Message "Unexpected directory '$($directory.FullName)' exists under the CopyGitHubRepo module root. No files were removed." `
+                    -ErrorId 'CopyGitHubRepo.UnsafeInstallationLayout' `
+                    -TargetObject $directory.FullName)
         }
 
         $manifestPath = Join-Path $directory.FullName 'CopyGitHubRepo.psd1'
@@ -131,9 +131,9 @@ function Get-CgrInstalledModuleVersion {
         if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf) -or
             -not (Test-Path -LiteralPath $rootModulePath -PathType Leaf)) {
             throw (ConvertTo-CgrApplicationErrorRecord `
-                -Message "Directory '$($directory.FullName)' does not contain a complete CopyGitHubRepo installation. No files were removed." `
-                -ErrorId 'CopyGitHubRepo.InvalidInstalledModule' `
-                -TargetObject $directory.FullName)
+                    -Message "Directory '$($directory.FullName)' does not contain a complete CopyGitHubRepo installation. No files were removed." `
+                    -ErrorId 'CopyGitHubRepo.InvalidInstalledModule' `
+                    -TargetObject $directory.FullName)
         }
 
         Assert-CgrNotFileSystemLink -Path $manifestPath -Description 'Installed module manifest'
@@ -146,9 +146,9 @@ function Get-CgrInstalledModuleVersion {
             $manifestGuid -ne $script:moduleGuid -or
             $rootModule -ne 'CopyGitHubRepo.psm1') {
             throw (ConvertTo-CgrApplicationErrorRecord `
-                -Message "Directory '$($directory.FullName)' does not match the expected CopyGitHubRepo module identity/version. No files were removed." `
-                -ErrorId 'CopyGitHubRepo.InvalidInstalledModule' `
-                -TargetObject $directory.FullName)
+                    -Message "Directory '$($directory.FullName)' does not match the expected CopyGitHubRepo module identity/version. No files were removed." `
+                    -ErrorId 'CopyGitHubRepo.InvalidInstalledModule' `
+                    -TargetObject $directory.FullName)
         }
 
         $installations.Add([pscustomobject] @{
@@ -276,9 +276,9 @@ function Invoke-CgrUninstall {
     Assert-CgrNotFileSystemLink -Path $resolvedDestinationRoot -Description 'Module destination root'
     if (-not (Test-CgrPathWithinRoot -RootPath $resolvedDestinationRoot -CandidatePath $moduleRoot)) {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "Resolved CopyGitHubRepo module root '$moduleRoot' is outside destination root '$resolvedDestinationRoot'." `
-            -ErrorId 'CopyGitHubRepo.UnsafeUninstallPath' `
-            -TargetObject $moduleRoot)
+                -Message "Resolved CopyGitHubRepo module root '$moduleRoot' is outside destination root '$resolvedDestinationRoot'." `
+                -ErrorId 'CopyGitHubRepo.UnsafeUninstallPath' `
+                -TargetObject $moduleRoot)
     }
 
     $installations = @(Get-CgrInstalledModuleVersion -ModuleRoot $moduleRoot)

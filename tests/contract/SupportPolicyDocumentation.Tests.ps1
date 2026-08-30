@@ -69,14 +69,14 @@ Describe 'Support compatibility and deprecation policy documentation contract' {
 
     It 'covers compatibility-sensitive deprecation and accelerated safety removals' {
         foreach ($surface in @(
-            'exported commands',
-            'public parameters',
-            'structured output/report fields',
-            'error identifiers',
-            'default behaviors and safety semantics',
-            'supported installation/release workflows',
-            'documented features'
-        )) {
+                'exported commands',
+                'public parameters',
+                'structured output/report fields',
+                'error identifiers',
+                'default behaviors and safety semantics',
+                'supported installation/release workflows',
+                'documented features'
+            )) {
             $script:supportPolicy | Should -Match ([regex]::Escape($surface))
         }
         $script:supportPolicy | Should -Match 'at least one subsequent stable release before removal'

@@ -40,7 +40,7 @@ function Test-CgrApplicationErrorRecord {
     )
 
     return $ErrorRecord.Exception.Data.Contains('CopyGitHubRepo.ApplicationError') -and
-        [bool] $ErrorRecord.Exception.Data['CopyGitHubRepo.ApplicationError']
+    [bool] $ErrorRecord.Exception.Data['CopyGitHubRepo.ApplicationError']
 }
 
 function Write-CgrUnhandledError {
@@ -100,9 +100,9 @@ try {
     $commitSha = [string] $commit.sha
     if ($commitSha -notmatch '^[a-fA-F0-9]{40}$') {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "GitHub did not return a valid commit SHA for '$repository' branch '$branch'." `
-            -ErrorId 'CopyGitHubRepo.InvalidPrereleaseCommit' `
-            -TargetObject $branch)
+                -Message "GitHub did not return a valid commit SHA for '$repository' branch '$branch'." `
+                -ErrorId 'CopyGitHubRepo.InvalidPrereleaseCommit' `
+                -TargetObject $branch)
     }
 
     $archiveUrl = "https://github.com/$repository/archive/$commitSha.zip"
@@ -116,17 +116,17 @@ try {
     $sourceRoots = @(Get-ChildItem -LiteralPath $extractPath -Directory)
     if ($sourceRoots.Count -ne 1) {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "Expected exactly one repository source directory after extracting commit '$commitSha'." `
-            -ErrorId 'CopyGitHubRepo.InvalidPrereleaseArchive' `
-            -TargetObject $archivePath)
+                -Message "Expected exactly one repository source directory after extracting commit '$commitSha'." `
+                -ErrorId 'CopyGitHubRepo.InvalidPrereleaseArchive' `
+                -TargetObject $archivePath)
     }
 
     $installerPath = Join-Path $sourceRoots[0].FullName 'install.ps1'
     if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "Unreleased source archive for commit '$commitSha' does not contain install.ps1." `
-            -ErrorId 'CopyGitHubRepo.PrereleaseInstallerMissing' `
-            -TargetObject $installerPath)
+                -Message "Unreleased source archive for commit '$commitSha' does not contain install.ps1." `
+                -ErrorId 'CopyGitHubRepo.PrereleaseInstallerMissing' `
+                -TargetObject $installerPath)
     }
 
     if ($Force) {

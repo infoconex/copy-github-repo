@@ -43,8 +43,8 @@ function Assert-CgrFullHistoryWorkspaceState {
     $expectedRefs = @(Get-CgrObjectProperty -InputObject $ApprovedSourceState -Name 'Refs') | Sort-Object
     $expectedBranchTrees = @(Get-CgrObjectProperty -InputObject $ApprovedSourceState -Name 'BranchTrees') | Sort-Object
     $stateMatches = ($actualRefs -join "`n") -eq ($expectedRefs -join "`n") -and
-        $actualCommitCount -eq (Get-CgrObjectProperty -InputObject $ApprovedSourceState -Name 'ReachableCommitCount') -and
-        (($branchTrees.ToArray() | Sort-Object) -join "`n") -eq ($expectedBranchTrees -join "`n")
+    $actualCommitCount -eq (Get-CgrObjectProperty -InputObject $ApprovedSourceState -Name 'ReachableCommitCount') -and
+    (($branchTrees.ToArray() | Sort-Object) -join "`n") -eq ($expectedBranchTrees -join "`n")
 
     if (-not $stateMatches) {
         $message = "Source repository '$RepositoryName' no longer matches the approved FullHistory source state. Nothing was published. Recreate and review the repository copy plan."

@@ -43,7 +43,7 @@ function Test-CgrApplicationErrorRecord {
     )
 
     return $ErrorRecord.Exception.Data.Contains('CopyGitHubRepo.ApplicationError') -and
-        [bool] $ErrorRecord.Exception.Data['CopyGitHubRepo.ApplicationError']
+    [bool] $ErrorRecord.Exception.Data['CopyGitHubRepo.ApplicationError']
 }
 
 function Write-CgrUnhandledError {
@@ -106,9 +106,9 @@ function Test-CgrReleaseArtifactAttestation {
     $ghCommand = Get-Command gh -ErrorAction SilentlyContinue
     if ($null -eq $ghCommand) {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message 'GitHub CLI (gh) is required to verify the stable release artifact provenance before installation.' `
-            -ErrorId 'CopyGitHubRepo.ReleaseAttestationVerifierUnavailable' `
-            -TargetObject 'gh')
+                -Message 'GitHub CLI (gh) is required to verify the stable release artifact provenance before installation.' `
+                -ErrorId 'CopyGitHubRepo.ReleaseAttestationVerifierUnavailable' `
+                -TargetObject 'gh')
     }
 
     $verificationOutput = @(
@@ -131,9 +131,9 @@ function Test-CgrReleaseArtifactAttestation {
         }
 
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message $message `
-            -ErrorId 'CopyGitHubRepo.ReleaseAttestationInvalid' `
-            -TargetObject ([System.IO.Path]::GetFileName($ArtifactPath)))
+                -Message $message `
+                -ErrorId 'CopyGitHubRepo.ReleaseAttestationInvalid' `
+                -TargetObject ([System.IO.Path]::GetFileName($ArtifactPath)))
     }
 
     return $true
@@ -161,23 +161,23 @@ try {
     $release = Invoke-RestMethod -Uri $apiUrl -Headers $headers
     if ([string]::IsNullOrWhiteSpace([string] $release.tag_name)) {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message 'GitHub did not return a stable CopyGitHubRepo release tag.' `
-            -ErrorId 'CopyGitHubRepo.ReleaseTagMissing')
+                -Message 'GitHub did not return a stable CopyGitHubRepo release tag.' `
+                -ErrorId 'CopyGitHubRepo.ReleaseTagMissing')
     }
 
     if ([string] $release.tag_name -notmatch '^v(?<ResolvedVersion>\d+\.\d+\.\d+)$') {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "Release tag '$($release.tag_name)' is not a supported stable version tag." `
-            -ErrorId 'CopyGitHubRepo.InvalidReleaseTag' `
-            -TargetObject $release.tag_name)
+                -Message "Release tag '$($release.tag_name)' is not a supported stable version tag." `
+                -ErrorId 'CopyGitHubRepo.InvalidReleaseTag' `
+                -TargetObject $release.tag_name)
     }
 
     $resolvedVersion = $Matches.ResolvedVersion
     if (-not [string]::IsNullOrWhiteSpace($Version) -and $resolvedVersion -ne $Version) {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "GitHub returned release '$($release.tag_name)' while version '$Version' was requested." `
-            -ErrorId 'CopyGitHubRepo.ReleaseVersionMismatch' `
-            -TargetObject $release.tag_name)
+                -Message "GitHub returned release '$($release.tag_name)' while version '$Version' was requested." `
+                -ErrorId 'CopyGitHubRepo.ReleaseVersionMismatch' `
+                -TargetObject $release.tag_name)
     }
 
     $releaseCommitApiUrl = "https://api.github.com/repos/$repository/commits/$($release.tag_name)"
@@ -185,9 +185,9 @@ try {
     $releaseCommitSha = [string] $releaseCommit.sha
     if ($releaseCommitSha -notmatch '^[a-fA-F0-9]{40}$') {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "GitHub did not return a valid commit identity for release '$($release.tag_name)'." `
-            -ErrorId 'CopyGitHubRepo.ReleaseCommitIdentityMissing' `
-            -TargetObject $release.tag_name)
+                -Message "GitHub did not return a valid commit identity for release '$($release.tag_name)'." `
+                -ErrorId 'CopyGitHubRepo.ReleaseCommitIdentityMissing' `
+                -TargetObject $release.tag_name)
     }
 
     $artifactName = "CopyGitHubRepo-$resolvedVersion.zip"
@@ -198,16 +198,16 @@ try {
 
     if ($artifactAsset.Count -ne 1) {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "Expected exactly one release asset named '$artifactName'." `
-            -ErrorId 'CopyGitHubRepo.ReleaseArtifactMissing' `
-            -TargetObject $artifactName)
+                -Message "Expected exactly one release asset named '$artifactName'." `
+                -ErrorId 'CopyGitHubRepo.ReleaseArtifactMissing' `
+                -TargetObject $artifactName)
     }
 
     if ($checksumAsset.Count -ne 1) {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "Expected exactly one release asset named '$checksumName'." `
-            -ErrorId 'CopyGitHubRepo.ReleaseChecksumMissing' `
-            -TargetObject $checksumName)
+                -Message "Expected exactly one release asset named '$checksumName'." `
+                -ErrorId 'CopyGitHubRepo.ReleaseChecksumMissing' `
+                -TargetObject $checksumName)
     }
 
     $artifactPath = Join-Path $temporaryRoot $artifactName
@@ -219,9 +219,9 @@ try {
     $checksumText = (Get-Content -LiteralPath $checksumPath -Raw).Trim()
     if ($checksumText -notmatch '^(?<Hash>[a-fA-F0-9]{64})\s+\S+$') {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "Checksum file '$checksumName' is not in the expected SHA-256 format." `
-            -ErrorId 'CopyGitHubRepo.InvalidReleaseChecksum' `
-            -TargetObject $checksumName)
+                -Message "Checksum file '$checksumName' is not in the expected SHA-256 format." `
+                -ErrorId 'CopyGitHubRepo.InvalidReleaseChecksum' `
+                -TargetObject $checksumName)
     }
 
     $expectedHash = $Matches.Hash.ToLowerInvariant()
@@ -229,9 +229,9 @@ try {
 
     if ($actualHash -ne $expectedHash) {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "SHA-256 verification failed for '$artifactName'." `
-            -ErrorId 'CopyGitHubRepo.ReleaseChecksumMismatch' `
-            -TargetObject $artifactName)
+                -Message "SHA-256 verification failed for '$artifactName'." `
+                -ErrorId 'CopyGitHubRepo.ReleaseChecksumMismatch' `
+                -TargetObject $artifactName)
     }
 
     Test-CgrReleaseArtifactAttestation `
@@ -246,9 +246,9 @@ try {
     $installerPath = Join-Path $extractPath 'install.ps1'
     if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
         throw (ConvertTo-CgrApplicationErrorRecord `
-            -Message "Release package '$artifactName' does not contain install.ps1." `
-            -ErrorId 'CopyGitHubRepo.ReleaseInstallerMissing' `
-            -TargetObject $installerPath)
+                -Message "Release package '$artifactName' does not contain install.ps1." `
+                -ErrorId 'CopyGitHubRepo.ReleaseInstallerMissing' `
+                -TargetObject $installerPath)
     }
 
     if ($Force) {

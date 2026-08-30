@@ -103,6 +103,10 @@ Example:
 
 ### Multiline command invocation and splatting
 
+**Required**
+
+- Avoid positional-parameter invocation where `PSAvoidUsingPositionalParameters` applies. This convention is deliberately promoted through the focused Information-rule contract; it is not an accidental consequence of enabling Information severity globally.
+
 **Preferred**
 
 - Use named parameters for nontrivial command calls.
@@ -150,6 +154,22 @@ Example:
 - Internal helpers live under `src/CopyGitHubRepo/Private` and use the `Cgr` prefix.
 - Public commands own public parameter semantics, safety decisions, user-facing output selection, and dispatch. Internal helpers own cohesive implementation behavior.
 - Do not export private helpers.
+
+### Advanced functions and automation
+
+**Required**
+
+- Every manifest-exported public function uses `[CmdletBinding()]` so common-parameter and advanced-function semantics are explicit and testable.
+- Every state-changing exported command enables `SupportsShouldProcess`, declares an explicit `ConfirmImpact` appropriate to its risk, and calls `$PSCmdlet.ShouldProcess()` before mutation dispatch.
+- Supported automation scenarios must not depend on `Read-Host`, interactive host input, or wizard-only selection. A command that can prompt must expose and document a noninteractive path or identify the direct noninteractive public command that automation should use.
+- `Copy-GitHubRepository` is the automation boundary for repository-copy execution. Its `-NonInteractive` path requires the documented `-Force` acknowledgement for mutation while preserving independent exact replacement confirmations.
+- The interactive wizard may own host-oriented presentation and selection behavior, but automation uses the structured public commands directly rather than scraping wizard output.
+- Routine confirmation bypass and independent safety confirmation are distinct contracts. `-Force` and `-Confirm:$false` may suppress routine PowerShell confirmation where documented, but they must not bypass exact replacement confirmation, source-state validation, or other independent product safety invariants.
+- Public success output remains structured and suitable for assignment, filtering, serialization, and automation. Presentation-only behavior stays separate from the success pipeline.
+
+**Preferred**
+
+- Use `[OutputType()]` when it accurately and stably describes a public command's output contract. Do not require it universally when output is mode-dependent or when the attribute would misrepresent the actual public API.
 
 ### Types and validation attributes
 
@@ -220,8 +240,8 @@ The status word is intentionally redundant with both symbol and color. This keep
 
 - Public state-changing operations use `SupportsShouldProcess` and call `$PSCmdlet.ShouldProcess()` before mutation.
 - `-WhatIf` must remain non-mutating.
-- `-Confirm:$false` must not bypass independent product safety requirements such as exact same-name replacement confirmation.
-- `-Force` may satisfy explicitly documented guards, but must not become a generic bypass for product safety invariants.
+- `-Confirm:$false` may suppress routine PowerShell confirmation but must not bypass independent product safety requirements such as exact same-name or existing-destination replacement confirmation.
+- `-Force` may satisfy explicitly documented routine guards, but must not become a generic bypass for product safety invariants.
 
 ## Native commands and security-sensitive code
 
@@ -270,7 +290,7 @@ The normal analyzer pass retains the default Error/Warning rule set and explicit
 | `PSUseCorrectCasing` | Enforces command, keyword, and operator casing through the focused Information-rule contract. |
 | `PSAvoidUsingDoubleQuotesForConstantString` | Requires single quotes for constant strings through the focused Information-rule contract. |
 
-The main recursive analyzer gate intentionally remains limited to Error and Warning diagnostics. The Required Information-severity conventions `PSUseCorrectCasing`, `PSAvoidUsingDoubleQuotesForConstantString`, and `PSAvoidUsingPositionalParameters` are promoted by a focused contract test instead of enabling every Information diagnostic globally.
+The main recursive analyzer gate intentionally remains limited to Error and Warning diagnostics. The Required Information-severity conventions `PSUseCorrectCasing`, `PSAvoidUsingDoubleQuotesForConstantString`, and `PSAvoidUsingPositionalParameters` are promoted by a focused contract test instead of enabling every Information diagnostic globally. The `PSAvoidUsingPositionalParameters` promotion is a deliberate project decision retained from the adopted analyzer policy; it is not an accidental side effect of Information severity.
 
 `PSAvoidLongLines`, `PSAlignAssignmentStatement`, and `PSUseConstrainedLanguageMode` remain outside the mandatory policy because they are subjective or specialized for this repository. Compatibility is established by the PowerShell 7.4+ contract and the actual Windows, Linux, and macOS CI matrix rather than by obsolete analyzer compatibility profiles.
 
@@ -281,6 +301,8 @@ Additional rules should be evaluated against this repository and adopted when th
 PSScriptAnalyzer remains the preferred mechanism for objective language and formatting rules that it can express accurately. Repository-structure and project-specific conventions that are narrower than built-in analyzer rules are enforced by deterministic Pester contracts using the PowerShell AST and source discovery.
 
 `tests/contract/PowerShellSourceConventions.Tests.ps1` enforces the Required conventions that explicitly declared parameters use PascalCase, private functions use approved PowerShell verbs with the `Cgr` noun prefix, manifest-exported commands have exactly one matching public source file and do not use the private `Cgr` prefix, and governed Public/Private PowerShell source does not use tab indentation. Public command coverage is derived from `FunctionsToExport`; the contract does not maintain a second hard-coded command inventory.
+
+`tests/contract/PublicCommandAutomationSemantics.Tests.ps1` derives the exported public command set from `FunctionsToExport` and enforces `[CmdletBinding()]` on every export. It also verifies the explicit state-changing command classification, `SupportsShouldProcess`/`ConfirmImpact`/`ShouldProcess()` behavior, the direct noninteractive copy path, and the documented automation alternative to the interactive wizard.
 
 These AST/Pester checks complement the analyzer configuration rather than replacing it. They are intentionally narrow so project-specific structure can be enforced without enabling broader analyzer behavior that would create unrelated formatting churn or false positives.
 

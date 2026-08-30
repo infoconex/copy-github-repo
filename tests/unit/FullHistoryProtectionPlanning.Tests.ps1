@@ -94,22 +94,22 @@ Describe 'FullHistory planned protection restoration' {
                 Protection = [pscustomobject] @{ Status = 'SkippedSourceIdentityUnavailable'; Configuration = $null }
             }
             $source = [pscustomobject] @{ FullName = 'acme/source'; HostName = 'github.com'; Id = 10; NodeId = 'SRC' }
-            $archive = [pscustomobject] @{ FullName = 'acme/source-archive'; HostName = 'github.com'; Id = 10; NodeId = 'SRC' }
-            $destination = [pscustomobject] @{ FullName = 'acme/source'; HostName = 'github.com'; HtmlUrl = 'https://github.com/acme/source'; Id = 20; NodeId = 'DST' }
+            $script:archiveFixture = [pscustomobject] @{ FullName = 'acme/source-archive'; HostName = 'github.com'; Id = 10; NodeId = 'SRC' }
+            $script:destinationFixture = [pscustomobject] @{ FullName = 'acme/source'; HostName = 'github.com'; HtmlUrl = 'https://github.com/acme/source'; Id = 20; NodeId = 'DST' }
 
             Mock Assert-CgrApprovedSourceState {}
-            Mock Rename-CgrGitHubRepository { $archive }
-            Mock New-CgrGitHubRepository { $destination }
+            Mock Rename-CgrGitHubRepository { $script:archiveFixture }
+            Mock New-CgrGitHubRepository { $script:destinationFixture }
             Mock Assert-CgrReplacementRepositoryIdentity {
                 [pscustomobject] @{ SourceRepositoryId = 10; ArchiveRepositoryId = 10; ReplacementRepositoryId = 20 }
             }
             Mock Copy-CgrRepositoryFullHistory {
                 [pscustomobject] @{ IsSuccessful = $true; DefaultBranch = 'main'; CopiedSourceEvidence = $sourceState }
             }
-            Mock Get-CgrRepository { $destination }
+            Mock Get-CgrRepository { $script:destinationFixture }
             Mock Invoke-CgrApprovedFullHistoryVerification { [pscustomobject] @{ IsSuccessful = $true } }
             Mock Set-CgrGitHubRepositorySetting {
-                [pscustomobject] @{ Repository = $destination.FullName; Restored = @(); Skipped = @(); Unsupported = @(); IsSuccessful = $true }
+                [pscustomobject] @{ Repository = $script:destinationFixture.FullName; Restored = @(); Skipped = @(); Unsupported = @(); IsSuccessful = $true }
             }
             Mock Set-CgrRepositoryProtectionConfiguration { throw 'Protection must not be rediscovered after planning.' }
 
@@ -141,25 +141,25 @@ Describe 'FullHistory planned protection restoration' {
                 Protection = [pscustomobject] @{ Status = 'Captured'; Configuration = $plannedConfiguration }
             }
             $source = [pscustomobject] @{ FullName = 'acme/source'; HostName = 'github.com'; Id = 10; NodeId = 'SRC' }
-            $archive = [pscustomobject] @{ FullName = 'acme/source-archive'; HostName = 'github.com'; Id = 10; NodeId = 'SRC' }
-            $destination = [pscustomobject] @{ FullName = 'acme/source'; HostName = 'github.com'; HtmlUrl = 'https://github.com/acme/source'; Id = 20; NodeId = 'DST' }
+            $script:archiveFixture = [pscustomobject] @{ FullName = 'acme/source-archive'; HostName = 'github.com'; Id = 10; NodeId = 'SRC' }
+            $script:destinationFixture = [pscustomobject] @{ FullName = 'acme/source'; HostName = 'github.com'; HtmlUrl = 'https://github.com/acme/source'; Id = 20; NodeId = 'DST' }
 
             Mock Assert-CgrApprovedSourceState {}
-            Mock Rename-CgrGitHubRepository { $archive }
-            Mock New-CgrGitHubRepository { $destination }
+            Mock Rename-CgrGitHubRepository { $script:archiveFixture }
+            Mock New-CgrGitHubRepository { $script:destinationFixture }
             Mock Assert-CgrReplacementRepositoryIdentity {
                 [pscustomobject] @{ SourceRepositoryId = 10; ArchiveRepositoryId = 10; ReplacementRepositoryId = 20 }
             }
             Mock Copy-CgrRepositoryFullHistory {
                 [pscustomobject] @{ IsSuccessful = $true; DefaultBranch = 'main'; CopiedSourceEvidence = $sourceState }
             }
-            Mock Get-CgrRepository { $destination }
+            Mock Get-CgrRepository { $script:destinationFixture }
             Mock Invoke-CgrApprovedFullHistoryVerification { [pscustomobject] @{ IsSuccessful = $true } }
             Mock Set-CgrGitHubRepositorySetting {
-                [pscustomobject] @{ Repository = $destination.FullName; Restored = @(); Skipped = @(); Unsupported = @(); IsSuccessful = $true }
+                [pscustomobject] @{ Repository = $script:destinationFixture.FullName; Restored = @(); Skipped = @(); Unsupported = @(); IsSuccessful = $true }
             }
             Mock Set-CgrRepositoryProtectionConfiguration {
-                [pscustomobject] @{ Repository = $destination.FullName; Status = 'Restored'; Restored = @('Ruleset:planned-ruleset'); Skipped = @(); IsSuccessful = $true; IsComplete = $true }
+                [pscustomobject] @{ Repository = $script:destinationFixture.FullName; Status = 'Restored'; Restored = @('Ruleset:planned-ruleset'); Skipped = @(); IsSuccessful = $true; IsComplete = $true }
             }
 
             $result = Invoke-CgrSameNameFullHistoryReplacement -Plan $plan -SourceRepository $source

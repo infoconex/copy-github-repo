@@ -5,10 +5,10 @@ BeforeAll {
     $script:manifestPath = Join-Path $script:moduleRoot 'CopyGitHubRepo.psd1'
     $script:manifest = Import-PowerShellDataFile -LiteralPath $script:manifestPath
     $script:exportedCommands = @($script:manifest.FunctionsToExport)
-    $script:stateChangingCommands = @(
-        'Copy-GitHubRepository'
-        'Start-CopyGitHubRepositoryWizard'
-    )
+    $script:stateChangingCommands = @{
+        'Copy-GitHubRepository' = 'High'
+        'Start-CopyGitHubRepositoryWizard' = 'Low'
+    }
 
     function Get-PublicCommandAst {
         param(
@@ -67,9 +67,9 @@ Describe 'Public command automation semantic contracts' {
         $violations | Should -BeNullOrEmpty
     }
 
-    It 'requires state-changing exported commands to use ShouldProcess with explicit ConfirmImpact' {
+    It 'requires state-changing exported commands to use ShouldProcess with the expected ConfirmImpact' {
         $violations = @(
-            foreach ($commandName in $script:stateChangingCommands) {
+            foreach ($commandName in $script:stateChangingCommands.Keys) {
                 $functionAst = $script:commandAsts[$commandName]
                 if ($null -eq $functionAst) {
                     "$commandName is classified as state-changing but is not manifest-exported."
@@ -86,8 +86,10 @@ Describe 'Public command automation semantic contracts' {
                     "$commandName must enable SupportsShouldProcess."
                 }
 
-                if ($attributeText -notmatch '(?i)ConfirmImpact\s*=') {
-                    "$commandName must declare an explicit ConfirmImpact."
+                $expectedConfirmImpact = $script:stateChangingCommands[$commandName]
+                $confirmImpactPattern = "(?i)ConfirmImpact\s*=\s*'$([regex]::Escape($expectedConfirmImpact))'"
+                if ($attributeText -notmatch $confirmImpactPattern) {
+                    "$commandName must declare ConfirmImpact = '$expectedConfirmImpact'."
                 }
 
                 if ($functionAst.Extent.Text -notmatch '\$PSCmdlet\.ShouldProcess\s*\(') {
@@ -102,7 +104,7 @@ Describe 'Public command automation semantic contracts' {
     It 'keeps read-only exported commands outside the state-changing classification' {
         $readOnlyCommands = @(
             $script:exportedCommands |
-                Where-Object { $_ -cnotin $script:stateChangingCommands }
+                Where-Object { $_ -cnotin @($script:stateChangingCommands.Keys) }
         )
 
         $readOnlyCommands | Should -Contain 'Get-GitHubRepository'

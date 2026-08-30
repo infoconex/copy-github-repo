@@ -9,10 +9,11 @@ function Get-CgrGitHubApiOptional {
         [string] $HostName = 'github.com'
     )
 
-    $result = Invoke-CgrGitHubApiReadRequest `
-        -ArgumentList @('api', '--hostname', $HostName, $Path)
+    $response = Invoke-CgrGitHubApiReadRequest `
+        -ArgumentList @('api', '--hostname', $HostName, $Path) `
+        -Path $Path `
+        -AllowNotFound
 
-    $response = Resolve-CgrGitHubApiReadResponse -Result $result -Path $Path -AllowNotFound
     if ($response.Status -eq 'Error') {
         $PSCmdlet.ThrowTerminatingError($response.ErrorRecord)
     }

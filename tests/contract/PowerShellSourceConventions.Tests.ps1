@@ -45,11 +45,7 @@ Describe 'PowerShell source convention contracts' {
         $parseFailures = @(
             foreach ($parsedSource in $script:parsedSources) {
                 foreach ($parseError in $parsedSource.ParseErrors) {
-                    '{0}:{1}:{2} {3}' -f \
-                        $parsedSource.File.FullName, \
-                        $parseError.Extent.StartLineNumber, \
-                        $parseError.Extent.StartColumnNumber, \
-                        $parseError.Message
+                    '{0}:{1}:{2} {3}' -f $parsedSource.File.FullName, $parseError.Extent.StartLineNumber, $parseError.Extent.StartColumnNumber, $parseError.Message
                 }
             }
         )
@@ -70,10 +66,7 @@ Describe 'PowerShell source convention contracts' {
                 foreach ($parameterAst in $parameterAsts) {
                     $parameterName = $parameterAst.Name.VariablePath.UserPath
                     if ($parameterName -cnotmatch '^[A-Z][A-Za-z0-9]*$') {
-                        '{0}:{1} parameter ${2} must use PascalCase.' -f \
-                            $parsedSource.File.FullName, \
-                            $parameterAst.Extent.StartLineNumber, \
-                            $parameterName
+                        '{0}:{1} parameter ${2} must use PascalCase.' -f $parsedSource.File.FullName, $parameterAst.Extent.StartLineNumber, $parameterName
                     }
                 }
             }
@@ -84,7 +77,7 @@ Describe 'PowerShell source convention contracts' {
 
     It 'requires private helper functions to use approved verbs and the Cgr noun prefix' {
         $violations = @(
-            foreach ($parsedSource in $script:parsedSources | Where-Object { $_.File.DirectoryName -eq $script:privateRoot }) {
+            foreach ($parsedSource in $script:parsedSources | Where-Object { $_.File.FullName.StartsWith($script:privateRoot, [StringComparison]::OrdinalIgnoreCase) }) {
                 $functionAsts = @(
                     $parsedSource.Ast.FindAll({
                             param($node)
@@ -94,26 +87,16 @@ Describe 'PowerShell source convention contracts' {
 
                 foreach ($functionAst in $functionAsts) {
                     if ($functionAst.Name -notmatch '^(?<Verb>[^-]+)-(?<Noun>.+)$') {
-                        '{0}:{1} private function {2} must use Verb-Noun naming.' -f \
-                            $parsedSource.File.FullName, \
-                            $functionAst.Extent.StartLineNumber, \
-                            $functionAst.Name
+                        '{0}:{1} private function {2} must use Verb-Noun naming.' -f $parsedSource.File.FullName, $functionAst.Extent.StartLineNumber, $functionAst.Name
                         continue
                     }
 
                     if ($Matches.Verb -notin $script:approvedVerbs) {
-                        '{0}:{1} private function {2} uses unapproved verb {3}.' -f \
-                            $parsedSource.File.FullName, \
-                            $functionAst.Extent.StartLineNumber, \
-                            $functionAst.Name, \
-                            $Matches.Verb
+                        '{0}:{1} private function {2} uses unapproved verb {3}.' -f $parsedSource.File.FullName, $functionAst.Extent.StartLineNumber, $functionAst.Name, $Matches.Verb
                     }
 
                     if ($Matches.Noun -cnotmatch '^Cgr[A-Z0-9]') {
-                        '{0}:{1} private function {2} must use the Cgr noun prefix.' -f \
-                            $parsedSource.File.FullName, \
-                            $functionAst.Extent.StartLineNumber, \
-                            $functionAst.Name
+                        '{0}:{1} private function {2} must use the Cgr noun prefix.' -f $parsedSource.File.FullName, $functionAst.Extent.StartLineNumber, $functionAst.Name
                     }
                 }
             }

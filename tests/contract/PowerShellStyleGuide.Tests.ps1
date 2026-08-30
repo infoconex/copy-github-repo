@@ -34,6 +34,8 @@ Describe 'Project PowerShell engineering policy' {
         $script:styleGuide | Should -Match 'Every manifest-exported public function uses `\[CmdletBinding\(\)\]`'
         $script:styleGuide | Should -Match 'Every state-changing exported command enables `SupportsShouldProcess`'
         $script:styleGuide | Should -Match 'declares an explicit `ConfirmImpact`'
+        $script:styleGuide | Should -Match 'gates mutation through `ShouldProcess\(\)` using the command''s PowerShell cmdlet context'
+        $script:styleGuide | Should -Match 'delegated execution guard may use a captured `\$PSCmdlet` reference'
         $script:styleGuide | Should -Match 'Supported automation scenarios must not depend on `Read-Host`'
         $script:styleGuide | Should -Match '`Copy-GitHubRepository` is the automation boundary'
         $script:styleGuide | Should -Match 'Routine confirmation bypass and independent safety confirmation are distinct contracts'

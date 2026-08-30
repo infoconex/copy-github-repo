@@ -276,6 +276,14 @@ The main recursive analyzer gate intentionally remains limited to Error and Warn
 
 Additional rules should be evaluated against this repository and adopted when they express an objective engineering contract with acceptable signal-to-noise characteristics.
 
+### Pester and AST enforcement
+
+PSScriptAnalyzer remains the preferred mechanism for objective language and formatting rules that it can express accurately. Repository-structure and project-specific conventions that are narrower than built-in analyzer rules are enforced by deterministic Pester contracts using the PowerShell AST and source discovery.
+
+`tests/contract/PowerShellSourceConventions.Tests.ps1` enforces the Required conventions that explicitly declared parameters use PascalCase, private functions use approved PowerShell verbs with the `Cgr` noun prefix, manifest-exported commands have exactly one matching public source file and do not use the private `Cgr` prefix, and governed Public/Private PowerShell source does not use tab indentation. Public command coverage is derived from `FunctionsToExport`; the contract does not maintain a second hard-coded command inventory.
+
+These AST/Pester checks complement the analyzer configuration rather than replacing it. They are intentionally narrow so project-specific structure can be enforced without enabling broader analyzer behavior that would create unrelated formatting churn or false positives.
+
 ## Suppressions
 
 The repository uses narrow function-level `PSUseShouldProcessForStateChangingFunctions` suppressions on the internal GitHub mutation boundaries `New-CgrGitHubRepository`, `Rename-CgrGitHubRepository`, and `Set-CgrGitHubRepositorySetting`. These helpers intentionally do not perform independent `ShouldProcess` checks because the public `Copy-GitHubRepository` command owns `ShouldProcess` and, for same-name replacement, the stronger exact-confirmation safety contract before dispatching to those private mutation helpers. Each suppression is attached directly to the affected function and includes a justification describing that boundary.

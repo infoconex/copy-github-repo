@@ -48,13 +48,10 @@ jobs:
               }
           }
           $findings = @(Invoke-ScriptAnalyzer -Path $PWD -Settings $settings -Recurse)
-          $lines = @("FindingCount=$($findings.Count)")
-          $lines += $findings |
-              Sort-Object RuleName, ScriptPath, Line, Column |
-              ForEach-Object {
-                  '{0}|{1}|{2}|{3}|{4}' -f $_.RuleName, $_.ScriptPath, $_.Line, $_.Column, $_.Message
-              }
-          [IO.File]::WriteAllLines((Join-Path $PWD 'issue-30-information-findings.txt'), $lines, [Text.UTF8Encoding]::new($false))
+          @(
+              "FindingCount=$($findings.Count)"
+              $findings | ForEach-Object { $_.ToString() }
+          ) | Set-Content -LiteralPath (Join-Path $PWD 'issue-30-information-findings.txt') -Encoding utf8NoBOM
 
       - name: Commit diagnostics
         shell: pwsh

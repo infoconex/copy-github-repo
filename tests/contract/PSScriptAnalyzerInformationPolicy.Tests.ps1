@@ -20,7 +20,7 @@ BeforeAll {
 
             PSUseCorrectCasing = @{
                 Enable = $true
-                CheckCommands = $true
+                CheckCommands = $false
                 CheckKeyword = $true
                 CheckOperator = $true
             }
@@ -38,37 +38,6 @@ BeforeAll {
             } |
             Select-Object -ExpandProperty FullName
     )
-
-    function Invoke-CgrInformationPolicyAnalyzer {
-        param(
-            [Parameter(Mandatory)]
-            [string] $Path,
-
-            [Parameter(Mandatory)]
-            [hashtable] $Settings,
-
-            [ValidateRange(1, 5)]
-            [int] $MaxAttempts = 3
-        )
-
-        for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
-            try {
-                return @(
-                    Invoke-ScriptAnalyzer `
-                        -Path $Path `
-                        -Settings $Settings `
-                        -ErrorAction Stop
-                )
-            }
-            catch [System.Management.Automation.CommandNotFoundException] {
-                if ([string] $_.Exception.CommandName -ne 'Get-Command' -or $attempt -eq $MaxAttempts) {
-                    throw
-                }
-
-                Start-Sleep -Milliseconds (100 * $attempt)
-            }
-        }
-    }
 }
 
 Describe 'Required PSScriptAnalyzer Information policy' {
@@ -83,9 +52,10 @@ Describe 'Required PSScriptAnalyzer Information policy' {
     It 'reports no findings for selectively promoted Information rules' {
         $findings = @(
             foreach ($powerShellFile in $script:governedPowerShellFiles) {
-                Invoke-CgrInformationPolicyAnalyzer `
+                Invoke-ScriptAnalyzer `
                     -Path $powerShellFile `
-                    -Settings $script:informationSettings
+                    -Settings $script:informationSettings `
+                    -ErrorAction Stop
             }
         )
 

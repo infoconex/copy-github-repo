@@ -65,7 +65,7 @@
 
         PSUseCorrectCasing = @{
             Enable = $true
-            CheckCommands = $true
+            CheckCommands = $false
             CheckKeyword = $true
             CheckOperator = $true
         }

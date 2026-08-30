@@ -103,7 +103,7 @@ Describe 'Project PowerShell engineering policy' {
         $rules.PSUseConsistentWhitespace.CheckOpenParen | Should -BeTrue
         $rules.PSUseConsistentWhitespace.CheckParameter | Should -BeTrue
         $rules.PSUseConsistentWhitespace.CheckPipeForRedundantWhitespace | Should -BeTrue
-        $rules.PSUseCorrectCasing.CheckCommands | Should -BeTrue
+        $rules.PSUseCorrectCasing.CheckCommands | Should -BeFalse
         $rules.PSUseCorrectCasing.CheckKeyword | Should -BeTrue
         $rules.PSUseCorrectCasing.CheckOperator | Should -BeTrue
     }
@@ -122,6 +122,9 @@ Describe 'Project PowerShell engineering policy' {
         $script:styleGuide | Should -Match 'private functions use approved PowerShell verbs with the `Cgr` noun prefix'
         $script:styleGuide | Should -Match 'Public/Private PowerShell source does not use tab indentation'
         $script:styleGuide | Should -Match 'Public command coverage is derived from `FunctionsToExport`'
+        $script:styleGuide | Should -Match '`tests/contract/PowerShellCommandCasing\.Tests\.ps1`'
+        $script:styleGuide | Should -Match '`tests/CommandCasing\.psd1` owns canonical casing'
+        $script:styleGuide | Should -Match 'Dynamic invocations whose command name cannot be determined statically are outside this literal casing contract'
         $script:styleGuide | Should -Match '`tests/contract/PublicCommandAutomationSemantics\.Tests\.ps1`'
     }
 

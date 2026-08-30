@@ -1,7 +1,33 @@
 BeforeAll {
     $repositoryRoot = Split-Path -Parent $PSScriptRoot
     $script:workflowPath = Join-Path $repositoryRoot '.github/workflows/validate-project-quality.yml'
+    $script:documentationWorkflowPath = Join-Path $repositoryRoot '.github/workflows/validate-documentation.yml'
+    $script:deploymentWorkflowPath = Join-Path $repositoryRoot '.github/workflows/deploy-documentation-site.yml'
+
     $script:workflow = (Get-Content -LiteralPath $script:workflowPath -Raw) -replace "`r`n?", "`n"
+    $script:documentationWorkflow = (Get-Content -LiteralPath $script:documentationWorkflowPath -Raw) -replace "`r`n?", "`n"
+    $script:deploymentWorkflow = (Get-Content -LiteralPath $script:deploymentWorkflowPath -Raw) -replace "`r`n?", "`n"
+
+    $siteOnlyPatternMatch = [regex]::Match($script:workflow, '(?m)^\s*\$siteOnlyPattern = ''([^'']+)''$')
+    if (-not $siteOnlyPatternMatch.Success) {
+        throw 'Unable to locate the site-only quality-scope pattern.'
+    }
+    $script:siteOnlyPattern = $siteOnlyPatternMatch.Groups[1].Value
+
+    $script:renderedSitePaths = @(
+        @{ Path = '_config.yml'; Trigger = '_config.yml' },
+        @{ Path = '_data/navigation.yml'; Trigger = '_data/**' },
+        @{ Path = '_layouts/default.html'; Trigger = '_layouts/**' },
+        @{ Path = 'assets/css/site.css'; Trigger = 'assets/**' },
+        @{ Path = 'search-index.json'; Trigger = 'search-index.json' },
+        @{ Path = 'docs/product/architecture.md'; Trigger = 'docs/**' },
+        @{ Path = 'README.md'; Trigger = 'README.md' },
+        @{ Path = 'CHANGELOG.md'; Trigger = 'CHANGELOG.md' },
+        @{ Path = 'CODE_OF_CONDUCT.md'; Trigger = 'CODE_OF_CONDUCT.md' },
+        @{ Path = 'CONTRIBUTING.md'; Trigger = 'CONTRIBUTING.md' },
+        @{ Path = 'SECURITY.md'; Trigger = 'SECURITY.md' },
+        @{ Path = 'LICENSE'; Trigger = 'LICENSE' }
+    )
 }
 
 Describe 'Validate Project Quality workflow contract' {
@@ -23,10 +49,14 @@ Describe 'Validate Project Quality workflow contract' {
                 '_data/',
                 '_layouts/',
                 'assets/',
+                'search-index\\.json',
                 'docs/',
                 'README\\.md',
                 'CHANGELOG\\.md',
+                'CODE_OF_CONDUCT\\.md',
+                'CONTRIBUTING\\.md',
                 'SECURITY\\.md',
+                'LICENSE',
                 'deploy-documentation-site',
                 'validate-documentation',
                 'Record documentation-only validation'
@@ -38,6 +68,36 @@ Describe 'Validate Project Quality workflow contract' {
         $script:workflow | Should -Match '(?m)^    name: Validate PowerShell \(windows-latest\)$'
         $script:workflow | Should -Match "(?m)^        if: \$\{\{ needs\.scope\.outputs\.run-quality != 'true' \}\}$"
         $script:workflow | Should -Match "(?m)^  other-platforms:\n    name: Validate PowerShell \(\$\{\{ matrix\.os \}\}\)\n    needs: scope\n    if: \$\{\{ needs\.scope\.outputs\.run-quality == 'true' \}\}$"
+    }
+
+    It 'classifies every rendered-site source as site-only without classifying code as site-only' {
+        foreach ($entry in $script:renderedSitePaths) {
+            $entry.Path | Should -Match $script:siteOnlyPattern
+        }
+
+        'src/CopyGitHubRepo/Public/Copy-GitHubRepository.ps1' | Should -Not -Match $script:siteOnlyPattern
+        'tests/unit/CopyGitHubRepo.Tests.ps1' | Should -Not -Match $script:siteOnlyPattern
+    }
+
+    It 'keeps rendered-site triggers aligned across documentation validation and deployment' {
+        foreach ($entry in $script:renderedSitePaths) {
+            $triggerPattern = "(?m)^\s+- '$([regex]::Escape($entry.Trigger))'$"
+            $script:documentationWorkflow | Should -Match $triggerPattern
+            $script:deploymentWorkflow | Should -Match $triggerPattern
+        }
+    }
+
+    It 'keeps validation-only tooling paths out of the rendered-site deployment contract' {
+        foreach ($path in @(
+                'build/DevelopmentDependencies.psd1',
+                'build/Install-DevelopmentDependencies.ps1',
+                'build/Test-Documentation.ps1',
+                'tests/contract/**'
+            )) {
+            $escapedPath = [regex]::Escape($path)
+            $script:documentationWorkflow | Should -Match "(?m)^\s+- '$escapedPath'$"
+            $script:deploymentWorkflow | Should -Not -Match "(?m)^\s+- '$escapedPath'$"
+        }
     }
 
     It 'preserves reusable and manual workflow entry points' {

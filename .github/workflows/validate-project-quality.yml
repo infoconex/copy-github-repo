@@ -56,7 +56,7 @@ jobs:
               throw 'Unable to determine changed files for quality-scope evaluation.'
           }
 
-          $siteOnlyPattern = '^(?:_config\.yml|_data/|_layouts/|assets/|docs/|README\.md$|CHANGELOG\.md$|CODE_OF_CONDUCT\.md$|CONTRIBUTING\.md$|SECURITY\.md$|LICENSE$|\.github/workflows/(?:deploy-documentation-site|validate-documentation)\.yml$)'
+          $siteOnlyPattern = '^(?:_config\.yml|_data/|_layouts/|assets/|search-index\.json$|docs/|README\.md$|CHANGELOG\.md$|CODE_OF_CONDUCT\.md$|CONTRIBUTING\.md$|SECURITY\.md$|LICENSE$|\.github/workflows/(?:deploy-documentation-site|validate-documentation)\.yml$)'
           $requiresQuality = @($changedFiles | Where-Object { $_ -notmatch $siteOnlyPattern }).Count -gt 0
           "run-quality=$($requiresQuality.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 

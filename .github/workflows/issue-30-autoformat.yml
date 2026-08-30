@@ -40,27 +40,27 @@ jobs:
           )
 
           $replacement = @'
-The normal analyzer pass retains the default Error/Warning rule set and explicitly configures the objective rules adopted by this project:
+          The normal analyzer pass retains the default Error/Warning rule set and explicitly configures the objective rules adopted by this project:
 
-| Rule | Project policy |
-| --- | --- |
-| `PSAvoidExclaimOperator` | Requires explicit `-not` rather than the `!` alias. |
-| `PSAvoidSemicolonsAsLineTerminators` | Prohibits semicolons used only as line terminators. |
-| `PSPlaceOpenBrace` / `PSPlaceCloseBrace` | Enforces same-line opening braces, normal newline behavior, and no empty line immediately before a closing brace while leaving one-line blocks intact. |
-| `PSUseConsistentIndentation` | Enforces spaces, four-space indentation, and `IncreaseIndentationForFirstPipeline`. |
-| `PSUseConsistentWhitespace` | Enforces the adopted brace, parenthesis, operator, pipeline, separator, parameter, and redundant-pipeline-whitespace checks. |
-| `PSUseConsistentParameterSetName` | Requires consistent parameter-set naming. |
-| `PSUseConsistentParametersKind` | Requires parameter declarations to use the `ParamBlock` form. |
-| `PSUseSingleValueFromPipelineParameter` | Prevents ambiguous multiple value-from-pipeline parameters. |
-| `PSUseCorrectCasing` | Enforces command, keyword, and operator casing through the focused Information-rule contract. |
-| `PSAvoidUsingDoubleQuotesForConstantString` | Requires single quotes for constant strings through the focused Information-rule contract. |
+          | Rule | Project policy |
+          | --- | --- |
+          | `PSAvoidExclaimOperator` | Requires explicit `-not` rather than the `!` alias. |
+          | `PSAvoidSemicolonsAsLineTerminators` | Prohibits semicolons used only as line terminators. |
+          | `PSPlaceOpenBrace` / `PSPlaceCloseBrace` | Enforces same-line opening braces, normal newline behavior, and no empty line immediately before a closing brace while leaving one-line blocks intact. |
+          | `PSUseConsistentIndentation` | Enforces spaces, four-space indentation, and `IncreaseIndentationForFirstPipeline`. |
+          | `PSUseConsistentWhitespace` | Enforces the adopted brace, parenthesis, operator, pipeline, separator, parameter, and redundant-pipeline-whitespace checks. |
+          | `PSUseConsistentParameterSetName` | Requires consistent parameter-set naming. |
+          | `PSUseConsistentParametersKind` | Requires parameter declarations to use the `ParamBlock` form. |
+          | `PSUseSingleValueFromPipelineParameter` | Prevents ambiguous multiple value-from-pipeline parameters. |
+          | `PSUseCorrectCasing` | Enforces command, keyword, and operator casing through the focused Information-rule contract. |
+          | `PSAvoidUsingDoubleQuotesForConstantString` | Requires single quotes for constant strings through the focused Information-rule contract. |
 
-The main recursive analyzer gate intentionally remains limited to Error and Warning diagnostics. The Required Information-severity conventions `PSUseCorrectCasing`, `PSAvoidUsingDoubleQuotesForConstantString`, and `PSAvoidUsingPositionalParameters` are promoted by a focused contract test instead of enabling every Information diagnostic globally.
+          The main recursive analyzer gate intentionally remains limited to Error and Warning diagnostics. The Required Information-severity conventions `PSUseCorrectCasing`, `PSAvoidUsingDoubleQuotesForConstantString`, and `PSAvoidUsingPositionalParameters` are promoted by a focused contract test instead of enabling every Information diagnostic globally.
 
-`PSAvoidLongLines`, `PSAlignAssignmentStatement`, and `PSUseConstrainedLanguageMode` remain outside the mandatory policy because they are subjective or specialized for this repository. Compatibility is established by the PowerShell 7.4+ contract and the actual Windows, Linux, and macOS CI matrix rather than by obsolete analyzer compatibility profiles.
+          `PSAvoidLongLines`, `PSAlignAssignmentStatement`, and `PSUseConstrainedLanguageMode` remain outside the mandatory policy because they are subjective or specialized for this repository. Compatibility is established by the PowerShell 7.4+ contract and the actual Windows, Linux, and macOS CI matrix rather than by obsolete analyzer compatibility profiles.
 
-Additional rules should be evaluated against this repository and adopted when they express an objective engineering contract with acceptable signal-to-noise characteristics.
-'@
+          Additional rules should be evaluated against this repository and adopted when they express an objective engineering contract with acceptable signal-to-noise characteristics.
+          '@
 
           $content = [regex]::Replace(
               $content,

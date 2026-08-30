@@ -5,12 +5,6 @@ function Invoke-CgrGitHubApiReadRequest {
         [ValidateNotNullOrEmpty()]
         [string[]] $ArgumentList,
 
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string] $Path,
-
-        [switch] $AllowNotFound,
-
         [ValidateRange(1, 10)]
         [int] $MaxAttempts = 3,
 
@@ -24,20 +18,19 @@ function Invoke-CgrGitHubApiReadRequest {
         [int] $MaxServerRetryAfterSeconds = 60
     )
 
-    $result = $null
     for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
         $result = Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList $ArgumentList
         $result | Add-Member -NotePropertyName RetryAttempts -NotePropertyValue $attempt -Force
         $result | Add-Member -NotePropertyName RetryDiagnostic -NotePropertyValue $null -Force
 
         if ($result.ExitCode -eq 0) {
-            break
+            return $result
         }
 
         $errorText = [string] $result.ErrorText
         $retryable = $errorText -match '(?i)(HTTP\s+(429|502|503|504)\b|secondary rate limit|rate limit exceeded|abuse detection|connection (was )?reset|connection timed out|temporary failure|TLS handshake timeout|server disconnected|unexpected EOF)'
         if (-not $retryable -or $attempt -ge $MaxAttempts) {
-            break
+            return $result
         }
 
         $retryAfterSeconds = $null
@@ -52,7 +45,7 @@ function Invoke-CgrGitHubApiReadRequest {
         if ($null -ne $retryAfterSeconds) {
             if ($retryAfterSeconds -gt $MaxServerRetryAfterSeconds) {
                 $result.RetryDiagnostic = "Automatic retry was not attempted because the server requested a $retryAfterSeconds second delay, exceeding the $MaxServerRetryAfterSeconds second automatic-wait limit."
-                break
+                return $result
             }
 
             $delayMilliseconds = $retryAfterSeconds * 1000
@@ -71,79 +64,5 @@ function Invoke-CgrGitHubApiReadRequest {
         }
 
         Start-Sleep -Milliseconds $delayMilliseconds
-    }
-
-    if ($result.ExitCode -ne 0) {
-        $errorText = Protect-CgrDiagnosticText -Text ([string] $result.ErrorText)
-        if ($AllowNotFound -and $errorText -match '404|Not Found') {
-            return [pscustomobject] @{
-                Status = 'NotFound'
-                Data = $null
-                ErrorRecord = $null
-            }
-        }
-
-        $attemptText = if ($result.RetryAttempts -gt 1) {
-            " after $($result.RetryAttempts) attempts"
-        }
-        else {
-            ''
-        }
-        $retryDiagnostic = if ([string]::IsNullOrWhiteSpace([string] $result.RetryDiagnostic)) {
-            ''
-        }
-        else {
-            ' ' + (Protect-CgrDiagnosticText -Text ([string] $result.RetryDiagnostic))
-        }
-        $message = "GitHub CLI API request failed for '$Path'$attemptText. $errorText$retryDiagnostic"
-        $exception = [System.InvalidOperationException]::new($message.Trim())
-        $errorRecord = [System.Management.Automation.ErrorRecord]::new(
-            $exception,
-            'GitHubApiRequestFailed',
-            [System.Management.Automation.ErrorCategory]::InvalidOperation,
-            $Path
-        )
-
-        return [pscustomobject] @{
-            Status = 'Error'
-            Data = $null
-            ErrorRecord = $errorRecord
-        }
-    }
-
-    $json = ($result.Output | Out-String).Trim()
-    if ([string]::IsNullOrWhiteSpace($json)) {
-        return [pscustomobject] @{
-            Status = 'Empty'
-            Data = $null
-            ErrorRecord = $null
-        }
-    }
-
-    try {
-        $data = $json | ConvertFrom-Json -Depth 100 -ErrorAction Stop
-    }
-    catch {
-        $diagnostic = Protect-CgrDiagnosticText -Text $_.Exception.Message
-        $message = "GitHub CLI API response for '$Path' was not valid JSON. $diagnostic"
-        $exception = [System.IO.InvalidDataException]::new($message.Trim(), $_.Exception)
-        $errorRecord = [System.Management.Automation.ErrorRecord]::new(
-            $exception,
-            'GitHubApiResponseInvalid',
-            [System.Management.Automation.ErrorCategory]::InvalidData,
-            $Path
-        )
-
-        return [pscustomobject] @{
-            Status = 'Error'
-            Data = $null
-            ErrorRecord = $errorRecord
-        }
-    }
-
-    return [pscustomobject] @{
-        Status = 'Success'
-        Data = $data
-        ErrorRecord = $null
     }
 }

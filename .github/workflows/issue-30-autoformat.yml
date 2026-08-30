@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  format:
+  document-policy:
     if: ${{ !contains(github.event.head_commit.message, '[skip autoformat]') }}
     runs-on: windows-latest
 
@@ -20,33 +20,63 @@ jobs:
           fetch-depth: 0
           ref: issue-30/powershell-analyzer-policy
 
-      - name: Install development dependencies
-        shell: pwsh
-        run: ./build/Install-DevelopmentDependencies.ps1
-
-      - name: Apply repository formatter policy
+      - name: Update adopted analyzer policy documentation
         shell: pwsh
         run: |
-          Import-Module PSScriptAnalyzer -ErrorAction Stop
-          $settings = Join-Path $PWD 'PSScriptAnalyzerSettings.psd1'
-          $files = Get-ChildItem -Path $PWD -Recurse -File |
-              Where-Object {
-                  $_.Extension -in @('.ps1', '.psm1') -and
-                  $_.FullName -notmatch '[\\/]\.git[\\/]'
-              }
+          $path = Join-Path $PWD 'docs/engineering/powershell-style-guide.md'
+          $content = Get-Content -LiteralPath $path -Raw
 
-          foreach ($file in $files) {
-              $formatted = Invoke-Formatter -ScriptDefinition (Get-Content -LiteralPath $file.FullName -Raw) -Settings $settings
-              [IO.File]::WriteAllText($file.FullName, $formatted, [Text.UTF8Encoding]::new($false))
-          }
+          $content = [regex]::Replace(
+              $content,
+              '(?s)The four-space/no-tabs indentation convention is a required review standard, but `PSUseConsistentIndentation` is intentionally not enabled\..*?without that churn\.',
+              'The four-space/no-tabs indentation convention is machine-enforced with `PSUseConsistentIndentation`. The project uses spaces, four-space indentation, and `IncreaseIndentationForFirstPipeline` so multiline pipelines follow the standard first-pipeline indentation behavior. Existing source has been normalized to this policy rather than weakening the rule.'
+          )
 
-      - name: Commit formatter changes
+          $content = [regex]::Replace(
+              $content,
+              '(?s)(### Quoting\r?\n\r?\n)\*\*Preferred\*\*',
+              '$1**Required**',
+              1
+          )
+
+          $replacement = @'
+The normal analyzer pass retains the default Error/Warning rule set and explicitly configures the objective rules adopted by this project:
+
+| Rule | Project policy |
+| --- | --- |
+| `PSAvoidExclaimOperator` | Requires explicit `-not` rather than the `!` alias. |
+| `PSAvoidSemicolonsAsLineTerminators` | Prohibits semicolons used only as line terminators. |
+| `PSPlaceOpenBrace` / `PSPlaceCloseBrace` | Enforces same-line opening braces, normal newline behavior, and no empty line immediately before a closing brace while leaving one-line blocks intact. |
+| `PSUseConsistentIndentation` | Enforces spaces, four-space indentation, and `IncreaseIndentationForFirstPipeline`. |
+| `PSUseConsistentWhitespace` | Enforces the adopted brace, parenthesis, operator, pipeline, separator, parameter, and redundant-pipeline-whitespace checks. |
+| `PSUseConsistentParameterSetName` | Requires consistent parameter-set naming. |
+| `PSUseConsistentParametersKind` | Requires parameter declarations to use the `ParamBlock` form. |
+| `PSUseSingleValueFromPipelineParameter` | Prevents ambiguous multiple value-from-pipeline parameters. |
+| `PSUseCorrectCasing` | Enforces command, keyword, and operator casing through the focused Information-rule contract. |
+| `PSAvoidUsingDoubleQuotesForConstantString` | Requires single quotes for constant strings through the focused Information-rule contract. |
+
+The main recursive analyzer gate intentionally remains limited to Error and Warning diagnostics. The Required Information-severity conventions `PSUseCorrectCasing`, `PSAvoidUsingDoubleQuotesForConstantString`, and `PSAvoidUsingPositionalParameters` are promoted by a focused contract test instead of enabling every Information diagnostic globally.
+
+`PSAvoidLongLines`, `PSAlignAssignmentStatement`, and `PSUseConstrainedLanguageMode` remain outside the mandatory policy because they are subjective or specialized for this repository. Compatibility is established by the PowerShell 7.4+ contract and the actual Windows, Linux, and macOS CI matrix rather than by obsolete analyzer compatibility profiles.
+
+Additional rules should be evaluated against this repository and adopted when they express an objective engineering contract with acceptable signal-to-noise characteristics.
+'@
+
+          $content = [regex]::Replace(
+              $content,
+              '(?s)The settings retain the default Error/Warning rule set and explicitly enable two additional rules:.*?Formatting rules or subchecks that would mainly force alignment or broad cosmetic rewrites are not enabled merely because they exist\. Additional rules should be evaluated against this repository, enabled only when they prevent a concrete class of defect or materially improve maintainability, and documented here when adopted\.',
+              $replacement.TrimEnd()
+          )
+
+          [IO.File]::WriteAllText($path, $content, [Text.UTF8Encoding]::new($false))
+
+      - name: Commit documentation changes
         shell: pwsh
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- '*.ps1' '*.psm1'
+          git add -- docs/engineering/powershell-style-guide.md
           if (-not (git diff --cached --quiet)) {
-              git commit -m 'Apply adopted PowerShell formatting policy [skip autoformat]'
+              git commit -m 'Document adopted PowerShell analyzer policy [skip autoformat]'
               git push origin HEAD:issue-30/powershell-analyzer-policy
           }

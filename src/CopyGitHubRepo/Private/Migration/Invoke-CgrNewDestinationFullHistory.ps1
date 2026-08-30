@@ -103,7 +103,8 @@ function Invoke-CgrNewDestinationFullHistory {
         $completedSteps.Add([pscustomobject] @{ Order = $completedSteps.Count + 1; Name = 'RestoreSupportedSettings'; MutatedGitHub = -not $Plan.SkipSettings; Verified = $settings.IsSuccessful })
 
         $failureStage = 'RestoreRepositoryProtection'
-        $planProtection = Get-CgrObjectProperty -InputObject $Plan -Name 'Protection'
+        $planProtectionProperty = $Plan.PSObject.Properties['Protection']
+        $planProtection = if ($null -ne $planProtectionProperty) { $planProtectionProperty.Value } else { $null }
         $protection = Invoke-CgrActivityStage -Name 'RestoreRepositoryProtection' -Message 'Restore transferable repository protection' -Action {
             if (-not $verification.IsSuccessful) {
                 return [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'; Repository = $DestinationRepository.FullName; Status = 'Failed'; Restored = @(); Skipped = @('FullHistoryVerificationFailed'); IsSuccessful = $false; IsComplete = $false }
@@ -111,10 +112,16 @@ function Invoke-CgrNewDestinationFullHistory {
             if ($Plan.SkipSettings) {
                 return [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'; Repository = $DestinationRepository.FullName; Status = 'Skipped'; Restored = @(); Skipped = @('AllSettings'); IsSuccessful = $true; IsComplete = $true }
             }
-            if ($planProtection -and (Get-CgrObjectProperty -InputObject $planProtection -Name 'Status') -eq 'Captured') {
+            if ($null -eq $planProtectionProperty) {
+                return Set-CgrRepositoryProtectionConfiguration -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -HostName $HostName
+            }
+            if ((Get-CgrObjectProperty -InputObject $planProtection -Name 'Status') -eq 'Captured') {
                 return Set-CgrRepositoryProtectionConfiguration -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -SourceConfiguration (Get-CgrObjectProperty -InputObject $planProtection -Name 'Configuration') -HostName $HostName
             }
-            Set-CgrRepositoryProtectionConfiguration -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -HostName $HostName
+
+            $planningStatus = [string] (Get-CgrObjectProperty -InputObject $planProtection -Name 'Status')
+            if ([string]::IsNullOrWhiteSpace($planningStatus)) { $planningStatus = 'Invalid' }
+            [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'; Repository = $DestinationRepository.FullName; Status = 'Unsupported'; Restored = @(); Skipped = @("ProtectionPlanning:$planningStatus"); IsSuccessful = $true; IsComplete = $false }
         }
         $completedSteps.Add([pscustomobject] @{ Order = $completedSteps.Count + 1; Name = 'RestoreRepositoryProtection'; MutatedGitHub = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings); Verified = $protection.IsSuccessful })
 

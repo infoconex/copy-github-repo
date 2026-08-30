@@ -18,7 +18,19 @@ function Set-CgrRepositoryProtectionConfiguration {
         [string] $HostName = 'github.com'
     )
 
-    $sourceConfiguration = if ($PSBoundParameters.ContainsKey('SourceConfiguration') -and $null -ne $SourceConfiguration) {
+    if ($PSBoundParameters.ContainsKey('SourceConfiguration') -and $null -eq $SourceConfiguration) {
+        return [pscustomobject] @{
+            PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'
+            Repository = $DestinationRepository.FullName
+            Status = 'Unsupported'
+            Restored = @()
+            Skipped = @('ProtectionPlanning:Invalid')
+            IsSuccessful = $true
+            IsComplete = $false
+        }
+    }
+
+    $sourceConfiguration = if ($PSBoundParameters.ContainsKey('SourceConfiguration')) {
         $SourceConfiguration
     }
     else {

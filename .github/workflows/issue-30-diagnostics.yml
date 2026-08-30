@@ -1,0 +1,66 @@
+name: Issue 30 Analyzer Diagnostics
+
+'on':
+  push:
+    branches:
+      - issue-30/powershell-analyzer-policy
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: ${{ !contains(github.event.head_commit.message, '[skip diagnostics]') }}
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          ref: issue-30/powershell-analyzer-policy
+
+      - name: Install development dependencies
+        shell: pwsh
+        run: ./build/Install-DevelopmentDependencies.ps1
+
+      - name: Record promoted Information findings
+        shell: pwsh
+        run: |
+          Import-Module PSScriptAnalyzer -ErrorAction Stop
+          $rules = @(
+              'PSAvoidUsingDoubleQuotesForConstantString'
+              'PSAvoidUsingPositionalParameters'
+              'PSUseCorrectCasing'
+          )
+          $settings = @{
+              Severity = @('Information')
+              IncludeDefaultRules = $true
+              IncludeRules = $rules
+              Rules = @{
+                  PSAvoidUsingDoubleQuotesForConstantString = @{ Enable = $true }
+                  PSUseCorrectCasing = @{
+                      Enable = $true
+                      CheckCommands = $true
+                      CheckKeyword = $true
+                      CheckOperator = $true
+                  }
+              }
+          }
+          $findings = @(Invoke-ScriptAnalyzer -Path $PWD -Settings $settings -Recurse)
+          $lines = @("FindingCount=$($findings.Count)")
+          $lines += $findings |
+              Sort-Object RuleName, ScriptPath, Line, Column |
+              ForEach-Object {
+                  '{0}|{1}|{2}|{3}|{4}|{5}' -f $_.RuleName, $_.ScriptPath, $_.Line, $_.Column, $_.Message, $_.Extent.Text
+              }
+          [IO.File]::WriteAllLines((Join-Path $PWD 'issue-30-information-findings.txt'), $lines, [Text.UTF8Encoding]::new($false))
+
+      - name: Commit diagnostics
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- issue-30-information-findings.txt
+          git commit -m 'Record issue 30 analyzer diagnostics [skip diagnostics]'
+          git push origin HEAD:issue-30/powershell-analyzer-policy

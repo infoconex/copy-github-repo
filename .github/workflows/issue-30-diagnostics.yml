@@ -52,7 +52,7 @@ jobs:
           $lines += $findings |
               Sort-Object RuleName, ScriptPath, Line, Column |
               ForEach-Object {
-                  '{0}|{1}|{2}|{3}|{4}|{5}' -f $_.RuleName, $_.ScriptPath, $_.Line, $_.Column, $_.Message, $_.Extent.Text
+                  '{0}|{1}|{2}|{3}|{4}' -f $_.RuleName, $_.ScriptPath, $_.Line, $_.Column, $_.Message
               }
           [IO.File]::WriteAllLines((Join-Path $PWD 'issue-30-information-findings.txt'), $lines, [Text.UTF8Encoding]::new($false))
 

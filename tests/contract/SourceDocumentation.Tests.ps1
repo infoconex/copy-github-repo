@@ -1,12 +1,31 @@
-$policyForDiscovery = Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot 'SourceDocumentationPolicy.psd1')
+$policyCandidates = @(
+    (Join-Path $PSScriptRoot 'SourceDocumentationPolicy.psd1')
+    (Join-Path (Split-Path -Parent $PSScriptRoot) 'SourceDocumentationPolicy.psd1')
+)
+$policyPathForDiscovery = @($policyCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1)
+if ($policyPathForDiscovery.Count -ne 1) {
+    throw 'Unable to locate the canonical source documentation policy for test discovery.'
+}
+
+$policyForDiscovery = Import-PowerShellDataFile -Path $policyPathForDiscovery[0]
 $inlineHelpCases = @($policyForDiscovery.InlinePrivateHelpRequired | ForEach-Object { @{ FunctionName = $_ } })
 
 BeforeAll {
-    $repositoryRoot = Split-Path -Parent $PSScriptRoot
+    $repositoryRoot = if ((Split-Path -Leaf $PSScriptRoot) -eq 'contract') {
+        Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    }
+    else {
+        Split-Path -Parent $PSScriptRoot
+    }
+
     $script:privatePath = Join-Path $repositoryRoot 'src/CopyGitHubRepo/Private'
     $script:documentationPath = Join-Path $repositoryRoot 'docs/engineering/source-code-documentation.md'
     $script:contributingPath = Join-Path $repositoryRoot 'CONTRIBUTING.md'
-    $script:policyPath = Join-Path $PSScriptRoot 'SourceDocumentationPolicy.psd1'
+    $script:policyPath = Join-Path $repositoryRoot 'tests/SourceDocumentationPolicy.psd1'
+    if (-not (Test-Path -LiteralPath $script:policyPath -PathType Leaf)) {
+        $script:policyPath = Join-Path $PSScriptRoot 'SourceDocumentationPolicy.psd1'
+    }
+
     $script:documentation = Get-Content -LiteralPath $script:documentationPath -Raw
     $script:contributing = Get-Content -LiteralPath $script:contributingPath -Raw
     $script:policy = Import-PowerShellDataFile -Path $script:policyPath
@@ -17,6 +36,15 @@ BeforeAll {
 }
 
 Describe 'Source documentation policy' {
+    It 'has one authoritative full source documentation policy definition' {
+        $policyFiles = @(
+            Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'tests') -Filter 'SourceDocumentationPolicy.psd1' -File -Recurse
+        )
+
+        $policyFiles.Count | Should -Be 1 -Because 'tests/SourceDocumentationPolicy.psd1 is the single machine-readable policy authority'
+        $policyFiles[0].FullName | Should -Be (Join-Path $repositoryRoot 'tests/SourceDocumentationPolicy.psd1')
+    }
+
     It 'documents every private function and preserves the one-function-per-file boundary' {
         $privateFiles = @($script:privateFiles)
         $privateFiles.Count | Should -BeGreaterThan 0

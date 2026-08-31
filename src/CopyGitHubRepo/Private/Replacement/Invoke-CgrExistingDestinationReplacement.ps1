@@ -164,6 +164,12 @@ function Invoke-CgrExistingDestinationReplacement {
     catch {
         $recoveryReportPath = $null
         try {
+            $releasePreservation = if ($Plan.ContentMode -eq 'Snapshot' -and $replacement) {
+                Get-CgrSnapshotReleasePreservationEvidence -Plan $Plan -DestinationRepository $replacement -HostName $HostName
+            }
+            else {
+                $null
+            }
             $recoveryReportPath = Write-CgrExistingDestinationRecoveryReport `
                 -Plan $Plan `
                 -OriginalDestinationRepositoryId $originalRepositoryId `
@@ -173,6 +179,7 @@ function Invoke-CgrExistingDestinationReplacement {
                 -FailureStage $failureStage `
                 -ErrorRecord $_ `
                 -CompletedSteps @($completedSteps) `
+                -ReleasePreservation $releasePreservation `
                 -PreferredReportPath $ReportPath
         }
         catch {

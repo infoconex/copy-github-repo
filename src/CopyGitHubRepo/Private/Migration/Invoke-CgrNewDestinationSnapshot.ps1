@@ -128,6 +128,12 @@ function Invoke-CgrNewDestinationSnapshot {
         $destinationTree = Get-CgrObjectProperty -InputObject $verification -Name 'DestinationTree'
         if ($null -eq $destinationTree) { $destinationTree = Get-CgrObjectProperty -InputObject $verification -Name 'DestinationHeadTreeSha' }
         if ($null -eq $destinationTree) { $destinationTree = $snapshotTree }
+        $releasePreservation = Get-CgrSnapshotReleasePreservationEvidence `
+            -Plan $Plan `
+            -DestinationRepository $verifiedDestination `
+            -SnapshotCopyResult $snapshot `
+            -ReleaseRestoreResult $releases `
+            -HostName $HostName
 
         $provenance = [pscustomobject] @{
             PSTypeName = 'CopyGitHubRepo.SnapshotPublicationProvenance'
@@ -148,6 +154,7 @@ function Invoke-CgrNewDestinationSnapshot {
             DestinationRootCommitSha = $snapshotRootCommitSha
             DestinationTreeSha = $destinationTree
             VerificationSuccessful = [bool] $verification.IsSuccessful
+            ReleasePreservation = $releasePreservation
         }
 
         $releaseSuccessful = -not $includeReleases -or $releases.IsSuccessful
@@ -170,6 +177,13 @@ function Invoke-CgrNewDestinationSnapshot {
     catch {
         $recoveryReportPath = $null
         try {
+            $recoveryDestination = if ($verifiedDestination) { $verifiedDestination } else { $DestinationRepository }
+            $releasePreservation = Get-CgrSnapshotReleasePreservationEvidence `
+                -Plan $Plan `
+                -DestinationRepository $recoveryDestination `
+                -SnapshotCopyResult $snapshot `
+                -ReleaseRestoreResult $releases `
+                -HostName $HostName
             $recoveryProvenance = [pscustomobject] @{
                 ContentMode = 'Snapshot'; SourceRepository = $Plan.SourceRepository
                 SourceRepositoryId = if ($sourceState) { Get-CgrObjectProperty -InputObject $sourceState -Name 'RepositoryId' } else { Get-CgrObjectProperty -InputObject $SourceRepository -Name 'Id' }
@@ -183,6 +197,7 @@ function Invoke-CgrNewDestinationSnapshot {
                 DestinationRepositoryNodeId = if ($verifiedDestination) { Get-CgrObjectProperty -InputObject $verifiedDestination -Name 'NodeId' } else { Get-CgrObjectProperty -InputObject $DestinationRepository -Name 'NodeId' }
                 DestinationRootCommitSha = $snapshotRootCommitSha
                 DestinationTreeSha = if ($snapshot) { Get-CgrObjectProperty -InputObject $snapshot -Name 'TreeSha' } else { $null }
+                ReleasePreservation = $releasePreservation
             }
             $recoveryReportPath = Write-CgrMigrationRecoveryReport -Plan $Plan -DestinationRepository $DestinationRepository -FailureStage $failureStage -ErrorRecord $_ -CompletedSteps @($completedSteps) -Provenance $recoveryProvenance -PreferredReportPath $ReportPath
         }

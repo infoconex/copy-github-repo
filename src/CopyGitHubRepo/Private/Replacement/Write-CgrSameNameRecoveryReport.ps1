@@ -27,6 +27,8 @@ function Write-CgrSameNameRecoveryReport {
 
         [string] $DestinationTreeSha,
 
+        [psobject] $ReleasePreservation,
+
         [Nullable[int]] $SourceFullHistoryRefCount,
 
         [Nullable[int]] $SourceReachableCommitCount,
@@ -61,6 +63,8 @@ function Write-CgrSameNameRecoveryReport {
     else {
         'FailedDuringSameNamePreparation'
     }
+    $lastCompletedStep = @($CompletedSteps | Sort-Object Order | Select-Object -Last 1)
+    if ($lastCompletedStep.Count -eq 0) { $lastCompletedStep = $null } else { $lastCompletedStep = $lastCompletedStep[0] }
 
     $provenance = if ($Plan.ContentMode -eq 'Snapshot') {
         [pscustomobject] @{
@@ -75,6 +79,7 @@ function Write-CgrSameNameRecoveryReport {
             DestinationRepositoryId = $destinationRepositoryId
             DestinationRootCommitSha = $DestinationRootCommitSha
             DestinationTreeSha = $DestinationTreeSha
+            ReleasePreservation = $ReleasePreservation
         }
     }
     else {
@@ -106,6 +111,7 @@ function Write-CgrSameNameRecoveryReport {
         SourceReachableCommitCount = $SourceReachableCommitCount
         Provenance = $provenance
         FailureStage = $FailureStage
+        LastCompletedStep = $lastCompletedStep
         ErrorId = $ErrorRecord.FullyQualifiedErrorId
         ErrorMessage = $ErrorRecord.Exception.Message
         CompletedSteps = @($CompletedSteps)

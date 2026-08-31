@@ -59,8 +59,8 @@ Describe 'Stable release readiness validation' {
 
         $workflow | Should -Match "-Tag '\$\{\{ needs\.release_context\.outputs\.release_tag \}\}'"
         $workflow | Should -Match '-RequireEmptyUnreleased'
-        $workflow | Should -Match "'\$\{\{ github\.ref_name \}\}'"
         $workflow | Should -Match "'\$\{\{ inputs\.tag \}\}'"
+        $workflow | Should -Not -Match "'\$\{\{ github\.ref_name \}\}'"
         $readinessIndex | Should -BeGreaterThan -1
         $artifactIndex | Should -BeGreaterThan $readinessIndex
         $galleryIndex | Should -BeGreaterThan $readinessIndex

@@ -8,9 +8,9 @@ Describe 'Publish Release notes contract' -Tag 'Contract' {
     }
 
     It 'publishes GitHub Release notes from the finalized changelog release section' {
-        $script:workflow | Should -Match [regex]::Escape('./build/New-PowerShellGalleryPackage.ps1')
-        $script:workflow | Should -Match [regex]::Escape('PrivateData.PSData.ReleaseNotes')
-        $script:workflow | Should -Match [regex]::Escape('--notes-file')
-        $script:workflow | Should -Not -Match [regex]::Escape('--generate-notes')
+        $script:workflow | Should -Match ([regex]::Escape('./build/New-PowerShellGalleryPackage.ps1'))
+        $script:workflow | Should -Match ([regex]::Escape('PrivateData.PSData.ReleaseNotes'))
+        $script:workflow | Should -Match ([regex]::Escape('--notes-file'))
+        $script:workflow | Should -Not -Match ([regex]::Escape('--generate-notes'))
     }
 }

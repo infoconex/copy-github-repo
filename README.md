@@ -1,6 +1,6 @@
 ---
 title: "Copy and Migrate GitHub Repositories with PowerShell"
-description: "Copy GitHub repositories with PowerShell using Snapshot for a clean copy without prior history or FullHistory to preserve commits, branches, tags, Git LFS, and optionally selected GitHub Releases, with planning, verification, and recovery safeguards."
+description: "Copy GitHub repositories with PowerShell using Snapshot for a clean copy that can optionally preserve selected release checkpoints, or FullHistory to preserve commits, branches, tags, Git LFS, and selected GitHub Releases, with planning, verification, and recovery safeguards."
 ---
 
 ![Copy GitHub Repo banner](assets/images/product_banner.png)
@@ -13,20 +13,22 @@ description: "Copy GitHub repositories with PowerShell using Snapshot for a clea
 ![PowerShell 7.4+](https://img.shields.io/badge/PowerShell-7.4%2B-informational)
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-informational)
 
-Copy GitHub Repository is a PowerShell utility for safely publishing or copying GitHub repositories. Its default `Snapshot` mode is designed for **clean publication**: it copies the current source default-branch state into one unrelated root commit, intentionally leaving prior Git history, old branches/tags, pull requests, issues, milestones, and other historical GitHub records behind. The explicit `FullHistory` mode is the history-preserving alternative and keeps ordinary Git history, branches, tags, and reachable Git LFS objects. FullHistory can also optionally recreate selected GitHub Releases and their assets against the preserved tags.
+Copy GitHub Repository is a PowerShell utility for safely publishing or copying GitHub repositories. Its default `Snapshot` mode is designed for **clean publication**. Plain Snapshot copies the current source default-branch state into one unrelated root commit, intentionally leaving prior Git history, old branches/tags, pull requests, issues, milestones, and other historical GitHub records behind. With `-IncludeReleases`, Snapshot can instead preserve selected release states as a new unrelated checkpoint history while still intentionally replacing the source commit identities and detailed ancestry. The explicit `FullHistory` mode is the history-preserving alternative and keeps ordinary Git history, branches, tags, and reachable Git LFS objects; with `-IncludeReleases`, it also recreates selected GitHub Releases and their assets against the original preserved tag targets.
 
 The project prioritizes preservation, explicit human authority, verification, and recoverability. It never automatically deletes a repository or overwrites an existing destination.
 
 > [!IMPORTANT]
-> Snapshot execution, same-name Snapshot replacement, new-destination FullHistory execution, same-name FullHistory replacement, supported repository-level settings restoration, and FullHistory GitHub Release preservation are implemented on the current development line. The guided repository-copy wizard is implemented and covered by the project quality model.
+> Snapshot execution, Snapshot release preservation, same-name Snapshot replacement, new-destination FullHistory execution, same-name FullHistory replacement, supported repository-level settings restoration, and GitHub Release preservation are implemented on the current development line. The guided repository-copy wizard supports Snapshot release preservation and is covered by the project quality model.
 
 ## Choose the right content mode
 
-Use **Snapshot** when you want the repository's current default-branch contents to become a clean new repository with one fresh initial commit. Use **FullHistory** when commit ancestry, branches, tags, signed historical commits, blame history, or other Git-history evidence must remain intact. Add `-IncludeReleases` to FullHistory when selected GitHub Release pages and assets should also be recreated.
+Use **Snapshot** when you want a clean new Git history. Plain Snapshot creates one unrelated current-state root commit. Add `-IncludeReleases` when selected release states should become newly created Snapshot checkpoint commits before the optional final current-state commit. The recreated release tags point to those new checkpoint commits, so original source commit SHAs and detailed ancestry are intentionally not preserved.
 
-For the complete user journey, support matrix, and common operating scenarios, start with the [User guide](docs/user/user-guide.md).
+Use **FullHistory** when commit ancestry, branches, tags, signed historical commits, blame history, or other Git-history evidence must remain intact. Add `-IncludeReleases` when selected GitHub Release pages and assets should also be recreated while preserving their original Git tag targets.
 
-Want to see what Snapshot automates? See [Manually Creating a Clean GitHub Repository Snapshot](docs/user/manual-process.md) for the equivalent Git and GitHub CLI/API procedure, including settings restoration and verification.
+For the complete user journey, support matrix, and common operating scenarios, start with the [User guide](docs/user/user-guide.md). The detailed Snapshot checkpoint rules are authoritative in the [Product contract](docs/product/product-contract.md#snapshot-release-checkpoint-contract).
+
+Want to see what plain Snapshot automates? See [Manually Creating a Clean GitHub Repository Snapshot](docs/user/manual-process.md) for the equivalent Git and GitHub CLI/API procedure, including settings restoration and verification.
 
 ## Safety at a glance
 
@@ -35,8 +37,11 @@ Want to see what Snapshot automates? See [Manually Creating a Clean GitHub Repos
 - Replacement flows require exact typed confirmation; `-Force` cannot bypass it.
 - `-PlanOnly` and `-WhatIf` are non-mutating.
 - Content is verified before success is reported.
-- FullHistory release restoration is bound to the exact release inventory approved during planning; selected release drift fails closed.
-- Destination release tags must resolve to the same approved FullHistory commit before release restoration.
+- Plain Snapshot remains one unrelated current-state root commit.
+- Snapshot release preservation is bound to reviewed release/tag/tree evidence; incompatible release topology or selected source drift fails closed rather than inventing history.
+- Snapshot release tags are recreated against new checkpoint commits whose trees match the reviewed selected release states; original source commit identities are not claimed to be preserved.
+- A final current-state Snapshot commit is created only when reviewed source HEAD differs in repository state from the latest selected release checkpoint.
+- FullHistory release restoration remains bound to the exact release inventory approved during planning and retains original history/tag targets.
 - Existing destination GitHub Releases are not silently overwritten.
 - When the source release marked Latest is selected, that designation is preserved and verified at the destination.
 - Release immutability state and linked release discussions are not currently recreated.
@@ -155,7 +160,7 @@ The recommended human-facing entry point is the guided wizard:
 Start-CopyGitHubRepositoryWizard
 ```
 
-It discovers repositories, defaults to Snapshot/source visibility/settings restoration, lets you navigate Back/Next/Cancel before execution, displays a real `Copy-GitHubRepository -PlanOnly` plan, and requires an explicit Execute decision before mutation.
+It discovers repositories, defaults to Snapshot/source visibility/settings restoration, lets you navigate Back/Next/Cancel before execution, displays a real `Copy-GitHubRepository -PlanOnly` plan, and requires an explicit Execute decision before mutation. When Snapshot is selected, the wizard can optionally preserve selected releases and exposes the same include/exclude tag, prerelease, draft, and newest-N filters used by the command.
 
 A repository checkout can start the same guided experience through the root launcher:
 
@@ -184,6 +189,16 @@ Copy-GitHubRepository `
     -DestinationRepository infoconex/destination
 ```
 
+To keep a clean Snapshot history while preserving selected release checkpoints and GitHub Release content:
+
+```powershell
+Copy-GitHubRepository `
+    -SourceRepository infoconex/source `
+    -DestinationRepository infoconex/destination `
+    -ContentMode Snapshot `
+    -IncludeReleases
+```
+
 To preserve FullHistory plus all stable, non-draft GitHub Releases and assets:
 
 ```powershell
@@ -194,26 +209,26 @@ Copy-GitHubRepository `
     -IncludeReleases
 ```
 
-Release selection can be narrowed without changing the FullHistory Git graph. For example, preserve only the three newest stable v2 releases:
+Release selection can be narrowed in either mode. For example, preserve only the three newest stable v2 releases:
 
 ```powershell
 Copy-GitHubRepository `
     -SourceRepository infoconex/source `
     -DestinationRepository infoconex/destination `
-    -ContentMode FullHistory `
+    -ContentMode Snapshot `
     -IncludeReleases `
     -ReleaseTag 'v2.*' `
     -ReleaseCount 3
 ```
 
-FullHistory, release selection, visibility changes, replacement modes, reporting, non-interactive execution, settings choices, and all parameter details are documented in [`Copy-GitHubRepository`](docs/reference/commands/Copy-GitHubRepository.md).
+Snapshot/FullHistory distinctions, release selection, visibility changes, replacement modes, reporting, non-interactive execution, settings choices, and all parameter details are documented in [`Copy-GitHubRepository`](docs/reference/commands/Copy-GitHubRepository.md).
 
 ## Commands
 
 | Command | Purpose | Mutates GitHub? |
 | --- | --- | --- |
-| [`Start-CopyGitHubRepositoryWizard`](docs/reference/commands/Start-CopyGitHubRepositoryWizard.md) | Guided clean-publication/history-copy workflow | Yes, after plan review and confirmation |
-| [`Copy-GitHubRepository`](docs/reference/commands/Copy-GitHubRepository.md) | Scriptable planning and repository publication/copy, including optional FullHistory GitHub Releases | Yes, except `-PlanOnly`/`-WhatIf` |
+| [`Start-CopyGitHubRepositoryWizard`](docs/reference/commands/Start-CopyGitHubRepositoryWizard.md) | Guided clean-publication/history-copy workflow, including optional Snapshot release preservation | Yes, after plan review and confirmation |
+| [`Copy-GitHubRepository`](docs/reference/commands/Copy-GitHubRepository.md) | Scriptable planning and repository publication/copy, including optional Snapshot or FullHistory GitHub Releases | Yes, except `-PlanOnly`/`-WhatIf` |
 | [`Get-GitHubRepository`](docs/reference/commands/Get-GitHubRepository.md) | Repository discovery and metadata | No |
 | [`Test-GitHubRepositoryMigration`](docs/reference/commands/Test-GitHubRepositoryMigration.md) | Snapshot/FullHistory verification | No |
 

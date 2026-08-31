@@ -51,7 +51,7 @@ Copy-GitHubRepository `
 | --- | --- | --- |
 | Publish the current default-branch contents as a clean repository | **Yes — intended default** | No |
 | Preserve selected release states without retaining detailed development history | **Yes, with `-IncludeReleases`** | No; FullHistory preserves the original history instead |
-| Preserve original commit ancestry | No | **Yes** |
+| Preserve commit ancestry | No | **Yes** |
 | Preserve ordinary branches | No, only the approved default-branch/release checkpoint states are published | **Yes** |
 | Preserve ordinary tags | No; only selected release tags are recreated with `-IncludeReleases` | **Yes** |
 | Preserve signed historical commits / blame history | No | **Yes, as part of preserved Git history** |

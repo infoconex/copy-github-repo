@@ -12,16 +12,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
-### Added
-
-- Added opt-in GitHub Release preservation for `Snapshot` migrations with `-IncludeReleases`.
-- Added deterministic Snapshot checkpoint history construction from selected release states, with recreated release tags pointing to newly created Snapshot checkpoint commits rather than original source commit identities.
-- Added Snapshot release filtering, immutable reviewed release/checkpoint planning, fail-closed topology and source/tag/release drift detection, release metadata/assets/Latest restoration, independent verification, recovery evidence, guided wizard support, and controlled GitHub E2E coverage.
-- Added the final current-state Snapshot commit only when reviewed source HEAD is not state-equivalent to the latest selected release checkpoint; plain Snapshot remains a single unrelated current-state root commit.
-
-### Changed
-
-- Clarified the user-facing distinction between `Snapshot -IncludeReleases`, which preserves selected release states in a new unrelated checkpoint history, and `FullHistory -IncludeReleases`, which preserves the original Git history and original tag targets.
+No unreleased product changes.
 
 ## [0.2.0] - 2026-08-30
 

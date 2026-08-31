@@ -111,7 +111,7 @@ function New-CgrSnapshotReleaseCheckpointPlan {
             })
     }
 
-    $distinctCommitShas = @($releaseEvidence.PeeledCommitSha | Select-Object -Unique)
+    $distinctCommitShas = @($releaseEvidence.ToArray() | ForEach-Object { $_.PeeledCommitSha } | Select-Object -Unique)
     $ancestorCountByCommit = @{}
     foreach ($commitSha in $distinctCommitShas) {
         $ancestorCountByCommit[$commitSha] = 0

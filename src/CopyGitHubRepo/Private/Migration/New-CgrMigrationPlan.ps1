@@ -10,9 +10,10 @@ function New-CgrMigrationPlan {
     itself does not perform the repository-copy mutation; the returned source-state
     evidence is later revalidated so execution fails closed if the source changes.
 
-    FullHistory planning can also capture the exact GitHub Releases selected for
-    restoration, including tag targets and release asset metadata. Execution must
-    use that approved selection rather than re-evaluating the original filters.
+    Release planning captures the exact GitHub Releases selected for restoration,
+    including tag targets and release asset metadata. Snapshot release planning also
+    captures immutable checkpoint trees and derives checkpoint order from Git ancestry.
+    Execution must use the approved selection rather than re-evaluating live filters.
 
     .NOTES
     Replacement modes deliberately require unused archive names. The plan is the
@@ -74,8 +75,8 @@ function New-CgrMigrationPlan {
         [switch] $PlanOnly
     )
 
-    if ($IncludeReleases -and $ContentMode -ne 'FullHistory') {
-        $message = 'GitHub Release preservation is currently supported only with FullHistory plans.'
+    if ($IncludeReleases -and $ContentMode -eq 'Snapshot' -and -not $PlanOnly) {
+        $message = 'Snapshot -IncludeReleases execution is not implemented yet. Use -PlanOnly to review the immutable release-checkpoint plan.'
         $exception = [System.NotSupportedException]::new($message)
         $errorRecord = [System.Management.Automation.ErrorRecord]::new(
             $exception,
@@ -207,6 +208,7 @@ function New-CgrMigrationPlan {
     $sourceState = Get-CgrApprovedSourceState -Repository $SourceRepository -ContentMode $ContentMode
 
     $releaseSelection = $null
+    $releaseCheckpointPlan = $null
     if ($IncludeReleases) {
         $releaseSelectionParameters = @{
             Repository = $SourceRepository
@@ -220,6 +222,14 @@ function New-CgrMigrationPlan {
             $releaseSelectionParameters.ReleaseCount = $ReleaseCount
         }
         $releaseSelection = Get-CgrGitHubReleaseSelection @releaseSelectionParameters
+
+        if ($ContentMode -eq 'Snapshot') {
+            $releaseCheckpointPlan = New-CgrSnapshotReleaseCheckpointPlan `
+                -Repository $SourceRepository `
+                -ReleaseSelection $releaseSelection `
+                -SourceState $sourceState `
+                -HostName $HostName
+        }
     }
 
     $steps = [System.Collections.Generic.List[object]]::new()
@@ -263,7 +273,10 @@ function New-CgrMigrationPlan {
     $steps.Add([pscustomobject] @{
             Order = $steps.Count + 1
             Name = "Copy$ContentMode"
-            Description = if ($ContentMode -eq 'Snapshot') {
+            Description = if ($ContentMode -eq 'Snapshot' -and $IncludeReleases) {
+                "Publish the approved Snapshot as $($releaseCheckpointPlan.CheckpointCount) release checkpoint(s) in source Git-ancestry order$(if ($releaseCheckpointPlan.FinalHeadCheckpointRequired) { ', followed by one reviewed current-state checkpoint' } else { '' }). Destination commits are new and unrelated to source history."
+            }
+            elseif ($ContentMode -eq 'Snapshot') {
                 "Publish the approved '$($SourceRepository.DefaultBranch)' branch content from '$sourceFullName' as one new root commit. Prior commit history, other branches, and tags are not published."
             }
             else {
@@ -275,7 +288,10 @@ function New-CgrMigrationPlan {
     $steps.Add([pscustomobject] @{
             Order = $steps.Count + 1
             Name = 'VerifyMigration'
-            Description = if ($ContentMode -eq 'Snapshot') {
+            Description = if ($ContentMode -eq 'Snapshot' -and $IncludeReleases) {
+                'Verify the future Snapshot checkpoint history against the immutable reviewed checkpoint and source-HEAD evidence before restoring repository configuration.'
+            }
+            elseif ($ContentMode -eq 'Snapshot') {
                 'Verify the published Snapshot content against the approved source tree before restoring repository configuration.'
             }
             else {
@@ -288,7 +304,12 @@ function New-CgrMigrationPlan {
         $steps.Add([pscustomobject] @{
                 Order = $steps.Count + 1
                 Name = 'RestoreGitHubReleases'
-                Description = "Restore $($releaseSelection.SelectedReleaseCount) approved GitHub Release(s) and $($releaseSelection.SelectedAssetCount) release asset(s) after FullHistory verification."
+                Description = if ($ContentMode -eq 'Snapshot') {
+                    "Restore $($releaseSelection.SelectedReleaseCount) approved GitHub Release(s) and $($releaseSelection.SelectedAssetCount) release asset(s) against their future Snapshot checkpoint tags after checkpoint verification."
+                }
+                else {
+                    "Restore $($releaseSelection.SelectedReleaseCount) approved GitHub Release(s) and $($releaseSelection.SelectedAssetCount) release asset(s) after FullHistory verification."
+                }
                 MutatesGitHub = $true
             })
     }
@@ -352,6 +373,7 @@ function New-CgrMigrationPlan {
         CommitMessage = $CommitMessage
         IncludeReleases = [bool] $IncludeReleases
         ReleaseSelection = $releaseSelection
+        ReleaseCheckpointPlan = $releaseCheckpointPlan
         RestorePages = [bool] $RestorePages
         EnableActionsAfterMigration = [bool] $EnableActionsAfterMigration
         SkipSettings = [bool] $SkipSettings

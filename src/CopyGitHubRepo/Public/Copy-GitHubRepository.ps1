@@ -13,7 +13,8 @@ function Copy-GitHubRepository {
     FullHistory can optionally preserve selected GitHub Releases and their assets.
     Release selection is stable/non-draft by default and can be narrowed with tag
     include/exclude patterns or a newest-N limit. Prereleases and draft releases
-    require explicit opt-in. Snapshot release preservation is not implemented yet.
+    require explicit opt-in. Snapshot -IncludeReleases is available for PlanOnly
+    review; mutating Snapshot release-checkpoint execution is not implemented yet.
 
     Planning captures immutable source-state evidence. Execution uses that same
     plan and fails closed with SourceStateChangedSincePlanning if the source no
@@ -49,9 +50,9 @@ function Copy-GitHubRepository {
     Git LFS objects.
 
     .PARAMETER IncludeReleases
-    Requests GitHub Release preservation for FullHistory. By default, all stable,
-    non-draft releases are selected. Use the release filter parameters to narrow
-    or expand that selection. Snapshot does not support this option yet.
+    Requests GitHub Release preservation. FullHistory supports planning and execution.
+    Snapshot supports PlanOnly review of immutable release-checkpoint evidence; its
+    mutating checkpoint/release execution is implemented by dependent work.
 
     .PARAMETER ReleaseTag
     Includes only GitHub Releases whose tag names match one or more PowerShell
@@ -249,8 +250,8 @@ function Copy-GitHubRepository {
         $PSCmdlet.ThrowTerminatingError($errorRecord)
     }
 
-    if ($IncludeReleases -and $ContentMode -ne 'FullHistory') {
-        $message = 'GitHub Release preservation is currently supported only with -ContentMode FullHistory.'
+    if ($IncludeReleases -and $ContentMode -eq 'Snapshot' -and -not $PlanOnly) {
+        $message = 'Snapshot -IncludeReleases execution is not implemented yet. Use -PlanOnly to review the immutable release-checkpoint plan.'
         $exception = [System.NotSupportedException]::new($message)
         $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'SnapshotReleaseMigrationNotImplemented', [System.Management.Automation.ErrorCategory]::NotImplemented, 'IncludeReleases')
         $PSCmdlet.ThrowTerminatingError($errorRecord)

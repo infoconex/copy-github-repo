@@ -81,6 +81,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Invoke-CgrWithActivitySink` | Scopes activity event delivery to the current operation without global presentation coupling. |
 | `New-CgrGitHubRepository` | Creates an empty destination repository after the public safety boundary has approved mutation. |
 | `New-CgrMigrationPlan` | **Inline tier.** Creates the immutable reviewed plan, source-state evidence, optional approved-release selection, replacement mode, and ordered safety steps without performing migration mutation. |
+| `New-CgrSnapshotReleaseCheckpointPlan` | **Inline tier.** Converts the already-approved Snapshot release selection into immutable tag/ref/tree evidence and a deterministic ancestry-ordered checkpoint sequence, coalescing duplicate targets and failing closed on incompatible release-to-release or release-to-HEAD topology without performing mutation. |
 | `New-CgrWizardActivitySink` | Creates the wizard activity adapter used to render structured progress events. |
 | `Protect-CgrDiagnosticText` | Redacts or normalizes sensitive diagnostic text before presentation or persistence. |
 | `Read-CgrWizardChoice` | Reads a bounded menu choice with default/help/navigation behavior suitable for mocked tests. |

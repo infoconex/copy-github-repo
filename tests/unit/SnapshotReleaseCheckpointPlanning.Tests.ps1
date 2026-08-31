@@ -221,16 +221,4 @@ Describe 'Snapshot IncludeReleases PlanOnly public boundary' {
             Should -Invoke Invoke-CgrApprovedMigrationPlan -Times 0
         }
     }
-
-    It 'continues to reject Snapshot IncludeReleases mutation before planning or mutation' {
-        InModuleScope CopyGitHubRepo {
-            Mock Assert-CgrSupportedHostName {}
-            Mock Get-CgrPrerequisiteStatus { throw 'must fail before prerequisites' }
-            Mock New-CgrMigrationPlan { throw 'must fail before planning' }
-            { Copy-GitHubRepository -SourceRepository acme/source -DestinationRepository acme/destination -ContentMode Snapshot -IncludeReleases } |
-                Should -Throw -ErrorId 'SnapshotReleaseMigrationNotImplemented,Copy-GitHubRepository'
-            Should -Invoke Get-CgrPrerequisiteStatus -Times 0
-            Should -Invoke New-CgrMigrationPlan -Times 0
-        }
-    }
 }

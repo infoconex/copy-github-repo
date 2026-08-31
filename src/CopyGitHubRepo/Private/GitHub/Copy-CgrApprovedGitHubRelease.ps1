@@ -15,6 +15,8 @@ function Copy-CgrApprovedGitHubRelease {
         [Parameter(Mandatory)]
         [psobject] $ApprovedSelection,
 
+        [psobject[]] $DestinationTagTargets,
+
         [ValidateNotNullOrEmpty()]
         [string] $HostName = 'github.com'
     )
@@ -30,6 +32,42 @@ function Copy-CgrApprovedGitHubRelease {
             Releases = @()
             Unsupported = @('OriginalReleaseId', 'OriginalCreatedAt', 'OriginalPublishedAt', 'ReleaseDownloadCounts', 'ReleaseImmutability', 'LinkedDiscussion')
             IsSuccessful = $true
+        }
+    }
+
+    $expectedDestinationTagTargets = @{}
+    if ($PSBoundParameters.ContainsKey('DestinationTagTargets')) {
+        foreach ($target in @($DestinationTagTargets)) {
+            $targetTagName = [string] (Get-CgrObjectProperty -InputObject $target -Name 'TagName')
+            $targetCommitSha = [string] (Get-CgrObjectProperty -InputObject $target -Name 'DestinationCommitSha')
+            if ([string]::IsNullOrWhiteSpace($targetTagName) -or
+                [string]::IsNullOrWhiteSpace($targetCommitSha) -or
+                $expectedDestinationTagTargets.ContainsKey($targetTagName)) {
+                $message = 'Approved destination release-tag target evidence is incomplete or ambiguous. Recreate and review the migration plan before execution.'
+                $exception = [System.InvalidOperationException]::new($message)
+                $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                    $exception,
+                    'ApprovedDestinationReleaseTagTargetsInvalid',
+                    [System.Management.Automation.ErrorCategory]::InvalidData,
+                    $targetTagName
+                )
+                $PSCmdlet.ThrowTerminatingError($errorRecord)
+            }
+            $expectedDestinationTagTargets[$targetTagName] = $targetCommitSha
+        }
+
+        $approvedTagNames = @($approvedReleases | ForEach-Object { [string] $_.TagName })
+        if ($expectedDestinationTagTargets.Count -ne $approvedTagNames.Count -or
+            @($approvedTagNames | Where-Object { -not $expectedDestinationTagTargets.ContainsKey($_) }).Count -gt 0) {
+            $message = 'Approved destination release-tag target evidence does not match the exact reviewed release selection. Release restoration was not attempted.'
+            $exception = [System.InvalidOperationException]::new($message)
+            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                $exception,
+                'ApprovedDestinationReleaseTagTargetsMismatch',
+                [System.Management.Automation.ErrorCategory]::InvalidData,
+                $DestinationRepository.FullName
+            )
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
         }
     }
 
@@ -133,8 +171,14 @@ function Copy-CgrApprovedGitHubRelease {
                 $PSCmdlet.ThrowTerminatingError($errorRecord)
             }
 
-            if ($destinationCommitSha -ne [string] $approved.TargetCommitSha) {
-                $message = "Destination release tag '$tagName' resolves to '$destinationCommitSha' instead of approved FullHistory commit '$($approved.TargetCommitSha)'."
+            $expectedDestinationCommitSha = if ($expectedDestinationTagTargets.Count -gt 0) {
+                [string] $expectedDestinationTagTargets[$tagName]
+            }
+            else {
+                [string] $approved.TargetCommitSha
+            }
+            if ($destinationCommitSha -ne $expectedDestinationCommitSha) {
+                $message = "Destination release tag '$tagName' resolves to '$destinationCommitSha' instead of approved destination commit '$expectedDestinationCommitSha'."
                 $exception = [System.InvalidOperationException]::new($message)
                 $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'GitHubReleaseTagTargetMismatch', [System.Management.Automation.ErrorCategory]::InvalidResult, $tagName)
                 $PSCmdlet.ThrowTerminatingError($errorRecord)

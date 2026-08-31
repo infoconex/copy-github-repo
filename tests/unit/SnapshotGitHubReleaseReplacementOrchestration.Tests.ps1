@@ -37,7 +37,9 @@ Describe 'Same-name Snapshot GitHub Release orchestration' {
                 [pscustomobject] @{ Verified = $true; RootCommitSha = 'root'; CommitSha = 'head'; SourceCommitSha = 'source-head'; TreeSha = 'tree-head'; BranchName = 'main'; ReleaseTags = $script:tagTargets }
             }
             Mock Get-CgrRepository { $script:destination }
-            Mock Invoke-CgrRepositorySnapshotVerification { [pscustomobject] @{ IsSuccessful = $true; DestinationTree = 'tree-head' } }
+            Mock Invoke-CgrApprovedSnapshotReleaseVerification {
+                [pscustomobject] @{ IsSuccessful = $true; SourceHeadTreeSha = 'tree-head'; DestinationHeadTreeSha = 'tree-head'; ReleaseTags = $script:tagTargets }
+            }
             Mock Invoke-CgrActivityStage {
                 if ($Name -eq 'RestoreGitHubReleases') { $script:sequence.Add('release') }
                 & $Action
@@ -60,6 +62,7 @@ Describe 'Same-name Snapshot GitHub Release orchestration' {
             $result.IsVerified | Should -BeTrue
             $result.ReleasesRestored | Should -BeTrue
             @($script:sequence) | Should -Be @('release', 'configuration')
+            Should -Invoke Invoke-CgrApprovedSnapshotReleaseVerification -Times 1 -Exactly
             Should -Invoke Copy-CgrApprovedGitHubRelease -Times 1 -Exactly -ParameterFilter {
                 $SourceRepository -eq $script:archive -and
                 $DestinationRepository -eq $script:destination -and

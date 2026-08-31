@@ -1,11 +1,11 @@
 ---
 title: "Test-GitHubRepositoryMigration – Verify GitHub Repository Migrations"
-description: "Verify Snapshot or FullHistory GitHub repository migrations with PowerShell using read-only source/destination comparison, including optional GitHub Release and asset verification."
+description: "Verify Snapshot or FullHistory GitHub repository migrations with PowerShell using read-only destination evidence, including approved Snapshot release checkpoints and GitHub Release assets."
 ---
 
 # Test-GitHubRepositoryMigration
 
-Performs read-only verification of migrated repository content. Use the same content mode and, when applicable, the same release-selection intent that was used for the migration.
+Performs read-only verification of migrated repository content. Plain Snapshot and FullHistory retain their existing verification contracts. Snapshot migrations that used `-IncludeReleases` are verified against the immutable reviewed migration plan rather than by rerunning live release selection.
 
 ## Synopsis
 
@@ -20,60 +20,74 @@ Test-GitHubRepositoryMigration `
     [-IncludePrerelease] `
     [-IncludeDraftReleases] `
     [-ReleaseCount <int>] `
+    [-ApprovedPlan <object>] `
     [-HostName <hostname>]
 ```
 
 ## When to use it
 
-Use this command when you want an independent verification result for a completed Snapshot or FullHistory migration. For FullHistory migrations that included GitHub Releases, add `-IncludeReleases` and the same release filters to verify the selected current source releases against the destination. The command does not repair or mutate either repository.
+Use this command when you want an independent verification result for a completed Snapshot or FullHistory migration. For Snapshot migrations that used `-IncludeReleases`, provide the exact reviewed plan returned by the migration with `-ApprovedPlan`; that evidence defines the expected checkpoints and selected releases. For FullHistory migrations that included GitHub Releases, add `-IncludeReleases` and the same release filters to verify the selected current source releases against the destination. The command does not repair or mutate either repository.
 
 ## Parameters
 
 | Parameter | Type | Required | Default | Accepted values / format | Description |
 | --- | --- | --- | --- | --- | --- |
-| `SourceRepository` | `String` | Yes | — | `owner/name` | Source repository used as the verification reference. |
-| `DestinationRepository` | `String` | Yes | — | `owner/name` | Destination repository whose migrated content is checked. |
+| `SourceRepository` | `String` | Yes | — | `owner/name` | Source repository identity associated with the migration. Plain Snapshot and FullHistory read it as the verification reference; Snapshot `-IncludeReleases` uses the approved plan as expected-state evidence. |
+| `DestinationRepository` | `String` | Yes | — | `owner/name` | Destination repository whose migrated content and, when requested, recreated releases are independently read and checked. |
 | `ContentMode` | `String` | No | `Snapshot` | `Snapshot`, `FullHistory` | Selects the verification contract. Use the same mode as the migration. |
-| `IncludeReleases` | `Switch` | No | `$false` | FullHistory only | Adds read-only GitHub Release verification. Stable, non-draft source releases are selected by default. |
-| `ReleaseTag` | `String[]` | No | — | PowerShell wildcard patterns | Includes only source releases whose tag names match at least one supplied pattern. Requires `-IncludeReleases`. |
-| `ReleaseExcludeTag` | `String[]` | No | — | PowerShell wildcard patterns | Excludes matching source release tags after include filtering. Requires `-IncludeReleases`. |
-| `IncludePrerelease` | `Switch` | No | `$false` | Switch | Includes releases marked prerelease. Requires `-IncludeReleases`. |
-| `IncludeDraftReleases` | `Switch` | No | `$false` | Switch | Includes draft releases. Requires `-IncludeReleases`. |
-| `ReleaseCount` | `Int32` | No | — | `1` or greater | Limits verification to the newest N source releases after filtering. Requires `-IncludeReleases`. |
+| `IncludeReleases` | `Switch` | No | `$false` | Snapshot or FullHistory | Adds GitHub Release verification. Snapshot requires `-ApprovedPlan`; FullHistory retains live source-selection verification. |
+| `ReleaseTag` | `String[]` | No | — | PowerShell wildcard patterns | Includes only source releases whose tag names match at least one supplied pattern for FullHistory verification. Requires `-IncludeReleases`. Snapshot approved-plan verification rejects live release filters. |
+| `ReleaseExcludeTag` | `String[]` | No | — | PowerShell wildcard patterns | Excludes matching source release tags after include filtering for FullHistory verification. Requires `-IncludeReleases`. Snapshot approved-plan verification rejects live release filters. |
+| `IncludePrerelease` | `Switch` | No | `$false` | Switch | Includes prereleases in FullHistory live-selection verification. Requires `-IncludeReleases`; not used with Snapshot `-ApprovedPlan`. |
+| `IncludeDraftReleases` | `Switch` | No | `$false` | Switch | Includes draft releases in FullHistory live-selection verification. Requires `-IncludeReleases`; not used with Snapshot `-ApprovedPlan`. |
+| `ReleaseCount` | `Int32` | No | — | `1` or greater | Limits FullHistory live-selection verification to the newest N source releases after filtering. Requires `-IncludeReleases`; not used with Snapshot `-ApprovedPlan`. |
+| `ApprovedPlan` | `PSObject` | No | — | Reviewed Snapshot migration plan | Required with `-ContentMode Snapshot -IncludeReleases`. Supplies immutable `ReleaseCheckpointPlan` and `ReleaseSelection` evidence so verification does not rerun release selection, filtering, ordering, or topology discovery. |
 | `HostName` | `String` | No | `github.com` | `github.com` in the current release line | GitHub host used for discovery and authentication. Unsupported hosts fail closed. |
 
 Standard PowerShell common parameters are also available.
 
 ## Verification behavior
 
-`Snapshot` compares the source and destination default-branch Git trees and verifies that the destination has the expected single-root-commit history shape. GitHub Release verification is not supported for Snapshot.
+Plain `Snapshot` compares the source and destination default-branch Git trees and verifies that the destination has the expected single-root-commit history shape.
+
+With `Snapshot -IncludeReleases -ApprovedPlan`, the command uses immutable reviewed planning evidence and destination reads to verify:
+
+- the exact generated Snapshot checkpoint count and linear sequence;
+- root and parent relationships between generated checkpoint commits;
+- each checkpoint tree against the reviewed source release-state tree, without requiring source and destination commit SHA identity;
+- each reviewed selected release tag against its expected generated Snapshot checkpoint;
+- the final destination default-branch tree against the reviewed source HEAD;
+- whether a final current-state checkpoint is present only when the reviewed plan requires one;
+- the exact reviewed selected destination release-tag set;
+- the exact reviewed selected GitHub Release set;
+- release name/body, draft/prerelease state, assets, supported asset digest/size/content-type evidence, and Latest designation.
+
+Snapshot release verification does not rerun live source release selection or filtering. The reviewed plan defines what must exist. A mismatch fails verification; the command does not repair, retag, recreate, delete, or otherwise mutate destination state.
 
 `FullHistory` compares ordinary branch/tag targets, reachable commit counts, branch-tip trees, the default branch, and reachable Git LFS object availability.
 
-With `FullHistory -IncludeReleases`, the command first applies the same source release-selection rules as `Copy-GitHubRepository`, then verifies each selected source release against the destination by tag. It compares:
-
-- release tag and resolved commit identity;
-- release name and body;
-- draft/prerelease state;
-- asset count, names, labels, sizes, content types, and digests when GitHub provides them; and
-- the repository's Latest release designation when the selected set contains the current source Latest full release.
-
-The standalone verifier compares the **current source release state**. It does not have the original immutable migration plan, so it cannot prove that the source has remained unchanged since the migration. Extra destination releases outside the selected current source set do not cause failure.
+With `FullHistory -IncludeReleases`, the command retains the existing behavior: it applies the requested current source release-selection rules, then verifies each selected source release against the destination by tag. It compares release tag and resolved commit identity, release metadata, assets, and Latest designation where applicable.
 
 See [Architecture](../../product/architecture.md) for the detailed evidence model.
 
 ## Output
 
-Returns the normal Snapshot or FullHistory migration-verification result. When `-IncludeReleases` is requested with FullHistory, the FullHistory result additionally contains:
+Returns a `CopyGitHubRepo.MigrationVerificationResult`.
 
-- `GitContentSuccessful` — the ordinary FullHistory Git/LFS verification outcome;
-- `ReleaseVerification` — structured per-release verification evidence;
-- `ReleasesVerified` — the release-verification outcome; and
-- `IsSuccessful` — `$true` only when both Git/LFS and requested release verification succeed.
+For Snapshot `-IncludeReleases -ApprovedPlan`, the result includes generated checkpoint and release-tag verification evidence plus:
+
+- `GitContentSuccessful` — the checkpoint/tag/tree/HEAD verification outcome;
+- `ReleaseVerification` — structured per-release destination verification evidence;
+- `ReleasesVerified` — the recreated-release verification outcome; and
+- `IsSuccessful` — `$true` only when both Git/checkpoint and requested release verification succeed.
+
+For FullHistory `-IncludeReleases`, the existing FullHistory result similarly includes `GitContentSuccessful`, `ReleaseVerification`, `ReleasesVerified`, and a combined `IsSuccessful` result.
 
 ## Important failure conditions
 
-The command fails when Git or GitHub CLI is unavailable, authentication is unavailable, an unsupported host is supplied, source/destination discovery fails, release filter parameters are supplied without `-IncludeReleases`, `-IncludeReleases` is requested for Snapshot, or native verification cannot gather required evidence. A completed verification can return `IsSuccessful = $false` when Git/LFS state or selected GitHub Release state does not match.
+The command fails when Git or GitHub CLI is unavailable, authentication is unavailable, an unsupported host is supplied, required repository discovery fails, or native verification cannot gather required evidence. Release filter parameters require `-IncludeReleases`.
+
+Snapshot `-IncludeReleases` additionally fails closed when `-ApprovedPlan` is absent or incomplete, or when live release filters are supplied alongside the approved plan. A completed verification returns `IsSuccessful = $false` for concrete destination mismatches such as an incorrect checkpoint tree or tag target, a missing/unexpected selected release, altered release metadata or assets, or an incorrect Latest designation.
 
 ## Examples
 
@@ -83,6 +97,17 @@ The command fails when Git or GitHub CLI is unavailable, authentication is unava
 Test-GitHubRepositoryMigration `
     -SourceRepository infoconex/source `
     -DestinationRepository infoconex/destination
+```
+
+### Verify Snapshot release checkpoints from the reviewed plan
+
+```powershell
+Test-GitHubRepositoryMigration `
+    -SourceRepository infoconex/source `
+    -DestinationRepository infoconex/destination `
+    -ContentMode Snapshot `
+    -IncludeReleases `
+    -ApprovedPlan $migration.Plan
 ```
 
 ### Verify a FullHistory migration
@@ -104,7 +129,7 @@ Test-GitHubRepositoryMigration `
     -IncludeReleases
 ```
 
-### Verify the three newest stable v2 releases
+### Verify the three newest stable v2 FullHistory releases
 
 ```powershell
 Test-GitHubRepositoryMigration `

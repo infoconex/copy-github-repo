@@ -218,13 +218,13 @@ Describe 'Test-GitHubRepositoryMigration release contract' {
         }
     }
 
-    It 'rejects release verification for Snapshot mode' {
+    It 'requires immutable approved evidence for Snapshot release verification' {
         InModuleScope CopyGitHubRepo {
             { Test-GitHubRepositoryMigration `
                     -SourceRepository 'acme/source' `
                     -DestinationRepository 'acme/destination' `
                     -IncludeReleases } |
-                Should -Throw -ErrorId 'SnapshotReleaseVerificationNotImplemented,Test-GitHubRepositoryMigration'
+                Should -Throw -ErrorId 'SnapshotReleaseVerificationPlanRequired,Test-GitHubRepositoryMigration'
 
             Should -Invoke Get-CgrPrerequisiteStatus -Times 0
         }

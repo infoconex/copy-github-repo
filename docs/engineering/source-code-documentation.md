@@ -65,6 +65,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Invoke-CgrActivityStage` | Wraps a logical operation with structured activity start/completion/failure signaling. |
 | `Invoke-CgrApprovedFullHistoryVerification` | Verifies copied FullHistory against the exact approved source evidence rather than a moving source. |
 | `Invoke-CgrApprovedMigrationPlan` | Executes only the reviewed plan and routes to the correct migration/replacement mode. |
+| `Invoke-CgrApprovedSnapshotReleaseVerification` | Performs read-only verification of generated Snapshot release-checkpoint history against immutable reviewed checkpoint evidence, including sequence, parentage, tree equivalence, selected tag targets, and final reviewed HEAD state. |
 | `Invoke-CgrExistingDestinationReplacement` | **Inline tier.** Archives an existing destination, proves identity preservation, creates a fresh replacement, and emits recovery evidence on failure. |
 | `Invoke-CgrGitCommand` | Runs Git with the repository authentication/environment conventions required by the module. |
 | `Invoke-CgrGitHubApiMutation` | Centralizes GitHub API mutation execution and application-grade error handling. |

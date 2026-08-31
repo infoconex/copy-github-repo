@@ -148,7 +148,7 @@ function Copy-CgrRepositorySnapshot {
                 $PSCmdlet.ThrowTerminatingError($errorRecord)
             }
 
-            $checkpointMessage = "Snapshot release checkpoint $checkpointOrder: $($tagNames -join ', ')"
+            $checkpointMessage = "Snapshot release checkpoint ${checkpointOrder}: $($tagNames -join ', ')"
             $checkpointCommitArguments = @('-C', $sourcePath, '-c', "user.name=$($commitIdentity.Name)", '-c', "user.email=$($commitIdentity.Email)", 'commit-tree', $reviewedSourceTreeSha)
             if ($parentCommitSha) {
                 $checkpointCommitArguments += @('-p', $parentCommitSha)

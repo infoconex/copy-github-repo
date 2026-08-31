@@ -323,8 +323,17 @@ jobs:
           $artifactPath = "dist/CopyGitHubRepo-$version.zip"
           $checksumPath = "$artifactPath.sha256"
           $sbomPath = "dist/CopyGitHubRepo-$version.spdx.json"
+          $galleryManifestPath = "dist/PSGallery/CopyGitHubRepo/CopyGitHubRepo.psd1"
+          $releaseNotesPath = "dist/CopyGitHubRepo-$version.release-notes.md"
 
-          & gh release create $tag $artifactPath $checksumPath $sbomPath --title "CopyGitHubRepo $version" --generate-notes --verify-tag
+          $galleryManifest = Import-PowerShellDataFile -LiteralPath $galleryManifestPath
+          $releaseNotes = [string] $galleryManifest.PrivateData.PSData.ReleaseNotes
+          if ([string]::IsNullOrWhiteSpace($releaseNotes)) {
+              throw "Staged PowerShell Gallery manifest does not contain finalized release notes for version '$version'."
+          }
+          Set-Content -LiteralPath $releaseNotesPath -Value $releaseNotes -Encoding utf8NoBOM
+
+          & gh release create $tag $artifactPath $checksumPath $sbomPath --title "CopyGitHubRepo $version" --notes-file $releaseNotesPath --verify-tag
           if ($LASTEXITCODE -ne 0) {
               throw "GitHub release publication failed for '$tag'. Existing stable release assets were not modified."
           }

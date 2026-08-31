@@ -34,6 +34,36 @@
             LiveValidation = 'Required'
             LiveEvidence = @('tests/e2e/Invoke-SnapshotEndToEndTests.ps1')
         }
+        'SCN-SNAP-REL-HAPPY-01' = @{
+            Classification = 'Required'
+            AutomatedEvidence = @('tests/unit/SnapshotReleaseCheckpointConstruction.Tests.ps1', 'tests/unit/SnapshotReleaseTagRecreation.Tests.ps1', 'tests/unit/SnapshotGitHubReleaseRecreation.Tests.ps1', 'tests/unit/SnapshotReleaseVerification.Tests.ps1')
+            LiveValidation = 'Required'
+            LiveEvidence = @('tests/e2e/Invoke-SnapshotReleaseEndToEndTests.ps1')
+        }
+        'SCN-SNAP-REL-EDGE-01' = @{
+            Classification = 'Required'
+            AutomatedEvidence = @('tests/unit/SnapshotReleaseCheckpointConstruction.Tests.ps1', 'tests/unit/SnapshotReleaseCheckpointPlanning.Tests.ps1')
+            LiveValidation = 'Required'
+            LiveEvidence = @('tests/e2e/Invoke-SnapshotReleaseEndToEndTests.ps1')
+        }
+        'SCN-SNAP-REL-SAFETY-01' = @{
+            Classification = 'Required'
+            AutomatedEvidence = @('tests/unit/SnapshotReleaseCheckpointPlanning.Tests.ps1', 'tests/unit/SnapshotReleaseTagRecreation.Tests.ps1', 'tests/contract/SnapshotReleaseSafety.Tests.ps1')
+            LiveValidation = 'NotRequired'
+            LiveEvidence = @()
+        }
+        'SCN-SNAP-REL-VERIFY-01' = @{
+            Classification = 'Required'
+            AutomatedEvidence = @('tests/unit/SnapshotReleaseVerification.Tests.ps1', 'tests/unit/SnapshotReleaseMissingAssetVerification.Tests.ps1')
+            LiveValidation = 'Required'
+            LiveEvidence = @('tests/e2e/Invoke-SnapshotReleaseEndToEndTests.ps1')
+        }
+        'SCN-SNAP-REL-PARTIAL-01' = @{
+            Classification = 'Required'
+            AutomatedEvidence = @('tests/unit/SnapshotReleaseRecoveryEvidence.Tests.ps1', 'tests/unit/SnapshotGitHubReleaseRecreation.Tests.ps1')
+            LiveValidation = 'NotRequired'
+            LiveEvidence = @()
+        }
         'SCN-HIST-HAPPY-01' = @{
             Classification = 'Required'
             AutomatedEvidence = @('tests/integration/FullHistory.Tests.ps1')

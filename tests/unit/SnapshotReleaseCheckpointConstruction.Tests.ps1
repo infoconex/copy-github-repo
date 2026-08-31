@@ -47,7 +47,7 @@ Describe 'Snapshot release checkpoint construction' {
             Mock Invoke-CgrNativeCommand {
                 $joined = $ArgumentList -join ' '
                 if ($joined -match 'rev-parse HEAD\^\{tree\}$') {
-                    return [pscustomobject] @{ ExitCode = 0; Output = @('tree-head'); ErrorText = '' }
+                    return [pscustomobject] @{ ExitCode = 0; Output = @($script:sourceState.TreeSha); ErrorText = '' }
                 }
                 if ($joined -match 'rev-parse HEAD$') {
                     return [pscustomobject] @{ ExitCode = 0; Output = @('head'); ErrorText = '' }

@@ -2,7 +2,7 @@
 
 Describe 'Publish Release notes contract' -Tag 'Contract' {
     BeforeAll {
-        $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        $repositoryRoot = Split-Path -Parent $PSScriptRoot
         $workflowPath = Join-Path $repositoryRoot '.github/workflows/publish-release.yml'
         $script:workflow = Get-Content -LiteralPath $workflowPath -Raw
     }

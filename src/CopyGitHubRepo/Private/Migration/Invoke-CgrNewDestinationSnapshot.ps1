@@ -34,6 +34,7 @@ function Invoke-CgrNewDestinationSnapshot {
     $snapshot = $null
     $snapshotRootCommitSha = $null
     $verifiedDestination = $null
+    $snapshotGeneratedCommitProgress = [System.Collections.Generic.List[object]]::new()
     $sourceState = Get-CgrObjectProperty -InputObject $Plan -Name 'SourceState'
     $releaseCheckpointPlan = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseCheckpointPlan'
     $includeReleases = [bool] (Get-CgrObjectProperty -InputObject $Plan -Name 'IncludeReleases')
@@ -51,7 +52,7 @@ function Invoke-CgrNewDestinationSnapshot {
     }
 
     try {
-        $snapshot = @(Copy-CgrRepositorySnapshot -SourceRepository $SourceRepository -DestinationRepository $DestinationRepository -BranchName $Plan.SourceDefaultBranch -CommitMessage $Plan.CommitMessage -ApprovedSourceState $sourceState -ReleaseCheckpointPlan $releaseCheckpointPlan)[-1]
+        $snapshot = @(Copy-CgrRepositorySnapshot -SourceRepository $SourceRepository -DestinationRepository $DestinationRepository -BranchName $Plan.SourceDefaultBranch -CommitMessage $Plan.CommitMessage -ApprovedSourceState $sourceState -ReleaseCheckpointPlan $releaseCheckpointPlan -RecoveryGeneratedCommits $snapshotGeneratedCommitProgress)[-1]
         $snapshotRootCommitSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'RootCommitSha'
         if ($null -eq $snapshotRootCommitSha) { $snapshotRootCommitSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'CommitSha' }
         $completedSteps.Add([pscustomobject] @{ Order = 2; Name = 'CopySnapshot'; MutatedGitHub = $true; Verified = $snapshot.Verified })
@@ -133,6 +134,7 @@ function Invoke-CgrNewDestinationSnapshot {
             -DestinationRepository $verifiedDestination `
             -SnapshotCopyResult $snapshot `
             -ReleaseRestoreResult $releases `
+            -GeneratedCommitProgress @($snapshotGeneratedCommitProgress) `
             -HostName $HostName
 
         $provenance = [pscustomobject] @{
@@ -183,6 +185,7 @@ function Invoke-CgrNewDestinationSnapshot {
                 -DestinationRepository $recoveryDestination `
                 -SnapshotCopyResult $snapshot `
                 -ReleaseRestoreResult $releases `
+                -GeneratedCommitProgress @($snapshotGeneratedCommitProgress) `
                 -HostName $HostName
             $recoveryProvenance = [pscustomobject] @{
                 ContentMode = 'Snapshot'; SourceRepository = $Plan.SourceRepository

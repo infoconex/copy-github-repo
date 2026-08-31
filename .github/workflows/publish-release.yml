@@ -1,9 +1,6 @@
 name: Publish Release
 
 'on':
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
@@ -41,30 +38,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $eventName = '${{ github.event_name }}'
-          $tag = if ($eventName -eq 'workflow_dispatch') {
-              '${{ inputs.tag }}'
-          }
-          else {
-              '${{ github.ref_name }}'
+          $tag = '${{ inputs.tag }}'
+
+          if ('${{ inputs.confirm_publish }}' -ne 'true') {
+              throw 'Manual stable publication requires confirm_publish to be selected.'
           }
 
-          if ($eventName -eq 'workflow_dispatch') {
-              if ('${{ inputs.confirm_publish }}' -ne 'true') {
-                  throw 'Manual stable publication requires confirm_publish to be selected.'
-              }
+          if ('${{ github.ref }}' -cne 'refs/heads/main') {
+              throw "Manual stable publication must be dispatched from the main branch. Current ref: '${{ github.ref }}'."
+          }
 
-              if ('${{ github.ref }}' -cne 'refs/heads/main') {
-                  throw "Manual stable publication must be dispatched from the main branch. Current ref: '${{ github.ref }}'."
-              }
-
-              $currentMainSha = (& gh api 'repos/${{ github.repository }}/git/ref/heads/main' --jq '.object.sha').Trim()
-              if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($currentMainSha)) {
-                  throw 'Unable to resolve the current main branch SHA before manual publication.'
-              }
-              if ($currentMainSha -cne '${{ github.sha }}') {
-                  throw "Manual release commit '${{ github.sha }}' is no longer the current main SHA '$currentMainSha'. Start a new release run from the latest main branch."
-              }
+          $currentMainSha = (& gh api 'repos/${{ github.repository }}/git/ref/heads/main' --jq '.object.sha').Trim()
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($currentMainSha)) {
+              throw 'Unable to resolve the current main branch SHA before manual publication.'
+          }
+          if ($currentMainSha -cne '${{ github.sha }}') {
+              throw "Manual release commit '${{ github.sha }}' is no longer the current main SHA '$currentMainSha'. Start a new release run from the latest main branch."
           }
 
           ./build/Test-ReleaseReadiness.ps1 `
@@ -207,8 +196,7 @@ jobs:
               }
           }
 
-      - name: Ensure manual release tag
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+      - name: Ensure release tag
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

@@ -34,6 +34,16 @@ Describe 'Snapshot release checkpoint construction' {
             Mock Get-CgrGitCommitIdentity { [pscustomobject] @{ Name = 'CopyGitHubRepo'; Email = 'copy@example.test' } }
             Mock Copy-CgrGitLfsObject { [pscustomobject] @{ IsSuccessful = $true } }
             Mock Invoke-CgrActivityStage { & $Action }
+            Mock Invoke-CgrGitHubApiReadRequest {
+                $path = [string] $ArgumentList[-1]
+                if ($path -match '/git/ref/tags/v1$') {
+                    return [pscustomobject] @{ ExitCode = 0; Output = @('{"object":{"type":"commit","sha":"c1"}}'); ErrorText = '' }
+                }
+                if ($path -match '/git/ref/tags/v2$') {
+                    return [pscustomobject] @{ ExitCode = 0; Output = @('{"object":{"type":"commit","sha":"c2"}}'); ErrorText = '' }
+                }
+                throw "Unexpected GitHub API read: $($ArgumentList -join ' ')"
+            }
             Mock Invoke-CgrGitCommand {
                 $joined = $ArgumentList -join ' '
                 if ($joined -match '^clone ' -or $joined -match ' fetch ' -or $joined -match ' push ') {
@@ -100,8 +110,8 @@ Describe 'Snapshot release checkpoint construction' {
             $checkpointPlan = [pscustomobject] @{
                 SourceHead = [pscustomobject] @{ CommitSha = 'head'; TreeSha = 'tree-head' }
                 ReleaseEvidence = @(
-                    [pscustomobject] @{ SelectionOrder = 1; TagName = 'v2'; PeeledCommitSha = 'c2' },
-                    [pscustomobject] @{ SelectionOrder = 2; TagName = 'v1'; PeeledCommitSha = 'c1' }
+                    [pscustomobject] @{ SelectionOrder = 1; TagName = 'v2'; TagObjectType = 'commit'; TagObjectSha = 'c2'; PeeledCommitSha = 'c2' },
+                    [pscustomobject] @{ SelectionOrder = 2; TagName = 'v1'; TagObjectType = 'commit'; TagObjectSha = 'c1'; PeeledCommitSha = 'c1' }
                 )
                 Checkpoints = @(
                     [pscustomobject] @{ Order = 1; SourceCommitSha = 'c1'; SourceTreeSha = 'tree-c1'; TagNames = @('v1') },

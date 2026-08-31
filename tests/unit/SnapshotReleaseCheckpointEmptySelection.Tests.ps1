@@ -70,7 +70,8 @@ Describe 'Snapshot release checkpoint empty selection construction' {
             $result.GeneratedCommits[0].Kind | Should -Be 'SnapshotRoot'
             $result.GeneratedCommits[0].TreeSha | Should -Be 'tree-head'
             $result.GeneratedCommits[0].Message | Should -Be 'Initial repository commit'
-            $result.ReleaseCheckpointPlan | Should -BeSameAs $checkpointPlan
+            $result.ReleaseCheckpointPlan.SourceHead.CommitSha | Should -Be 'head'
+            @($result.ReleaseCheckpointPlan.Checkpoints).Count | Should -Be 0
             Should -Invoke Invoke-CgrGitCommand -Times 0 -ParameterFilter { ($ArgumentList -join ' ') -match ' fetch ' }
         }
     }

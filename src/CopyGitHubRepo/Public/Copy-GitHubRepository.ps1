@@ -13,8 +13,9 @@ function Copy-GitHubRepository {
     FullHistory can optionally preserve selected GitHub Releases and their assets.
     Release selection is stable/non-draft by default and can be narrowed with tag
     include/exclude patterns or a newest-N limit. Prereleases and draft releases
-    require explicit opt-in. Snapshot -IncludeReleases is available for PlanOnly
-    review; mutating Snapshot release-checkpoint execution is not implemented yet.
+    require explicit opt-in. Snapshot -IncludeReleases preserves selected release
+    states as newly generated checkpoint commits and restores approved releases
+    against their recreated destination tags.
 
     Planning captures immutable source-state evidence. Execution uses that same
     plan and fails closed with SourceStateChangedSincePlanning if the source no
@@ -50,9 +51,9 @@ function Copy-GitHubRepository {
     Git LFS objects.
 
     .PARAMETER IncludeReleases
-    Requests GitHub Release preservation. FullHistory supports planning and execution.
-    Snapshot supports PlanOnly review of immutable release-checkpoint evidence; its
-    mutating checkpoint/release execution is implemented by dependent work.
+    Requests GitHub Release preservation. FullHistory preserves original Git tag
+    targets. Snapshot preserves selected release states as new checkpoint commits
+    and restores approved releases against the recreated Snapshot tags.
 
     .PARAMETER ReleaseTag
     Includes only GitHub Releases whose tag names match one or more PowerShell
@@ -247,13 +248,6 @@ function Copy-GitHubRepository {
         $message = 'Release filter parameters require -IncludeReleases.'
         $exception = [System.InvalidOperationException]::new($message)
         $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'ReleaseFilterRequiresIncludeReleases', [System.Management.Automation.ErrorCategory]::InvalidArgument, 'IncludeReleases')
-        $PSCmdlet.ThrowTerminatingError($errorRecord)
-    }
-
-    if ($IncludeReleases -and $ContentMode -eq 'Snapshot' -and -not $PlanOnly) {
-        $message = 'Snapshot -IncludeReleases execution is not implemented yet. Use -PlanOnly to review the immutable release-checkpoint plan.'
-        $exception = [System.NotSupportedException]::new($message)
-        $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'SnapshotReleaseMigrationNotImplemented', [System.Management.Automation.ErrorCategory]::NotImplemented, 'IncludeReleases')
         $PSCmdlet.ThrowTerminatingError($errorRecord)
     }
 

@@ -8,6 +8,7 @@
         'Invoke-CgrSameNameFullHistoryReplacement'
         'Invoke-CgrSameNameSnapshotReplacement'
         'New-CgrMigrationPlan'
+        'New-CgrSnapshotReleaseCheckpointPlan'
     )
 
     ModuleFiles = @(

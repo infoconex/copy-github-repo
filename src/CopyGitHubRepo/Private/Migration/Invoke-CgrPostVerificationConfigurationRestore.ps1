@@ -6,9 +6,10 @@ function Invoke-CgrPostVerificationConfigurationRestore {
     .DESCRIPTION
     Centralizes the shared execution contract for supported repository settings and
     repository protection restoration. Content-mode orchestrators retain ownership of
-    copy, verification, release, final result, and recovery sequencing. This boundary
-    records each completed configuration stage so recovery evidence remains precise.
-    Planned repository-protection evidence remains authoritative when present.
+    copy, initial content verification, release restoration, final result, and recovery
+    sequencing. For Snapshot release preservation this boundary performs the required
+    independent post-release destination verification before any configuration mutation.
+    Planned repository-protection and release evidence remain authoritative.
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions',
@@ -32,6 +33,34 @@ function Invoke-CgrPostVerificationConfigurationRestore {
     $destinationRepositoryForRestore = $DestinationRepository
     $verificationFailureReasonForRestore = $VerificationFailureReason
     $hostNameForRestore = $HostName
+
+    $contentMode = [string] (Get-CgrObjectProperty -InputObject $Plan -Name 'ContentMode')
+    $includeReleases = [bool] (Get-CgrObjectProperty -InputObject $Plan -Name 'IncludeReleases')
+    if ($contentMode -eq 'Snapshot' -and $includeReleases -and $Verification.IsSuccessful) {
+        $approvedSelection = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseSelection'
+        $destinationTagTargets = @(Get-CgrObjectProperty -InputObject $Verification -Name 'ReleaseTags')
+        $FailureStage.Value = 'VerifyGitHubReleases'
+        $releaseVerification = Invoke-CgrActivityStage -Name 'VerifyGitHubReleases' -Message 'Verify recreated GitHub Releases and assets' -Action {
+            Test-CgrGitHubReleaseMigration `
+                -SourceRepository $sourceRepositoryForRestore `
+                -DestinationRepository $destinationRepositoryForRestore `
+                -ApprovedSelection $approvedSelection `
+                -DestinationTagTargets $destinationTagTargets `
+                -RequireExactDestinationReleaseSet `
+                -HostName $hostNameForRestore
+        }
+        $gitContentSuccessful = [bool] $Verification.IsSuccessful
+        $Verification | Add-Member -NotePropertyName GitContentSuccessful -NotePropertyValue $gitContentSuccessful -Force
+        $Verification | Add-Member -NotePropertyName ReleaseVerification -NotePropertyValue $releaseVerification -Force
+        $Verification | Add-Member -NotePropertyName ReleasesVerified -NotePropertyValue ([bool] $releaseVerification.IsSuccessful) -Force
+        $Verification | Add-Member -NotePropertyName IsSuccessful -NotePropertyValue ([bool] ($gitContentSuccessful -and $releaseVerification.IsSuccessful)) -Force
+        $CompletedSteps.Add([pscustomobject] @{
+                Order = $CompletedSteps.Count + 1
+                Name = 'VerifyGitHubReleases'
+                MutatedGitHub = $false
+                Verified = [bool] $releaseVerification.IsSuccessful
+            })
+    }
 
     $FailureStage.Value = 'RestoreSupportedSettings'
     $settings = Invoke-CgrActivityStage -Name 'RestoreSupportedSettings' -Message 'Restore supported repository settings' -Action {

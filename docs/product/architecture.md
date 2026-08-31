@@ -97,7 +97,7 @@ flowchart TD
     G --> H
     H --> I[Prepare and verify local copy workspace]
     I --> J{Content mode}
-    J -- Snapshot --> K[Create one unrelated root commit and transfer required LFS]
+    J -- Snapshot --> K[Publish approved Snapshot history shape and transfer required LFS]
     J -- FullHistory --> L[Push approved branches/tags/history and reachable LFS]
     K --> M[Verify destination content]
     L --> M
@@ -127,6 +127,14 @@ FullHistory `SourceState` contains the approved repository identity when availab
 
 Planning performs no GitHub mutation.
 
+## Snapshot release-checkpoint architecture boundary
+
+The normative behavior of `Snapshot -IncludeReleases` is defined only in [`product-contract.md#snapshot-release-checkpoint-contract`](product-contract.md#snapshot-release-checkpoint-contract). Architecture does not duplicate its topology rules.
+
+Architecturally, Snapshot release preservation is a distinct **checkpoint-history construction** path inside the Snapshot content boundary, not a FullHistory rewrite and not a conventional squash/rebase of the source graph. The path must consume reviewed release/tag evidence, normalize supported annotated and lightweight tags to peeled commit targets, validate the product contract's deterministic ancestry ordering, and fail closed before mutation when the reviewed selected topology cannot be represented safely.
+
+Plain Snapshot remains the one-unrelated-root path when `-IncludeReleases` is absent. FullHistory remains the history-preserving path. Dependent issues own the planning data shape, checkpoint construction mechanics, tag/release restoration, verification, recovery, and wizard integration needed to execute the product contract.
+
 ## Approved-plan execution boundary
 
 `Invoke-CgrApprovedMigrationPlan` is the shared internal execution boundary for the public command and wizard. It requires `SourceState`, re-checks the source before the first mutation, preserves exact replacement-confirmation rules, and dispatches the already-reviewed plan into the appropriate orchestration path.
@@ -147,7 +155,7 @@ After the user selects Execute, the wizard's `ShouldProcess` guard runs and then
 
 The pre-mutation source check closes the plan/review TOCTOU window, but source state is also checked inside the cloned workspace before destination publication:
 
-- Snapshot verifies the cloned commit/tree and LFS evidence against the approved Snapshot state before creating/pushing the destination root commit.
+- Snapshot verifies the cloned commit/tree and LFS evidence against the approved Snapshot state before creating/pushing the destination Snapshot history.
 - FullHistory verifies the bare clone's ref targets, reachable commit count, branch-tip trees, and LFS evidence before pushing LFS objects, branches, or tags.
 
 This prevents a moving source from being substituted between preflight and clone.
@@ -156,7 +164,7 @@ This prevents a moving source from being substituted between preflight and clone
 
 Execution verification does not reclone a potentially moved source and redefine success after publication.
 
-Snapshot destination verification compares the destination tree and one-root-commit history shape with the approved/copied Snapshot evidence.
+Plain Snapshot destination verification compares the destination tree and one-root-commit history shape with the approved/copied Snapshot evidence. Snapshot release-checkpoint verification must prove the checkpoint shape and state-equivalence rules defined by the product contract once that dependent implementation lands.
 
 FullHistory destination verification compares the destination's branch/tag targets, reachable commit count, branch-tip trees, default branch, and LFS availability with the approved FullHistory evidence.
 
@@ -225,7 +233,7 @@ Architecture claims are protected through executable conformance rather than rev
 | Architectural property | Primary executable evidence |
 | --- | --- |
 | Plan is bound to immutable approved source state and stale plans fail closed | `ApprovedSourceState.Tests.ps1`, `StaleStateSafety.Tests.ps1` |
-| Snapshot retains clean one-root-commit semantics | `NewDestinationSnapshot.Tests.ps1`, `SnapshotReleaseSafety.Tests.ps1`, Snapshot E2E harness |
+| Snapshot retains clean one-root-commit semantics unless release checkpoints are explicitly requested | `NewDestinationSnapshot.Tests.ps1`, `SnapshotReleaseSafety.Tests.ps1`, `DocumentationContract.Tests.ps1`, Snapshot E2E harness |
 | FullHistory preserves approved refs/history | `FullHistory.Tests.ps1`, FullHistory E2E harness |
 | Existing/same-name replacement preserves identity and does not silently overwrite | `ExistingDestinationReplacement.Tests.ps1`, `SameNameSafety.Tests.ps1`, `SameNameExecution.Tests.ps1`, same-name E2E harnesses |
 | Partial failure retains recovery evidence instead of auto-rollback | `Recovery.Tests.ps1`, `RiskFailurePaths.Tests.ps1`, recovery E2E harness |

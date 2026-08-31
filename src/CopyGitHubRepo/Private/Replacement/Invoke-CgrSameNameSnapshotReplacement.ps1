@@ -28,6 +28,7 @@ function Invoke-CgrSameNameSnapshotReplacement {
     $archive = $null
     $destination = $null
     $snapshot = $null
+    $snapshotRootCommitSha = $null
     $repositoryIdentity = $null
     $sourceState = Get-CgrObjectProperty -InputObject $Plan -Name 'SourceState'
     $releaseCheckpointPlan = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseCheckpointPlan'
@@ -56,6 +57,8 @@ function Invoke-CgrSameNameSnapshotReplacement {
 
         $failureStage = 'CopySnapshot'
         $snapshot = @(Copy-CgrRepositorySnapshot -SourceRepository $archive -DestinationRepository $destination -BranchName $Plan.SourceDefaultBranch -CommitMessage $Plan.CommitMessage -ApprovedSourceState $sourceState -ReleaseCheckpointPlan $releaseCheckpointPlan)[-1]
+        $snapshotRootCommitSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'RootCommitSha'
+        if ($null -eq $snapshotRootCommitSha) { $snapshotRootCommitSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'CommitSha' }
         $completedSteps.Add([pscustomobject] @{ Order = 5; Name = 'CopySnapshot'; MutatedGitHub = $true; Verified = $snapshot.Verified })
 
         $failureStage = 'ReloadReplacement'
@@ -103,7 +106,7 @@ function Invoke-CgrSameNameSnapshotReplacement {
             DestinationRepository = $verifiedDestination.FullName
             DestinationRepositoryId = $repositoryIdentity.ReplacementRepositoryId
             DestinationRepositoryNodeId = $destinationRepositoryNodeId
-            DestinationRootCommitSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'RootCommitSha'
+            DestinationRootCommitSha = $snapshotRootCommitSha
             DestinationTreeSha = $snapshotTreeSha
             VerificationSuccessful = [bool] $verification.IsSuccessful
         }
@@ -155,7 +158,7 @@ function Invoke-CgrSameNameSnapshotReplacement {
     catch {
         $recoveryReportPath = $null
         try {
-            $recoveryReportPath = Write-CgrSameNameRecoveryReport -Plan $Plan -SourceRepositoryId $sourceRepositoryId -ArchiveRepository $archive -DestinationRepository $destination -FailureStage $failureStage -ErrorRecord $_ -CompletedSteps @($completedSteps) -SourceCommitSha $(if ($sourceState) { Get-CgrObjectProperty -InputObject $sourceState -Name 'CommitSha' } else { $null }) -SourceTreeSha $(if ($sourceState) { Get-CgrObjectProperty -InputObject $sourceState -Name 'TreeSha' } else { $null }) -DestinationRootCommitSha $(if ($snapshot) { Get-CgrObjectProperty -InputObject $snapshot -Name 'RootCommitSha' } else { $null }) -DestinationTreeSha $(if ($snapshot) { Get-CgrObjectProperty -InputObject $snapshot -Name 'TreeSha' } else { $null }) -PreferredReportPath $ReportPath
+            $recoveryReportPath = Write-CgrSameNameRecoveryReport -Plan $Plan -SourceRepositoryId $sourceRepositoryId -ArchiveRepository $archive -DestinationRepository $destination -FailureStage $failureStage -ErrorRecord $_ -CompletedSteps @($completedSteps) -SourceCommitSha $(if ($sourceState) { Get-CgrObjectProperty -InputObject $sourceState -Name 'CommitSha' } else { $null }) -SourceTreeSha $(if ($sourceState) { Get-CgrObjectProperty -InputObject $sourceState -Name 'TreeSha' } else { $null }) -DestinationRootCommitSha $snapshotRootCommitSha -DestinationTreeSha $(if ($snapshot) { Get-CgrObjectProperty -InputObject $snapshot -Name 'TreeSha' } else { $null }) -PreferredReportPath $ReportPath
         }
         catch { Write-Warning "Same-name replacement failed after mutation began, and the recovery report could not be written. Recovery reporting error: $($_.Exception.Message)" }
         if ($recoveryReportPath) { Write-Warning "Same-name replacement failed. Recovery report: $recoveryReportPath" }

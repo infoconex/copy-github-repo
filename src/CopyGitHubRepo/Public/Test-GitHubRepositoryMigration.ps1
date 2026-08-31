@@ -4,87 +4,71 @@ function Test-GitHubRepositoryMigration {
     Verifies a GitHub repository migration.
 
     .DESCRIPTION
-    Performs read-only verification of a completed repository migration. Snapshot
-    verification compares the source and destination default-branch Git trees
-    and confirms the destination has the expected single-root-commit history
-    shape. FullHistory verification compares ordinary branch and tag targets,
-    reachable commit counts, branch-tip trees, the default branch, and reachable
-    Git LFS object availability.
+    Performs read-only verification of a completed repository migration. Plain Snapshot
+    verification compares the source and destination default-branch Git trees and confirms
+    the destination has the expected single-root-commit history shape. Snapshot migrations
+    that preserved GitHub Releases are verified from the immutable migration plan reviewed
+    before execution: generated checkpoint order and parentage, checkpoint tree equivalence,
+    selected release-tag targets, reviewed source HEAD state, recreated GitHub Release
+    metadata/assets, and Latest designation are read independently from the destination.
 
-    FullHistory verification can additionally compare selected GitHub Releases and
-    release assets by using -IncludeReleases. The release-selection parameters use
-    the same semantics as Copy-GitHubRepository: stable non-draft releases are the
-    default, tag include/exclude wildcard patterns can narrow the set, prereleases
-    and drafts require explicit opt-in, and -ReleaseCount limits the newest matches.
+    FullHistory verification compares ordinary branch and tag targets, reachable commit
+    counts, branch-tip trees, the default branch, and reachable Git LFS object availability.
+    FullHistory release verification retains its existing live source-selection behavior.
 
-    Release verification is read-only and compares the currently selected source
-    release state with destination releases. It verifies tag commit identity,
-    supported release metadata, asset metadata, and the Latest designation when the
-    source Latest release is part of the selected set. Extra destination releases
-    outside the selected source set do not cause verification failure.
-
-    The default content mode is Snapshot. Use the same content mode that was used
-    for the migration. The command does not repair a failed verification and does
-    not mutate either repository. The current release line supports github.com only.
+    Snapshot -IncludeReleases requires -ApprovedPlan so verification cannot rerun live release
+    selection, filtering, or topology discovery and silently redefine the expected state.
+    The approved plan can be taken from the Plan property returned by Copy-GitHubRepository.
+    Verification never repairs or mutates either repository.
 
     .PARAMETER SourceRepository
-    Specifies the source repository as owner/name. The repository must exist and
-    be visible to the authenticated GitHub account.
+    Specifies the source repository as owner/name. For Snapshot -IncludeReleases this name is
+    retained for result identity while immutable approved evidence defines expected state.
 
     .PARAMETER DestinationRepository
-    Specifies the destination repository as owner/name. This is the repository
-    whose migrated content is verified against the source.
+    Specifies the destination repository as owner/name. This is the repository whose migrated
+    content and releases are independently read and verified.
 
     .PARAMETER ContentMode
-    Selects the verification contract. Snapshot is the default and verifies the
-    default-branch tree plus the destination's single-root-commit history shape.
-    FullHistory verifies branches, tags, reachable commit counts, branch-tip
-    trees, the default branch, and reachable Git LFS object availability.
+    Selects the verification contract. Snapshot is the default. FullHistory preserves the
+    existing branch/tag/history/LFS verification contract.
 
     .PARAMETER IncludeReleases
-    Adds read-only GitHub Release verification to FullHistory verification. Stable,
-    non-draft source releases are selected by default. Snapshot does not support
-    GitHub Release verification.
+    Adds GitHub Release verification. FullHistory uses the existing live source-selection
+    contract. Snapshot requires -ApprovedPlan and verifies exactly its reviewed selection.
 
     .PARAMETER ReleaseTag
-    Includes only source GitHub Releases whose tag names match one or more
-    PowerShell wildcard patterns. Exact tag names are valid patterns.
+    Includes only source GitHub Releases whose tag names match one or more PowerShell wildcard
+    patterns for FullHistory verification. Snapshot approved-plan verification does not accept
+    live release filters because the reviewed plan is authoritative.
 
     .PARAMETER ReleaseExcludeTag
-    Excludes source GitHub Releases whose tag names match one or more PowerShell
-    wildcard patterns after include filtering.
+    Excludes source GitHub Releases whose tag names match one or more PowerShell wildcard
+    patterns for FullHistory verification.
 
     .PARAMETER IncludePrerelease
-    Includes GitHub Releases marked as prereleases. Prereleases are excluded by
-    default.
+    Includes source prereleases in FullHistory release verification.
 
     .PARAMETER IncludeDraftReleases
-    Includes draft GitHub Releases. Draft releases are excluded by default.
+    Includes source draft releases in FullHistory release verification.
 
     .PARAMETER ReleaseCount
-    Limits release verification to the newest N releases remaining after the other
-    release filters are applied. Ordering uses publication time and then creation
-    time.
+    Limits FullHistory release verification to the newest N selected source releases.
+
+    .PARAMETER ApprovedPlan
+    Supplies the immutable reviewed CopyGitHubRepo migration plan for Snapshot -IncludeReleases
+    verification. ReleaseCheckpointPlan and ReleaseSelection from this object are consumed as
+    expected evidence; verification does not rerun live source release selection or ordering.
 
     .PARAMETER HostName
-    Specifies the GitHub host used for discovery and authentication. The default
-    is github.com. The current release line supports github.com only.
+    Specifies the GitHub host used for discovery and authentication. The default is github.com.
 
     .EXAMPLE
     Test-GitHubRepositoryMigration `
         -SourceRepository infoconex/source `
         -DestinationRepository infoconex/destination
 
-    Verifies a Snapshot migration, which is the default content mode.
-
-    .EXAMPLE
-    Test-GitHubRepositoryMigration `
-        -SourceRepository infoconex/source `
-        -DestinationRepository infoconex/destination `
-        -ContentMode FullHistory
-
-    Verifies a FullHistory migration including ordinary branches, tags, reachable
-    history, branch-tip trees, default branch, and reachable Git LFS objects.
+    Verifies a plain Snapshot migration.
 
     .EXAMPLE
     Test-GitHubRepositoryMigration `
@@ -92,20 +76,28 @@ function Test-GitHubRepositoryMigration {
         -DestinationRepository infoconex/destination `
         -ContentMode FullHistory `
         -IncludeReleases `
-        -ReleaseTag 'v2.*' `
-        -ReleaseCount 3
+        -ReleaseTag 'v2.*'
 
-    Verifies FullHistory plus the three newest stable, non-draft source GitHub
-    Releases whose tags match v2.*.
+    Verifies FullHistory plus the selected live source releases using the existing contract.
+
+    .EXAMPLE
+    Test-GitHubRepositoryMigration `
+        -SourceRepository infoconex/source `
+        -DestinationRepository infoconex/destination `
+        -ContentMode Snapshot `
+        -IncludeReleases `
+        -ApprovedPlan $migration.Plan
+
+    Independently verifies Snapshot release checkpoints and recreated releases from the exact
+    immutable evidence that was reviewed before migration execution.
 
     .INPUTS
     None. This command does not accept pipeline input.
 
     .OUTPUTS
-    CopyGitHubRepo.SnapshotVerificationResult or
-    CopyGitHubRepo.FullHistoryVerificationResult. FullHistory results include a
-    ReleaseVerification property when -IncludeReleases is requested. The returned
-    IsSuccessful value reflects both Git/LFS and requested release verification.
+    CopyGitHubRepo.MigrationVerificationResult. When release verification is requested, the
+    result includes ReleaseVerification and ReleasesVerified and IsSuccessful reflects both
+    Git content and GitHub Release verification.
 
     .LINK
     https://github.com/infoconex/copy-github-repo
@@ -139,6 +131,8 @@ function Test-GitHubRepositoryMigration {
         [ValidateRange(1, [int]::MaxValue)]
         [int] $ReleaseCount,
 
+        [psobject] $ApprovedPlan,
+
         [ValidateNotNullOrEmpty()]
         [string] $HostName = 'github.com'
     )
@@ -146,10 +140,10 @@ function Test-GitHubRepositoryMigration {
     Assert-CgrSupportedHostName -HostName $HostName
 
     $releaseFilterWasSpecified = $PSBoundParameters.ContainsKey('ReleaseTag') -or
-    $PSBoundParameters.ContainsKey('ReleaseExcludeTag') -or
-    $IncludePrerelease -or
-    $IncludeDraftReleases -or
-    $PSBoundParameters.ContainsKey('ReleaseCount')
+        $PSBoundParameters.ContainsKey('ReleaseExcludeTag') -or
+        $IncludePrerelease -or
+        $IncludeDraftReleases -or
+        $PSBoundParameters.ContainsKey('ReleaseCount')
 
     if ($releaseFilterWasSpecified -and -not $IncludeReleases) {
         $message = 'Release verification filter parameters require -IncludeReleases.'
@@ -163,16 +157,57 @@ function Test-GitHubRepositoryMigration {
         $PSCmdlet.ThrowTerminatingError($errorRecord)
     }
 
-    if ($IncludeReleases -and $ContentMode -ne 'FullHistory') {
-        $message = 'GitHub Release verification is currently supported only with -ContentMode FullHistory.'
-        $exception = [System.NotSupportedException]::new($message)
+    if ($ApprovedPlan -and -not ($ContentMode -eq 'Snapshot' -and $IncludeReleases)) {
+        $message = '-ApprovedPlan is supported only with -ContentMode Snapshot -IncludeReleases.'
+        $exception = [System.InvalidOperationException]::new($message)
         $errorRecord = [System.Management.Automation.ErrorRecord]::new(
             $exception,
-            'SnapshotReleaseVerificationNotImplemented',
-            [System.Management.Automation.ErrorCategory]::NotImplemented,
-            'IncludeReleases'
+            'ApprovedPlanRequiresSnapshotReleaseVerification',
+            [System.Management.Automation.ErrorCategory]::InvalidArgument,
+            'ApprovedPlan'
         )
         $PSCmdlet.ThrowTerminatingError($errorRecord)
+    }
+
+    if ($ContentMode -eq 'Snapshot' -and $IncludeReleases) {
+        if (-not $ApprovedPlan) {
+            $message = 'Snapshot release verification requires -ApprovedPlan so expected checkpoints and releases come from immutable reviewed evidence.'
+            $exception = [System.InvalidOperationException]::new($message)
+            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                $exception,
+                'SnapshotReleaseVerificationPlanRequired',
+                [System.Management.Automation.ErrorCategory]::InvalidArgument,
+                'ApprovedPlan'
+            )
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
+        if ($releaseFilterWasSpecified) {
+            $message = 'Snapshot release verification cannot use live release filters with -ApprovedPlan. The reviewed release selection is authoritative.'
+            $exception = [System.InvalidOperationException]::new($message)
+            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                $exception,
+                'SnapshotReleaseVerificationFiltersNotAllowed',
+                [System.Management.Automation.ErrorCategory]::InvalidArgument,
+                'ApprovedPlan'
+            )
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
+
+        $approvedContentMode = [string] (Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'ContentMode')
+        $approvedIncludeReleases = [bool] (Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'IncludeReleases')
+        $checkpointPlan = Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'ReleaseCheckpointPlan'
+        $approvedSelection = Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'ReleaseSelection'
+        if ($approvedContentMode -ne 'Snapshot' -or -not $approvedIncludeReleases -or $null -eq $checkpointPlan -or $null -eq $approvedSelection) {
+            $message = 'The supplied approved plan does not contain complete Snapshot -IncludeReleases verification evidence.'
+            $exception = [System.InvalidOperationException]::new($message)
+            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                $exception,
+                'SnapshotReleaseVerificationPlanInvalid',
+                [System.Management.Automation.ErrorCategory]::InvalidData,
+                'ApprovedPlan'
+            )
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
     }
 
     $prerequisites = Get-CgrPrerequisiteStatus -HostName $HostName
@@ -211,6 +246,41 @@ function Test-GitHubRepositoryMigration {
             $HostName
         )
         $PSCmdlet.ThrowTerminatingError($errorRecord)
+    }
+
+    if ($ContentMode -eq 'Snapshot' -and $IncludeReleases) {
+        $destination = Get-CgrRepository -Repository $DestinationRepository -HostName $HostName
+        $approvedSourceName = [string] (Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'SourceRepository')
+        $source = [pscustomobject] @{
+            FullName = if ([string]::IsNullOrWhiteSpace($approvedSourceName)) { $SourceRepository } else { $approvedSourceName }
+            HostName = $HostName
+        }
+
+        $result = Invoke-CgrApprovedSnapshotReleaseVerification `
+            -SourceRepository $source `
+            -DestinationRepository $destination `
+            -ReleaseCheckpointPlan $checkpointPlan
+
+        $gitContentSuccessful = [bool] $result.IsSuccessful
+        $targetEvidenceComplete = @($result.ReleaseTags).Count -eq @($approvedSelection.Releases).Count -and
+            -not @($result.ReleaseTags | Where-Object { [string]::IsNullOrWhiteSpace([string] $_.DestinationCommitSha) })
+        $releaseVerification = $null
+        if ($targetEvidenceComplete) {
+            $releaseVerification = Test-CgrGitHubReleaseMigration `
+                -SourceRepository $source `
+                -DestinationRepository $destination `
+                -ApprovedSelection $approvedSelection `
+                -DestinationTagTargets @($result.ReleaseTags) `
+                -RequireExactDestinationReleaseSet `
+                -HostName $HostName
+        }
+
+        $releasesVerified = [bool] ($releaseVerification -and $releaseVerification.IsSuccessful)
+        $result | Add-Member -NotePropertyName GitContentSuccessful -NotePropertyValue $gitContentSuccessful -Force
+        $result | Add-Member -NotePropertyName ReleaseVerification -NotePropertyValue $releaseVerification -Force
+        $result | Add-Member -NotePropertyName ReleasesVerified -NotePropertyValue $releasesVerified -Force
+        $result | Add-Member -NotePropertyName IsSuccessful -NotePropertyValue ([bool] ($gitContentSuccessful -and $releasesVerified)) -Force
+        return $result
     }
 
     $source = Get-CgrRepository -Repository $SourceRepository -HostName $HostName

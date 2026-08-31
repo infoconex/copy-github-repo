@@ -34,8 +34,8 @@ Describe 'Release integration pull request validation' {
         $publish | Should -Match "(?ms)^'on':\s+workflow_dispatch:"
         $publish | Should -Not -Match '(?ms)^\s+push:'
         $publish | Should -Not -Match '(?m)^\s*pull_request:'
-        $publish | Should -Match ([regex]::Escape("if ('${{ github.ref }}' -cne 'refs/heads/main')"))
-        $publish | Should -Match ([regex]::Escape("if ($currentMainSha -cne '${{ github.sha }}')"))
+        $publish | Should -Match ([regex]::Escape('if (''${{ github.ref }}'' -cne ''refs/heads/main'')'))
+        $publish | Should -Match ([regex]::Escape('if ($currentMainSha -cne ''${{ github.sha }}'')'))
     }
 
     It 'keeps documentation deployment limited to main pushes' {

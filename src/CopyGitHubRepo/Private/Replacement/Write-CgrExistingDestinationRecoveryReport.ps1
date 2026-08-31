@@ -23,6 +23,8 @@ function Write-CgrExistingDestinationRecoveryReport {
 
         [object[]] $CompletedSteps = @(),
 
+        [psobject] $ReleasePreservation,
+
         [string] $PreferredReportPath
     )
 
@@ -46,6 +48,8 @@ function Write-CgrExistingDestinationRecoveryReport {
     $replacementRepositoryNodeId = if ($DestinationRepository) { Get-CgrObjectProperty -InputObject $DestinationRepository -Name 'NodeId' } else { $null }
     $archiveIdentityPreserved = $null -ne $archiveRepositoryId -and $null -ne $OriginalDestinationRepositoryId -and $archiveRepositoryId -eq $OriginalDestinationRepositoryId
     $replacementDistinct = $null -ne $replacementRepositoryId -and $null -ne $OriginalDestinationRepositoryId -and $replacementRepositoryId -ne $OriginalDestinationRepositoryId
+    $lastCompletedStep = @($CompletedSteps | Sort-Object Order | Select-Object -Last 1)
+    if ($lastCompletedStep.Count -eq 0) { $lastCompletedStep = $null } else { $lastCompletedStep = $lastCompletedStep[0] }
 
     $recoveryResult = [pscustomobject] @{
         PSTypeName = 'CopyGitHubRepo.ExistingDestinationRecoveryResult'
@@ -67,9 +71,11 @@ function Write-CgrExistingDestinationRecoveryReport {
         ReplacementHasDistinctIdentity = $replacementDistinct
         ContentMode = $Plan.ContentMode
         FailureStage = $FailureStage
+        LastCompletedStep = $lastCompletedStep
         ErrorId = $ErrorRecord.FullyQualifiedErrorId
         ErrorMessage = $ErrorRecord.Exception.Message
         CompletedSteps = @($CompletedSteps)
+        ReleasePreservation = $ReleasePreservation
         Recovery = [pscustomobject] @{
             ExistingDestinationWasDeleted = $false
             ExistingDestinationPreservedAsArchive = [bool] $ArchiveRepository

@@ -62,6 +62,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Get-CgrRepositoryFullHistoryIdentity` | Captures branches, tags, reachable commits, and FullHistory identity for comparison. |
 | `Get-CgrRepositoryProtectionConfiguration` | Captures transferable protection while identifying settings that cannot be safely reproduced. |
 | `Get-CgrSnapshotHistory` | Reads Snapshot history evidence used to prove the destination contains a clean publication root. |
+| `Get-CgrSnapshotReleasePreservationEvidence` | Builds additive Snapshot `-IncludeReleases` provenance from immutable reviewed planning evidence plus completed execution results, or performs read-only destination observation after failure to record published checkpoint/tag/release/asset state without rollback or repair. |
 | `Invoke-CgrActivityStage` | Wraps a logical operation with structured activity start/completion/failure signaling. |
 | `Invoke-CgrApprovedFullHistoryVerification` | Verifies copied FullHistory against the exact approved source evidence rather than a moving source. |
 | `Invoke-CgrApprovedMigrationPlan` | Executes only the reviewed plan and routes to the correct migration/replacement mode. |

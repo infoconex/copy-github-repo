@@ -35,6 +35,9 @@ function Write-CgrMigrationRecoveryReport {
         New-Item -Path $resolvedParent -ItemType Directory -Force | Out-Null
     }
 
+    $lastCompletedStep = @($CompletedSteps | Sort-Object Order | Select-Object -Last 1)
+    if ($lastCompletedStep.Count -eq 0) { $lastCompletedStep = $null } else { $lastCompletedStep = $lastCompletedStep[0] }
+
     $recoveryResult = [pscustomobject] @{
         PSTypeName = 'CopyGitHubRepo.MigrationRecoveryResult'
         SchemaVersion = 1
@@ -48,6 +51,7 @@ function Write-CgrMigrationRecoveryReport {
         ContentMode = $Plan.ContentMode
         BranchName = $Plan.SourceDefaultBranch
         FailureStage = $FailureStage
+        LastCompletedStep = $lastCompletedStep
         ErrorId = $ErrorRecord.FullyQualifiedErrorId
         ErrorMessage = $ErrorRecord.Exception.Message
         CompletedSteps = @($CompletedSteps)

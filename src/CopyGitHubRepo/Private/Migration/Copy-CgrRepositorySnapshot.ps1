@@ -24,7 +24,9 @@ function Copy-CgrRepositorySnapshot {
     .NOTES
     This is a Git mutation boundary called after the public ShouldProcess decision.
     The temporary workspace is always removed. Approved-state or reviewed release-tag
-    mismatch stops before the destination branch or release tags are published.
+    mismatch stops before the destination branch or release tags are published. When a
+    caller supplies RecoveryGeneratedCommits, constructed commit evidence is retained
+    outside the temporary workspace without changing publication behavior.
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions',
@@ -38,7 +40,8 @@ function Copy-CgrRepositorySnapshot {
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $BranchName,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $CommitMessage,
         [psobject] $ApprovedSourceState,
-        [psobject] $ReleaseCheckpointPlan
+        [psobject] $ReleaseCheckpointPlan,
+        [System.Collections.Generic.List[object]] $RecoveryGeneratedCommits
     )
 
     $workspacePath = Join-Path ([System.IO.Path]::GetTempPath()) "copy-github-repo-$([guid]::NewGuid().ToString('N'))"
@@ -200,16 +203,19 @@ function Copy-CgrRepositorySnapshot {
                 $PSCmdlet.ThrowTerminatingError($errorRecord)
             }
             $parentCommitSha = [string] @($checkpointCommitResult.Output)[0]
-            $generatedCommits.Add([pscustomobject] @{
-                    Kind = 'ReleaseCheckpoint'
-                    Order = $checkpointOrder
-                    SourceCommitSha = $reviewedSourceCommitSha
-                    SourceTreeSha = $reviewedSourceTreeSha
-                    TagNames = $tagNames
-                    CommitSha = $parentCommitSha
-                    TreeSha = $reviewedSourceTreeSha
-                    Message = $checkpointMessage
-                })
+            $generatedCommit = [pscustomobject] @{
+                Kind = 'ReleaseCheckpoint'
+                Order = $checkpointOrder
+                SourceCommitSha = $reviewedSourceCommitSha
+                SourceTreeSha = $reviewedSourceTreeSha
+                TagNames = $tagNames
+                CommitSha = $parentCommitSha
+                TreeSha = $reviewedSourceTreeSha
+                Message = $checkpointMessage
+                Published = $false
+            }
+            $generatedCommits.Add($generatedCommit)
+            if ($null -ne $RecoveryGeneratedCommits) { $RecoveryGeneratedCommits.Add($generatedCommit) }
         }
 
         if ($checkpoints.Count -eq 0 -or $finalHeadCheckpointRequired) {
@@ -228,16 +234,19 @@ function Copy-CgrRepositorySnapshot {
                 $PSCmdlet.ThrowTerminatingError($errorRecord)
             }
             $parentCommitSha = [string] @($currentStateCommitResult.Output)[0]
-            $generatedCommits.Add([pscustomobject] @{
-                    Kind = if ($checkpoints.Count -eq 0) { 'SnapshotRoot' } else { 'CurrentHead' }
-                    Order = $generatedCommits.Count + 1
-                    SourceCommitSha = $sourceCommitSha
-                    SourceTreeSha = $treeSha
-                    TagNames = @()
-                    CommitSha = $parentCommitSha
-                    TreeSha = $treeSha
-                    Message = $currentStateMessage
-                })
+            $generatedCommit = [pscustomobject] @{
+                Kind = if ($checkpoints.Count -eq 0) { 'SnapshotRoot' } else { 'CurrentHead' }
+                Order = $generatedCommits.Count + 1
+                SourceCommitSha = $sourceCommitSha
+                SourceTreeSha = $treeSha
+                TagNames = @()
+                CommitSha = $parentCommitSha
+                TreeSha = $treeSha
+                Message = $currentStateMessage
+                Published = $false
+            }
+            $generatedCommits.Add($generatedCommit)
+            if ($null -ne $RecoveryGeneratedCommits) { $RecoveryGeneratedCommits.Add($generatedCommit) }
         }
 
         $commitSha = $parentCommitSha
@@ -288,6 +297,9 @@ function Copy-CgrRepositorySnapshot {
             $exception = [System.InvalidOperationException]::new($message.Trim())
             $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationRepositorySnapshotPushFailed', [System.Management.Automation.ErrorCategory]::InvalidOperation, $DestinationRepository.FullName)
             $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
+        foreach ($generatedCommit in $generatedCommits) {
+            $generatedCommit.Published = $true
         }
 
         $remoteRefResult = Invoke-CgrGitCommand -HostName $DestinationRepository.HostName -ArgumentList @('ls-remote', '--heads', $DestinationRepository.CloneUrl, $BranchName)

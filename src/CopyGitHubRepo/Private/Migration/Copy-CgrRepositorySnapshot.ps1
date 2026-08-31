@@ -101,12 +101,6 @@ function Copy-CgrRepositorySnapshot {
             }
             $checkpoints = @(Get-CgrObjectProperty -InputObject $ReleaseCheckpointPlan -Name 'Checkpoints')
             $finalHeadCheckpointRequired = [bool] (Get-CgrObjectProperty -InputObject $ReleaseCheckpointPlan -Name 'FinalHeadCheckpointRequired')
-            if ($checkpoints.Count -eq 0 -and -not $finalHeadCheckpointRequired) {
-                $message = 'The approved Snapshot release-checkpoint plan contains no release checkpoints and does not require the reviewed HEAD state, so it cannot produce a Snapshot commit.'
-                $exception = [System.InvalidOperationException]::new($message)
-                $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'SnapshotReleaseCheckpointPlanEmpty', [System.Management.Automation.ErrorCategory]::InvalidData, $SourceRepository.FullName)
-                $PSCmdlet.ThrowTerminatingError($errorRecord)
-            }
         }
 
         $commitIdentity = Get-CgrGitCommitIdentity -HostName $DestinationRepository.HostName

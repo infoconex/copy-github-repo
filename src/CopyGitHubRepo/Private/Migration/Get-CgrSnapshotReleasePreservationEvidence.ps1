@@ -82,7 +82,8 @@ function Get-CgrSnapshotReleasePreservationEvidence {
     }
 
     $restoredReleases = if ($ReleaseRestoreResult) { @(Get-CgrObjectProperty -InputObject $ReleaseRestoreResult -Name 'Releases') } else { @() }
-    $releaseRestoreSuccessful = [bool] ($ReleaseRestoreResult -and (Get-CgrObjectProperty -InputObject $ReleaseRestoreResult -Name 'IsSuccessful'))
+    $releaseRestoreStatus = if ($ReleaseRestoreResult) { [string] (Get-CgrObjectProperty -InputObject $ReleaseRestoreResult -Name 'Status') } else { $null }
+    $releaseRestoreSuccessful = [bool] ($ReleaseRestoreResult -and $releaseRestoreStatus -eq 'Restored' -and (Get-CgrObjectProperty -InputObject $ReleaseRestoreResult -Name 'IsSuccessful'))
     $observedReleaseEvidence = [System.Collections.Generic.List[object]]::new()
 
     if (-not $releaseRestoreSuccessful -and $DestinationRepository) {

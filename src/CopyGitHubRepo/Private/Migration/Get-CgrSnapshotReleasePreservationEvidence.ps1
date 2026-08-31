@@ -5,6 +5,7 @@ function Get-CgrSnapshotReleasePreservationEvidence {
         [AllowNull()] [psobject] $DestinationRepository,
         [AllowNull()] [psobject] $SnapshotCopyResult,
         [AllowNull()] [psobject] $ReleaseRestoreResult,
+        [object[]] $GeneratedCommitProgress = @(),
         [ValidateNotNullOrEmpty()] [string] $HostName = 'github.com'
     )
 
@@ -15,14 +16,16 @@ function Get-CgrSnapshotReleasePreservationEvidence {
         return $null
     }
 
-    $generatedCommits = if ($SnapshotCopyResult) { @(Get-CgrObjectProperty -InputObject $SnapshotCopyResult -Name 'GeneratedCommits') } else { @() }
+    $generatedCommits = [System.Collections.Generic.List[object]]::new()
+    foreach ($generatedCommit in $(if ($SnapshotCopyResult) { @(Get-CgrObjectProperty -InputObject $SnapshotCopyResult -Name 'GeneratedCommits') } else { @($GeneratedCommitProgress) })) {
+        $generatedCommits.Add($generatedCommit)
+    }
     $recreatedTags = if ($SnapshotCopyResult) { @(Get-CgrObjectProperty -InputObject $SnapshotCopyResult -Name 'ReleaseTags') } else { @() }
     $destinationHeadCommitSha = if ($SnapshotCopyResult) { [string] (Get-CgrObjectProperty -InputObject $SnapshotCopyResult -Name 'CommitSha') } else { $null }
     $snapshotPublicationVerified = [bool] ($SnapshotCopyResult -and (Get-CgrObjectProperty -InputObject $SnapshotCopyResult -Name 'Verified'))
 
     if ($null -eq $SnapshotCopyResult -and $DestinationRepository) {
         $observedTags = [System.Collections.Generic.List[object]]::new()
-        $observedCommits = [System.Collections.Generic.List[object]]::new()
         foreach ($releaseEvidence in @(Get-CgrObjectProperty -InputObject $checkpointPlan -Name 'ReleaseEvidence')) {
             $tagName = [string] (Get-CgrObjectProperty -InputObject $releaseEvidence -Name 'TagName')
             if ([string]::IsNullOrWhiteSpace($tagName)) { continue }
@@ -52,8 +55,12 @@ function Get-CgrSnapshotReleasePreservationEvidence {
                     Verified = $false
                 })
 
-            if (@($observedCommits | Where-Object { $_.CommitSha -eq $destinationCommitSha }).Count -eq 0) {
-                $observedCommits.Add([pscustomobject] @{
+            $matchingGeneratedCommit = @($generatedCommits | Where-Object { [string] (Get-CgrObjectProperty -InputObject $_ -Name 'CommitSha') -eq $destinationCommitSha } | Select-Object -First 1)
+            if ($matchingGeneratedCommit.Count -eq 1) {
+                $matchingGeneratedCommit[0] | Add-Member -NotePropertyName Published -NotePropertyValue $true -Force
+            }
+            else {
+                $generatedCommits.Add([pscustomobject] @{
                         Kind = 'ReleaseCheckpoint'
                         Order = if ($checkpoint) { Get-CgrObjectProperty -InputObject $checkpoint -Name 'Order' } else { $null }
                         SourceCommitSha = $sourceCommitSha
@@ -62,13 +69,13 @@ function Get-CgrSnapshotReleasePreservationEvidence {
                         CommitSha = $destinationCommitSha
                         TreeSha = $null
                         Message = $null
+                        Published = $true
                         ObservedAfterFailure = $true
                         Verified = $false
                     })
             }
         }
         $recreatedTags = $observedTags.ToArray()
-        $generatedCommits = $observedCommits.ToArray()
 
         $branchRead = Invoke-CgrGitHubApiReadRequest -ArgumentList @(
             'api', '--hostname', $HostName,
@@ -78,6 +85,10 @@ function Get-CgrSnapshotReleasePreservationEvidence {
             $branchJson = ($branchRead.Output | ForEach-Object { [string] $_ }) -join "`n"
             $branch = $branchJson | ConvertFrom-Json -Depth 20
             $destinationHeadCommitSha = [string] $branch.object.sha
+            $matchingHeadCommit = @($generatedCommits | Where-Object { [string] (Get-CgrObjectProperty -InputObject $_ -Name 'CommitSha') -eq $destinationHeadCommitSha } | Select-Object -First 1)
+            if ($matchingHeadCommit.Count -eq 1) {
+                $matchingHeadCommit[0] | Add-Member -NotePropertyName Published -NotePropertyValue $true -Force
+            }
         }
     }
 
@@ -128,7 +139,11 @@ function Get-CgrSnapshotReleasePreservationEvidence {
 
     $approvedReleaseCount = @((Get-CgrObjectProperty -InputObject $releaseSelection -Name 'Releases')).Count
     $plannedCheckpointCount = @((Get-CgrObjectProperty -InputObject $checkpointPlan -Name 'Checkpoints')).Count
-    $publishedCheckpointCount = @($generatedCommits | Where-Object { (Get-CgrObjectProperty -InputObject $_ -Name 'Kind') -eq 'ReleaseCheckpoint' }).Count
+    $constructedCheckpointCount = @($generatedCommits | Where-Object { (Get-CgrObjectProperty -InputObject $_ -Name 'Kind') -eq 'ReleaseCheckpoint' }).Count
+    $publishedCheckpointCount = @($generatedCommits | Where-Object {
+            (Get-CgrObjectProperty -InputObject $_ -Name 'Kind') -eq 'ReleaseCheckpoint' -and
+            [bool] (Get-CgrObjectProperty -InputObject $_ -Name 'Published')
+        }).Count
 
     return [pscustomobject] @{
         PSTypeName = 'CopyGitHubRepo.SnapshotReleasePreservationEvidence'
@@ -141,6 +156,8 @@ function Get-CgrSnapshotReleasePreservationEvidence {
         Actual = [pscustomobject] @{
             DestinationHeadCommitSha = $destinationHeadCommitSha
             GeneratedCommits = @($generatedCommits)
+            ConstructedCheckpointCount = $constructedCheckpointCount
+            PublishedCheckpointCount = $publishedCheckpointCount
             ReleaseTags = @($recreatedTags)
             Releases = @($restoredReleases)
         }
@@ -150,7 +167,8 @@ function Get-CgrSnapshotReleasePreservationEvidence {
             VerifiedReleaseCount = @($restoredReleases | Where-Object { [bool] (Get-CgrObjectProperty -InputObject $_ -Name 'IsVerified') }).Count
         }
         Incomplete = [pscustomobject] @{
-            CheckpointCount = [Math]::Max(0, $plannedCheckpointCount - $publishedCheckpointCount)
+            CheckpointConstructionCount = [Math]::Max(0, $plannedCheckpointCount - $constructedCheckpointCount)
+            CheckpointPublicationCount = [Math]::Max(0, $plannedCheckpointCount - $publishedCheckpointCount)
             TagCount = [Math]::Max(0, $approvedReleaseCount - @($recreatedTags).Count)
             ReleaseCount = [Math]::Max(0, $approvedReleaseCount - @($restoredReleases).Count)
         }

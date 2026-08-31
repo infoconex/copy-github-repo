@@ -7,7 +7,8 @@ function Invoke-CgrSameNameSnapshotReplacement {
     Revalidates approved source evidence, renames the original repository to the
     reviewed archive name, verifies the archived source, creates a fresh repository
     at the original name, proves distinct replacement identity, publishes and
-    verifies the clean Snapshot, then restores supported settings and protection.
+    verifies the clean Snapshot, optionally restores the exact approved GitHub Releases
+    against generated Snapshot tags, then restores supported settings and protection.
     Partial failure produces recovery evidence rather than hiding mutation state.
 
     .NOTES
@@ -32,9 +33,22 @@ function Invoke-CgrSameNameSnapshotReplacement {
     $repositoryIdentity = $null
     $sourceState = Get-CgrObjectProperty -InputObject $Plan -Name 'SourceState'
     $releaseCheckpointPlan = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseCheckpointPlan'
+    $includeReleases = [bool] (Get-CgrObjectProperty -InputObject $Plan -Name 'IncludeReleases')
+    $releaseSelection = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseSelection'
     $sourceRepositoryId = Get-CgrObjectProperty -InputObject $SourceRepository -Name 'Id'
     $sourceRepositoryNodeId = Get-CgrObjectProperty -InputObject $SourceRepository -Name 'NodeId'
     $failureStage = 'ValidateApprovedSourceState'
+    $releases = [pscustomobject] @{
+        PSTypeName = 'CopyGitHubRepo.ReleaseMigrationResult'
+        SourceRepository = $SourceRepository.FullName
+        DestinationRepository = $Plan.DestinationRepository
+        ApprovedReleaseCount = 0
+        DestinationReleaseCount = 0
+        Releases = @()
+        Unsupported = @()
+        IsSuccessful = $true
+        Status = 'NotRequested'
+    }
 
     try {
         Assert-CgrApprovedSourceState -Repository $SourceRepository -SourceState $sourceState | Out-Null
@@ -68,6 +82,40 @@ function Invoke-CgrSameNameSnapshotReplacement {
             Invoke-CgrRepositorySnapshotVerification -SourceRepository $archive -DestinationRepository $verifiedDestination -ApprovedSourceState $sourceState
         }
         $completedSteps.Add([pscustomobject] @{ Order = 6; Name = 'VerifySnapshot'; MutatedGitHub = $false; Verified = $verification.IsSuccessful })
+
+        if ($includeReleases) {
+            $failureStage = 'RestoreGitHubReleases'
+            if (-not $verification.IsSuccessful) {
+                $releases = [pscustomobject] @{
+                    PSTypeName = 'CopyGitHubRepo.ReleaseMigrationResult'
+                    SourceRepository = $archive.FullName
+                    DestinationRepository = $verifiedDestination.FullName
+                    ApprovedReleaseCount = @($releaseSelection.Releases).Count
+                    DestinationReleaseCount = 0
+                    Releases = @()
+                    Unsupported = @()
+                    IsSuccessful = $false
+                    Status = 'SnapshotVerificationFailed'
+                }
+            }
+            else {
+                $releases = Invoke-CgrActivityStage -Name 'RestoreGitHubReleases' -Message 'Restore approved GitHub Releases and assets' -Action {
+                    Copy-CgrApprovedGitHubRelease `
+                        -SourceRepository $archive `
+                        -DestinationRepository $verifiedDestination `
+                        -ApprovedSelection $releaseSelection `
+                        -DestinationTagTargets @($snapshot.ReleaseTags) `
+                        -HostName $HostName
+                }
+                $releases | Add-Member -NotePropertyName Status -NotePropertyValue 'Restored' -Force
+            }
+            $completedSteps.Add([pscustomobject] @{
+                    Order = $completedSteps.Count + 1
+                    Name = 'RestoreGitHubReleases'
+                    MutatedGitHub = [bool] $verification.IsSuccessful
+                    Verified = $releases.IsSuccessful
+                })
+        }
 
         $configuration = Invoke-CgrPostVerificationConfigurationRestore `
             -Plan $Plan `
@@ -111,10 +159,11 @@ function Invoke-CgrSameNameSnapshotReplacement {
             VerificationSuccessful = [bool] $verification.IsSuccessful
         }
 
+        $releaseSuccessful = -not $includeReleases -or $releases.IsSuccessful
         $executionResult = [pscustomobject] @{
             PSTypeName = 'CopyGitHubRepo.MigrationExecutionResult'
             SchemaVersion = 1
-            Status = if (-not $verification.IsSuccessful) { 'SnapshotVerificationFailed' } elseif ($Plan.SkipSettings) { 'SameNameSnapshotVerifiedSettingsSkipped' } elseif ($settings.IsSuccessful -and $protection.IsSuccessful) { 'SameNameReplacementCompleted' } elseif (-not $settings.IsSuccessful) { 'SettingsRestoreFailed' } else { 'ProtectionRestoreFailed' }
+            Status = if (-not $verification.IsSuccessful) { 'SnapshotVerificationFailed' } elseif (-not $releaseSuccessful) { 'ReleaseRestoreFailed' } elseif ($Plan.SkipSettings) { 'SameNameSnapshotVerifiedSettingsSkipped' } elseif ($settings.IsSuccessful -and $protection.IsSuccessful) { 'SameNameReplacementCompleted' } elseif (-not $settings.IsSuccessful) { 'SettingsRestoreFailed' } else { 'ProtectionRestoreFailed' }
             SourceRepository = $Plan.SourceRepository
             ApprovedSourceState = $sourceState
             ActualCopiedSourceState = [pscustomobject] @{ CommitSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'SourceCommitSha'; TreeSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'TreeSha' }
@@ -141,13 +190,15 @@ function Invoke-CgrSameNameSnapshotReplacement {
             SnapshotCommitSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'CommitSha'
             SourceTreeSha = $sourceTreeSha
             Provenance = $provenance
-            IsVerified = $verification.IsSuccessful
+            IsVerified = $verification.IsSuccessful -and $releaseSuccessful
             Verification = $verification
+            Releases = $releases
             Settings = $settings
             Protection = $protection
             Plan = $Plan
             CompletedSteps = @($completedSteps)
             StoppedBeforeSettingsRestore = -not $verification.IsSuccessful
+            ReleasesRestored = [bool] ($includeReleases -and $releases.IsSuccessful)
             SettingsRestored = $configuration.SettingsRestored
             ProtectionRestored = $configuration.ProtectionRestored
         }

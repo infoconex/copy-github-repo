@@ -16,7 +16,7 @@ Describe 'Snapshot release preservation evidence' {
             $snapshot = [pscustomobject] @{
                 CommitSha = 'destination-1'
                 Verified = $true
-                GeneratedCommits = @([pscustomobject] @{ Kind = 'ReleaseCheckpoint'; Order = 1; SourceCommitSha = 'source-1'; SourceTreeSha = 'tree-1'; TagNames = @('v1.0.0'); CommitSha = 'destination-1'; TreeSha = 'tree-1' })
+                GeneratedCommits = @([pscustomobject] @{ Kind = 'ReleaseCheckpoint'; Order = 1; SourceCommitSha = 'source-1'; SourceTreeSha = 'tree-1'; TagNames = @('v1.0.0'); CommitSha = 'destination-1'; TreeSha = 'tree-1'; Published = $true })
                 ReleaseTags = @([pscustomobject] @{ TagName = 'v1.0.0'; SourcePeeledCommitSha = 'source-1'; DestinationCommitSha = 'destination-1' })
             }
             $releases = [pscustomobject] @{
@@ -31,15 +31,85 @@ Describe 'Snapshot release preservation evidence' {
             $result.Planned.ReleaseCheckpointPlan | Should -Be $checkpointPlan
             $result.Planned.ReleaseSelection | Should -Be $selection
             $result.Actual.GeneratedCommits.Count | Should -Be 1
+            $result.Actual.ConstructedCheckpointCount | Should -Be 1
+            $result.Actual.PublishedCheckpointCount | Should -Be 1
             $result.Actual.ReleaseTags.Count | Should -Be 1
             $result.Actual.Releases.Count | Should -Be 1
             $result.Verified.SnapshotPublication | Should -BeTrue
             $result.Verified.ReleaseRestore | Should -BeTrue
             $result.Verified.VerifiedReleaseCount | Should -Be 1
-            $result.Incomplete.CheckpointCount | Should -Be 0
+            $result.Incomplete.CheckpointConstructionCount | Should -Be 0
+            $result.Incomplete.CheckpointPublicationCount | Should -Be 0
             $result.Incomplete.TagCount | Should -Be 0
             $result.Incomplete.ReleaseCount | Should -Be 0
             Should -Invoke Invoke-CgrGitHubApiReadRequest -Times 0
+        }
+    }
+
+    It 'retains constructed checkpoint evidence before publication without pretending destination work succeeded' {
+        InModuleScope CopyGitHubRepo {
+            $checkpointPlan = [pscustomobject] @{
+                Checkpoints = @([pscustomobject] @{ Order = 1; SourceCommitSha = 'source-1'; SourceTreeSha = 'tree-1'; TagNames = @('v1.0.0') })
+                ReleaseEvidence = @([pscustomobject] @{ TagName = 'v1.0.0'; TagObjectType = 'commit'; TagObjectSha = 'source-1'; PeeledCommitSha = 'source-1' })
+            }
+            $selection = [pscustomobject] @{ Releases = @([pscustomobject] @{ ReleaseId = 10; TagName = 'v1.0.0'; Assets = @() }) }
+            $plan = [pscustomobject] @{
+                SourceRepository = 'acme/source'
+                DestinationRepository = 'acme/destination'
+                SourceVisibility = 'private'
+                DestinationVisibility = 'private'
+                ContentMode = 'Snapshot'
+                SourceDefaultBranch = 'main'
+                IncludeReleases = $true
+                ReleaseCheckpointPlan = $checkpointPlan
+                ReleaseSelection = $selection
+            }
+            $generatedCommitProgress = @([pscustomobject] @{
+                    Kind = 'ReleaseCheckpoint'
+                    Order = 1
+                    SourceCommitSha = 'source-1'
+                    SourceTreeSha = 'tree-1'
+                    TagNames = @('v1.0.0')
+                    CommitSha = 'generated-1'
+                    TreeSha = 'tree-1'
+                    Message = 'Snapshot release checkpoint 1: v1.0.0'
+                    Published = $false
+                })
+            Mock Invoke-CgrGitHubApiReadRequest { throw 'No destination rediscovery is available before publication.' }
+
+            $evidence = Get-CgrSnapshotReleasePreservationEvidence -Plan $plan -GeneratedCommitProgress $generatedCommitProgress
+
+            $evidence.Actual.GeneratedCommits.Count | Should -Be 1
+            $evidence.Actual.GeneratedCommits[0].SourceCommitSha | Should -Be 'source-1'
+            $evidence.Actual.GeneratedCommits[0].TagNames | Should -Contain 'v1.0.0'
+            $evidence.Actual.GeneratedCommits[0].CommitSha | Should -Be 'generated-1'
+            $evidence.Actual.GeneratedCommits[0].Published | Should -BeFalse
+            $evidence.Actual.ConstructedCheckpointCount | Should -Be 1
+            $evidence.Actual.PublishedCheckpointCount | Should -Be 0
+            $evidence.Actual.ReleaseTags.Count | Should -Be 0
+            $evidence.Verified.SnapshotPublication | Should -BeFalse
+            $evidence.Incomplete.CheckpointConstructionCount | Should -Be 0
+            $evidence.Incomplete.CheckpointPublicationCount | Should -Be 1
+            $evidence.Incomplete.TagCount | Should -Be 1
+            $evidence.Incomplete.ReleaseCount | Should -Be 1
+            Should -Invoke Invoke-CgrGitHubApiReadRequest -Times 0
+
+            $destination = [pscustomobject] @{ FullName = 'acme/destination'; HtmlUrl = 'https://example.test/acme/destination' }
+            $steps = @([pscustomobject] @{ Order = 1; Name = 'CreateDestinationRepository'; MutatedGitHub = $true; Verified = $true })
+            $exception = [System.InvalidOperationException]::new('snapshot push failed')
+            $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationRepositorySnapshotPushFailed', [System.Management.Automation.ErrorCategory]::InvalidOperation, 'acme/destination')
+            $provenance = [pscustomobject] @{ ContentMode = 'Snapshot'; ReleasePreservation = $evidence }
+            $reportBase = Join-Path $TestDrive 'checkpoint-construction.json'
+
+            $path = Write-CgrMigrationRecoveryReport -Plan $plan -DestinationRepository $destination -FailureStage 'CopySnapshot' -ErrorRecord $errorRecord -CompletedSteps $steps -Provenance $provenance -PreferredReportPath $reportBase
+            $report = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -Depth 30
+
+            $report.FailureStage | Should -Be 'CopySnapshot'
+            $report.LastCompletedStep.Name | Should -Be 'CreateDestinationRepository'
+            $report.Provenance.ReleasePreservation.Actual.GeneratedCommits[0].CommitSha | Should -Be 'generated-1'
+            $report.Provenance.ReleasePreservation.Actual.GeneratedCommits[0].Published | Should -BeFalse
+            $report.Provenance.ReleasePreservation.Incomplete.CheckpointPublicationCount | Should -Be 1
+            $report.Recovery.AutomaticDeletionAttempted | Should -BeFalse
         }
     }
 
@@ -83,6 +153,8 @@ Describe 'Snapshot release preservation evidence' {
 
             $result.Actual.DestinationHeadCommitSha | Should -Be 'destination-2'
             $result.Actual.GeneratedCommits.Count | Should -Be 2
+            $result.Actual.ConstructedCheckpointCount | Should -Be 2
+            $result.Actual.PublishedCheckpointCount | Should -Be 2
             $result.Actual.GeneratedCommits[0].SourceCommitSha | Should -Be 'source-1'
             $result.Actual.GeneratedCommits[0].CommitSha | Should -Be 'destination-1'
             $result.Actual.ReleaseTags.Count | Should -Be 2
@@ -92,6 +164,9 @@ Describe 'Snapshot release preservation evidence' {
             $result.Actual.Releases[0].Assets[0].Name | Should -Be 'one.zip'
             $result.Actual.Releases[0].ObservedAfterFailure | Should -BeTrue
             $result.Verified.ReleaseRestore | Should -BeFalse
+            $result.Incomplete.CheckpointConstructionCount | Should -Be 0
+            $result.Incomplete.CheckpointPublicationCount | Should -Be 0
+            $result.Incomplete.TagCount | Should -Be 0
             $result.Incomplete.ReleaseCount | Should -Be 1
             Should -Invoke Invoke-CgrGitHubApiMutation -Times 0
             Should -Invoke Invoke-CgrNativeCommand -Times 0

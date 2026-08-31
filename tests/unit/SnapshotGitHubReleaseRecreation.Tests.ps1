@@ -127,7 +127,9 @@ Describe 'Snapshot GitHub Release orchestration' {
                 [pscustomobject] @{ Verified = $true; RootCommitSha = 'root'; CommitSha = 'head'; SourceCommitSha = 'source-head'; TreeSha = 'tree-head'; BranchName = 'main'; ReleaseTags = $tagTargets }
             }
             Mock Get-CgrRepository { $destination }
-            Mock Invoke-CgrRepositorySnapshotVerification { [pscustomobject] @{ IsSuccessful = $true; SourceTree = 'tree-head'; DestinationTree = 'tree-head' } }
+            Mock Invoke-CgrApprovedSnapshotReleaseVerification {
+                [pscustomobject] @{ IsSuccessful = $true; SourceHeadTreeSha = 'tree-head'; DestinationHeadTreeSha = 'tree-head'; ReleaseTags = $tagTargets }
+            }
             Mock Invoke-CgrActivityStage {
                 if ($Name -eq 'RestoreGitHubReleases') { $script:sequence.Add('release') }
                 & $Action
@@ -151,6 +153,7 @@ Describe 'Snapshot GitHub Release orchestration' {
             $result.ReleasesRestored | Should -BeTrue
             @($result.CompletedSteps.Name) | Should -Contain 'RestoreGitHubReleases'
             @($script:sequence) | Should -Be @('release', 'configuration')
+            Should -Invoke Invoke-CgrApprovedSnapshotReleaseVerification -Times 1 -Exactly
             Should -Invoke Copy-CgrApprovedGitHubRelease -Times 1 -Exactly -ParameterFilter {
                 $ApprovedSelection -eq $selection -and
                 $SourceRepository -eq $source -and
@@ -173,7 +176,7 @@ Describe 'Snapshot GitHub Release orchestration' {
             Mock Copy-CgrRepositorySnapshot { [pscustomobject] @{ Verified = $true; RootCommitSha = 'root'; CommitSha = 'head'; SourceCommitSha = 'source-head'; TreeSha = 'tree-head'; BranchName = 'main'; ReleaseTags = @([pscustomobject] @{ TagName = 'v1'; DestinationCommitSha = 'checkpoint' }) } }
             Mock Get-CgrRepository { $destination }
             Mock Invoke-CgrActivityStage { & $Action }
-            Mock Invoke-CgrRepositorySnapshotVerification { [pscustomobject] @{ IsSuccessful = $false; SourceTree = 'tree-head'; DestinationTree = 'different-tree' } }
+            Mock Invoke-CgrApprovedSnapshotReleaseVerification { [pscustomobject] @{ IsSuccessful = $false; SourceHeadTreeSha = 'tree-head'; DestinationHeadTreeSha = 'different-tree'; ReleaseTags = @() } }
             Mock Copy-CgrApprovedGitHubRelease { throw 'Release restoration must not run after failed Snapshot verification.' }
             Mock Invoke-CgrPostVerificationConfigurationRestore { [pscustomobject] @{ Settings = [pscustomobject] @{ IsSuccessful = $true }; Protection = [pscustomobject] @{ IsSuccessful = $true }; SettingsRestored = $false; ProtectionRestored = $false } }
 
@@ -181,6 +184,7 @@ Describe 'Snapshot GitHub Release orchestration' {
 
             $result.IsVerified | Should -BeFalse
             $result.Releases.Status | Should -Be 'SnapshotVerificationFailed'
+            Should -Invoke Invoke-CgrApprovedSnapshotReleaseVerification -Times 1 -Exactly
             Should -Invoke Copy-CgrApprovedGitHubRelease -Times 0
         }
     }

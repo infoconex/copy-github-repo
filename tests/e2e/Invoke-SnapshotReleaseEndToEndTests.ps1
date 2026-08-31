@@ -22,20 +22,29 @@ $scenarioResults = [System.Collections.Generic.List[object]]::new()
 function Invoke-E2eNativeCommand {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $FilePath,
-        [Parameter(Mandatory)] [string[]] $ArgumentList,
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string] $FilePath,
+
+        [Parameter(Mandatory)]
+        [string[]] $ArgumentList,
+
         [string] $WorkingDirectory
     )
 
     $originalLocation = Get-Location
     try {
-        if ($WorkingDirectory) { Set-Location -LiteralPath $WorkingDirectory }
+        if ($WorkingDirectory) {
+            Set-Location -LiteralPath $WorkingDirectory
+        }
+
         $output = & $FilePath @ArgumentList 2>&1
         $exitCode = if ($null -ne $global:LASTEXITCODE) { $global:LASTEXITCODE } else { 0 }
         if ($exitCode -ne 0) {
             $message = (@($output) | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
             throw "$FilePath failed with exit code $exitCode. $message"
         }
+
         return @($output)
     }
     finally {
@@ -45,7 +54,11 @@ function Invoke-E2eNativeCommand {
 
 function Write-E2eMessage {
     [CmdletBinding()]
-    param([AllowEmptyString()] [string] $Message = '')
+    param(
+        [AllowEmptyString()]
+        [string] $Message = ''
+    )
+
     Write-Information -MessageData $Message -InformationAction Continue
 }
 
@@ -53,19 +66,25 @@ function Assert-E2eCleanupCapability {
     [CmdletBinding()]
     param()
 
-    if ($KeepRepositories) { return }
+    if ($KeepRepositories) {
+        return
+    }
+
     $headerOutput = & gh api --include user 2>&1
     if ($LASTEXITCODE -ne 0) {
         $message = (@($headerOutput) | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
         throw "Unable to verify GitHub cleanup capability before E2E repository creation. $message"
     }
+
     $scopeLine = @($headerOutput | ForEach-Object { $_.ToString() }) |
         Where-Object { $_ -match '^(?i)x-oauth-scopes:\s*' } |
         Select-Object -First 1
     if (-not $scopeLine) {
         throw 'Unable to prove repository-delete capability from the authenticated GitHub token. No E2E repositories were created. Use -KeepRepositories only when deliberate manual cleanup is acceptable.'
     }
-    $scopes = ($scopeLine -replace '^(?i)x-oauth-scopes:\s*', '').Split(',') | ForEach-Object { $_.Trim() }
+
+    $scopes = ($scopeLine -replace '^(?i)x-oauth-scopes:\s*', '').Split(',') |
+        ForEach-Object { $_.Trim() }
     if ($scopes -notcontains 'delete_repo') {
         throw "The authenticated GitHub token does not advertise the 'delete_repo' scope required for automatic E2E cleanup. No E2E repositories were created."
     }
@@ -74,29 +93,42 @@ function Assert-E2eCleanupCapability {
 function New-E2eRepository {
     [CmdletBinding(SupportsShouldProcess)]
     param(
-        [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Name,
-        [ValidateSet('public', 'private')] [string] $Visibility = 'private'
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string] $Name
     )
 
     if ($Name -notlike "$repositoryPrefix-*") {
         throw "Refusing to create an E2E repository outside the protected prefix '$repositoryPrefix-*'."
     }
+
     $fullName = "$Owner/$Name"
-    if (-not $PSCmdlet.ShouldProcess($fullName, "Create temporary $Visibility Snapshot-release E2E repository")) { return $null }
-    Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('repo', 'create', $fullName, "--$Visibility") | Out-Null
+    if (-not $PSCmdlet.ShouldProcess($fullName, 'Create temporary private Snapshot-release E2E repository')) {
+        return $null
+    }
+
+    Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('repo', 'create', $fullName, '--private') | Out-Null
     $createdRepositories.Add($fullName)
     return $fullName
 }
 
 function Remove-E2eRepository {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
-    param([Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Repository)
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string] $Repository
+    )
 
     $expectedPrefix = "$Owner/$repositoryPrefix-"
     if (-not $Repository.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Refusing to delete repository '$Repository' because it is outside the protected E2E prefix '$expectedPrefix'."
     }
-    if (-not $PSCmdlet.ShouldProcess($Repository, 'Delete temporary Snapshot-release E2E repository')) { return }
+
+    if (-not $PSCmdlet.ShouldProcess($Repository, 'Delete temporary Snapshot-release E2E repository')) {
+        return
+    }
+
     $output = & gh repo delete $Repository --yes 2>&1
     if ($LASTEXITCODE -ne 0) {
         $message = (@($output) | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
@@ -106,7 +138,12 @@ function Remove-E2eRepository {
 
 function Get-E2eApiJson {
     [CmdletBinding()]
-    param([Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Path)
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string] $Path
+    )
+
     $output = @(Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', '--hostname', 'github.com', $Path))
     return (($output -join "`n") | ConvertFrom-Json -Depth 50)
 }
@@ -133,21 +170,42 @@ function Get-E2eCommitSha {
     return [string] $commit.sha
 }
 
+function Get-E2eRepositoryId {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string] $Repository
+    )
+
+    $id = Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', "repos/$Repository", '--jq', '.id')
+    return [long] @($id)[-1]
+}
+
 function Get-E2eReleaseByTag {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Repository,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Tag
     )
+
     return Get-E2eApiJson -Path "repos/$Repository/releases/tags/$Tag"
 }
 
 function New-E2eSourceFixture {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param(
-        [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Name,
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string] $Name,
+
         [switch] $HeadNewerThanLatestRelease
     )
+
+    $fullName = "$Owner/$Name"
+    if (-not $PSCmdlet.ShouldProcess($fullName, 'Create and publish Snapshot-release E2E source fixture')) {
+        return $null
+    }
 
     $repository = New-E2eRepository -Name $Name -Confirm:$false
     $localPath = Join-Path $tempRoot $Name
@@ -196,7 +254,6 @@ function New-E2eSourceFixture {
     return [pscustomobject] @{
         Repository = $repository
         LocalPath = $localPath
-        HeadNewerThanLatestRelease = [bool] $HeadNewerThanLatestRelease
     }
 }
 
@@ -237,22 +294,25 @@ function Assert-E2eReleaseAssetEquivalent {
     if ($sourceAssets.Count -ne 1 -or $destinationAssets.Count -ne 1) {
         throw "Expected one source and destination asset for '$Tag'. Source=$($sourceAssets.Count) Destination=$($destinationAssets.Count)"
     }
-    if ([string] $sourceAssets[0].name -ne [string] $destinationAssets[0].name -or
-        [long] $sourceAssets[0].size -ne [long] $destinationAssets[0].size -or
-        [string] $sourceAssets[0].label -ne [string] $destinationAssets[0].label) {
+
+    $assetMetadataEquivalent = [string] $sourceAssets[0].name -eq [string] $destinationAssets[0].name -and [long] $sourceAssets[0].size -eq [long] $destinationAssets[0].size -and [string] $sourceAssets[0].label -eq [string] $destinationAssets[0].label
+    if (-not $assetMetadataEquivalent) {
         throw "Release asset metadata mismatch for '$Tag'."
     }
-    if ($sourceAssets[0].PSObject.Properties.Name -contains 'digest' -and
-        $destinationAssets[0].PSObject.Properties.Name -contains 'digest' -and
-        -not [string]::IsNullOrWhiteSpace([string] $sourceAssets[0].digest) -and
-        [string] $sourceAssets[0].digest -ne [string] $destinationAssets[0].digest) {
+
+    $sourceDigestAvailable = $sourceAssets[0].PSObject.Properties.Name -contains 'digest' -and -not [string]::IsNullOrWhiteSpace([string] $sourceAssets[0].digest)
+    $destinationDigestAvailable = $destinationAssets[0].PSObject.Properties.Name -contains 'digest' -and -not [string]::IsNullOrWhiteSpace([string] $destinationAssets[0].digest)
+    if ($sourceDigestAvailable -and $destinationDigestAvailable -and [string] $sourceAssets[0].digest -ne [string] $destinationAssets[0].digest) {
         throw "Release asset digest mismatch for '$Tag'."
     }
 }
 
 function Invoke-E2eNewDestinationScenario {
     [CmdletBinding()]
-    param([Parameter(Mandatory)] [psobject] $Fixture)
+    param(
+        [Parameter(Mandatory)]
+        [psobject] $Fixture
+    )
 
     $destination = "$Owner/$repositoryPrefix-multiple-destination"
     $createdRepositories.Add($destination)
@@ -260,30 +320,48 @@ function Invoke-E2eNewDestinationScenario {
     Write-E2eMessage -Message 'Migration evidence: executing reviewed Snapshot -IncludeReleases plan.'
 
     $plan = Copy-GitHubRepository -SourceRepository $Fixture.Repository -DestinationRepository $destination -ContentMode Snapshot -IncludeReleases -ReleaseTag 'v1.*' -SkipSettings -PlanOnly
-    if ($plan.ReleaseSelection.SelectedReleaseCount -ne 2) { throw "Expected two stable selected releases but plan selected $($plan.ReleaseSelection.SelectedReleaseCount)." }
+    if ($plan.ReleaseSelection.SelectedReleaseCount -ne 2) {
+        throw "Expected two stable selected releases but plan selected $($plan.ReleaseSelection.SelectedReleaseCount)."
+    }
 
     $result = Copy-GitHubRepository -SourceRepository $Fixture.Repository -DestinationRepository $destination -ContentMode Snapshot -IncludeReleases -ReleaseTag 'v1.*' -SkipSettings -NonInteractive -Force
-    if (-not $result.IsVerified -or -not $result.ReleasesRestored) { throw 'Snapshot release execution did not report verified release restoration.' }
+    if (-not $result.IsVerified -or -not $result.ReleasesRestored) {
+        throw 'Snapshot release execution did not report verified release restoration.'
+    }
 
     Write-E2eMessage -Message 'Independent verification: running Test-GitHubRepositoryMigration and direct GitHub API tag/tree/release checks.'
     $verification = Test-GitHubRepositoryMigration -SourceRepository $Fixture.Repository -DestinationRepository $destination -ContentMode Snapshot -IncludeReleases -ReleaseTag 'v1.*'
-    if (-not $verification.IsSuccessful -or -not $verification.ReleasesVerified) { throw 'Independent Snapshot release verification failed.' }
+    if (-not $verification.IsSuccessful -or -not $verification.ReleasesVerified) {
+        throw 'Independent Snapshot release verification failed.'
+    }
+
     Assert-E2eSnapshotTagTreeEquivalence -SourceRepository $Fixture.Repository -DestinationRepository $destination -Tags @('v1.0.0', 'v1.1.0')
     Assert-E2eReleaseAssetEquivalent -SourceRepository $Fixture.Repository -DestinationRepository $destination -Tag 'v1.1.0'
 
     $destinationReleases = @(Get-E2eApiJson -Path "repos/$destination/releases?per_page=100")
-    if ($destinationReleases.Count -ne 2) { throw "Expected exactly two stable destination releases but found $($destinationReleases.Count)." }
-    if (@($destinationReleases | Where-Object { $_.prerelease }).Count -ne 0) { throw 'Filtered prerelease was unexpectedly recreated.' }
+    if ($destinationReleases.Count -ne 2) {
+        throw "Expected exactly two stable destination releases but found $($destinationReleases.Count)."
+    }
+    if (@($destinationReleases | Where-Object { $_.prerelease }).Count -ne 0) {
+        throw 'Filtered prerelease was unexpectedly recreated.'
+    }
+
     $latest = Get-E2eApiJson -Path "repos/$destination/releases/latest"
-    if ([string] $latest.tag_name -ne 'v1.1.0') { throw "Expected v1.1.0 to remain Latest but found '$($latest.tag_name)'." }
+    if ([string] $latest.tag_name -ne 'v1.1.0') {
+        throw "Expected v1.1.0 to remain Latest but found '$($latest.tag_name)'."
+    }
 
     $sourceHeadTree = Get-E2eCommitTreeSha -Repository $Fixture.Repository -Ref 'main'
     $destinationHeadTree = Get-E2eCommitTreeSha -Repository $destination -Ref 'main'
     $latestReleaseTree = Get-E2eCommitTreeSha -Repository $destination -Ref 'v1.1.0'
-    if ($sourceHeadTree -ne $destinationHeadTree) { throw 'Final destination HEAD tree does not match source HEAD.' }
-    if ($destinationHeadTree -eq $latestReleaseTree) { throw 'HEAD-newer scenario did not produce a distinct final current-state tree.' }
+    if ($sourceHeadTree -ne $destinationHeadTree) {
+        throw 'Final destination HEAD tree does not match source HEAD.'
+    }
+    if ($destinationHeadTree -eq $latestReleaseTree) {
+        throw 'HEAD-newer scenario did not produce a distinct final current-state tree.'
+    }
 
-    $scenarioResults.Add([pscustomobject] @{
+    $summary = [pscustomobject] @{
         Scenario = 'Multiple sequential releases; filtering; HEAD newer; assets; Latest; new destination'
         MigrationReportedVerified = $result.IsVerified
         IndependentVerificationSucceeded = $verification.IsSuccessful
@@ -295,12 +373,16 @@ function Invoke-E2eNewDestinationScenario {
         PrereleaseExcluded = $true
         FinalHeadMatchesSource = $sourceHeadTree -eq $destinationHeadTree
         FinalHeadDistinctFromLatestRelease = $destinationHeadTree -ne $latestReleaseTree
-    })
+    }
+    $scenarioResults.Add($summary)
 }
 
 function Invoke-E2eHeadEqualScenario {
     [CmdletBinding()]
-    param([Parameter(Mandatory)] [psobject] $Fixture)
+    param(
+        [Parameter(Mandatory)]
+        [psobject] $Fixture
+    )
 
     $destination = "$Owner/$repositoryPrefix-head-equal-destination"
     $createdRepositories.Add($destination)
@@ -308,52 +390,72 @@ function Invoke-E2eHeadEqualScenario {
     Write-E2eMessage -Message 'Migration evidence: selecting exactly v1.1.0.'
 
     $result = Copy-GitHubRepository -SourceRepository $Fixture.Repository -DestinationRepository $destination -ContentMode Snapshot -IncludeReleases -ReleaseTag 'v1.1.0' -ReleaseCount 1 -SkipSettings -NonInteractive -Force
-    if (-not $result.IsVerified) { throw 'HEAD-equal Snapshot release execution did not report verification success.' }
+    if (-not $result.IsVerified) {
+        throw 'HEAD-equal Snapshot release execution did not report verification success.'
+    }
 
     Write-E2eMessage -Message 'Independent verification: validating release checkpoint and final HEAD through independent verifier and GitHub API trees.'
     $verification = Test-GitHubRepositoryMigration -SourceRepository $Fixture.Repository -DestinationRepository $destination -ContentMode Snapshot -IncludeReleases -ReleaseTag 'v1.1.0' -ReleaseCount 1
-    if (-not $verification.IsSuccessful) { throw 'Independent HEAD-equal Snapshot release verification failed.' }
+    if (-not $verification.IsSuccessful) {
+        throw 'Independent HEAD-equal Snapshot release verification failed.'
+    }
+
     Assert-E2eSnapshotTagTreeEquivalence -SourceRepository $Fixture.Repository -DestinationRepository $destination -Tags @('v1.1.0')
     $destinationHead = Get-E2eCommitSha -Repository $destination -Ref 'main'
     $destinationTag = Get-E2eCommitSha -Repository $destination -Ref 'v1.1.0'
-    if ($destinationHead -ne $destinationTag) { throw 'HEAD-equal scenario created an unnecessary final Snapshot commit.' }
+    if ($destinationHead -ne $destinationTag) {
+        throw 'HEAD-equal scenario created an unnecessary final Snapshot commit.'
+    }
 
-    $scenarioResults.Add([pscustomobject] @{
+    $summary = [pscustomobject] @{
         Scenario = 'Single selected release; HEAD equals latest release state'
         MigrationReportedVerified = $result.IsVerified
         IndependentVerificationSucceeded = $verification.IsSuccessful
         TagTreeEquivalent = $true
         HeadCommitEqualsSelectedCheckpoint = $destinationHead -eq $destinationTag
-    })
+    }
+    $scenarioResults.Add($summary)
 }
 
 function Invoke-E2eSameNameScenario {
     [CmdletBinding()]
-    param([Parameter(Mandatory)] [psobject] $Fixture)
+    param(
+        [Parameter(Mandatory)]
+        [psobject] $Fixture
+    )
 
     $source = $Fixture.Repository
-    $sourceName = ($source -split '/', 2)[1]
     $archiveName = "$repositoryPrefix-samename-archive"
     $archiveRepository = "$Owner/$archiveName"
     $createdRepositories.Add($archiveRepository)
-    $sourceId = [long] (Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', "repos/$source", '--jq', '.id'))[-1]
+    $sourceId = Get-E2eRepositoryId -Repository $source
     $confirmation = "SOURCE=$source;ARCHIVE=$archiveRepository;REPLACEMENT=$source"
 
     Write-E2eMessage -Message 'Scenario: same-name Snapshot replacement with release preservation and explicit destructive confirmation'
     Write-E2eMessage -Message 'Migration evidence: executing with exact SameNameConfirmation; Force does not replace that authority.'
     $result = Copy-GitHubRepository -SourceRepository $source -DestinationRepository $source -ContentMode Snapshot -IncludeReleases -ReleaseTag 'v1.1.0' -ReleaseCount 1 -ArchiveRepositoryName $archiveName -SameNameConfirmation $confirmation -SkipSettings -NonInteractive -Force
-    if (-not $result.IsVerified) { throw 'Same-name Snapshot release replacement did not report verification success.' }
+    if (-not $result.IsVerified) {
+        throw 'Same-name Snapshot release replacement did not report verification success.'
+    }
 
     Write-E2eMessage -Message 'Independent verification: checking archive identity continuity, replacement identity distinction, and recreated checkpoint/release.'
-    $archiveId = [long] (Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', "repos/$archiveRepository", '--jq', '.id'))[-1]
-    $replacementId = [long] (Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @('api', "repos/$source", '--jq', '.id'))[-1]
-    if ($sourceId -ne $archiveId) { throw 'Same-name archive did not preserve the original GitHub repository identity.' }
-    if ($replacementId -eq $sourceId) { throw 'Same-name replacement reused the original GitHub repository identity.' }
+    $archiveId = Get-E2eRepositoryId -Repository $archiveRepository
+    $replacementId = Get-E2eRepositoryId -Repository $source
+    if ($sourceId -ne $archiveId) {
+        throw 'Same-name archive did not preserve the original GitHub repository identity.'
+    }
+    if ($replacementId -eq $sourceId) {
+        throw 'Same-name replacement reused the original GitHub repository identity.'
+    }
+
     $verification = Test-GitHubRepositoryMigration -SourceRepository $archiveRepository -DestinationRepository $source -ContentMode Snapshot -IncludeReleases -ReleaseTag 'v1.1.0' -ReleaseCount 1
-    if (-not $verification.IsSuccessful) { throw 'Independent same-name Snapshot release verification failed.' }
+    if (-not $verification.IsSuccessful) {
+        throw 'Independent same-name Snapshot release verification failed.'
+    }
+
     Assert-E2eSnapshotTagTreeEquivalence -SourceRepository $archiveRepository -DestinationRepository $source -Tags @('v1.1.0')
 
-    $scenarioResults.Add([pscustomobject] @{
+    $summary = [pscustomobject] @{
         Scenario = 'Same-name Snapshot replacement with selected release'
         MigrationReportedVerified = $result.IsVerified
         IndependentVerificationSucceeded = $verification.IsSuccessful
@@ -361,10 +463,13 @@ function Invoke-E2eSameNameScenario {
         ReplacementIdentityDistinct = $replacementId -ne $sourceId
         TagTreeEquivalent = $true
         ExactConfirmationUsed = $true
-    })
+    }
+    $scenarioResults.Add($summary)
 }
 
-if ($Owner -notmatch '^[A-Za-z0-9_.-]+$') { throw "Owner '$Owner' is not valid." }
+if ($Owner -notmatch '^[A-Za-z0-9_.-]+$') {
+    throw "Owner '$Owner' is not valid."
+}
 
 Write-E2eMessage -Message 'Snapshot Release Preservation End-to-End Validation'
 Write-E2eMessage -Message '---------------------------------------------------'
@@ -377,13 +482,13 @@ Import-Module $modulePath -Force -ErrorAction Stop
 New-Item -Path $tempRoot -ItemType Directory -Force | Out-Null
 
 try {
-    $newerFixture = New-E2eSourceFixture -Name "$repositoryPrefix-newer-source" -HeadNewerThanLatestRelease
+    $newerFixture = New-E2eSourceFixture -Name "$repositoryPrefix-newer-source" -HeadNewerThanLatestRelease -Confirm:$false
     Invoke-E2eNewDestinationScenario -Fixture $newerFixture
 
-    $headEqualFixture = New-E2eSourceFixture -Name "$repositoryPrefix-head-equal-source"
+    $headEqualFixture = New-E2eSourceFixture -Name "$repositoryPrefix-head-equal-source" -Confirm:$false
     Invoke-E2eHeadEqualScenario -Fixture $headEqualFixture
 
-    $sameNameFixture = New-E2eSourceFixture -Name "$repositoryPrefix-samename-source" -HeadNewerThanLatestRelease
+    $sameNameFixture = New-E2eSourceFixture -Name "$repositoryPrefix-samename-source" -HeadNewerThanLatestRelease -Confirm:$false
     Invoke-E2eSameNameScenario -Fixture $sameNameFixture
 
     Write-E2eMessage
@@ -408,5 +513,6 @@ finally {
     else {
         Write-Warning "E2E repositories were retained because -KeepRepositories was supplied: $(@($createdRepositories) -join ', ')"
     }
+
     Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }

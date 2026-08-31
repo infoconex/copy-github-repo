@@ -140,10 +140,10 @@ function Test-GitHubRepositoryMigration {
     Assert-CgrSupportedHostName -HostName $HostName
 
     $releaseFilterWasSpecified = $PSBoundParameters.ContainsKey('ReleaseTag') -or
-        $PSBoundParameters.ContainsKey('ReleaseExcludeTag') -or
-        $IncludePrerelease -or
-        $IncludeDraftReleases -or
-        $PSBoundParameters.ContainsKey('ReleaseCount')
+    $PSBoundParameters.ContainsKey('ReleaseExcludeTag') -or
+    $IncludePrerelease -or
+    $IncludeDraftReleases -or
+    $PSBoundParameters.ContainsKey('ReleaseCount')
 
     if ($releaseFilterWasSpecified -and -not $IncludeReleases) {
         $message = 'Release verification filter parameters require -IncludeReleases.'
@@ -263,7 +263,7 @@ function Test-GitHubRepositoryMigration {
 
         $gitContentSuccessful = [bool] $result.IsSuccessful
         $targetEvidenceComplete = @($result.ReleaseTags).Count -eq @($approvedSelection.Releases).Count -and
-            -not @($result.ReleaseTags | Where-Object { [string]::IsNullOrWhiteSpace([string] $_.DestinationCommitSha) })
+        -not @($result.ReleaseTags | Where-Object { [string]::IsNullOrWhiteSpace([string] $_.DestinationCommitSha) })
         $releaseVerification = $null
         if ($targetEvidenceComplete) {
             $releaseVerification = Test-CgrGitHubReleaseMigration `

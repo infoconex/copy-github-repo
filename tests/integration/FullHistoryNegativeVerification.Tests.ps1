@@ -77,11 +77,11 @@ Describe 'FullHistory negative verification behavior' {
                 -DestinationRepository $DestinationRepositoryFixture
 
             $result.IsSuccessful | Should -BeFalse
-            @($result.Checks | Where-Object Name -eq 'DefaultBranchMatches')[0].Passed | Should -BeFalse
-            @($result.Checks | Where-Object Name -eq 'BranchAndTagTargetsMatch')[0].Passed | Should -BeFalse
-            @($result.Checks | Where-Object Name -eq 'ReachableCommitCountMatches')[0].Passed | Should -BeFalse
-            @($result.Checks | Where-Object Name -eq 'BranchTipTreesMatch')[0].Passed | Should -BeFalse
-            @($result.Checks | Where-Object Name -eq 'GitLfsObjectsAvailable')[0].Passed | Should -BeTrue
+            @($result.Checks | Where-Object Name -EQ 'DefaultBranchMatches')[0].Passed | Should -BeFalse
+            @($result.Checks | Where-Object Name -EQ 'BranchAndTagTargetsMatch')[0].Passed | Should -BeFalse
+            @($result.Checks | Where-Object Name -EQ 'ReachableCommitCountMatches')[0].Passed | Should -BeFalse
+            @($result.Checks | Where-Object Name -EQ 'BranchTipTreesMatch')[0].Passed | Should -BeFalse
+            @($result.Checks | Where-Object Name -EQ 'GitLfsObjectsAvailable')[0].Passed | Should -BeTrue
         }
     }
 

@@ -88,18 +88,19 @@ Describe 'PowerShell Gallery release workflow contract' {
         $script:releaseReadiness = (Get-Content -LiteralPath $script:releaseReadinessPath -Raw) -replace "`r`n?", "`n"
     }
 
-    It 'passes the stable release-readiness boundary for the current module version' {
+    It 'passes baseline release-readiness validation for the current module version' {
         $expectedTag = "v$($script:expectedPackageVersion)"
-        $readiness = & $script:releaseReadinessPath -Tag $expectedTag -RequireEmptyUnreleased
+        $readiness = & $script:releaseReadinessPath -Tag $expectedTag
 
         $readiness.IsReady | Should -BeTrue
         $readiness.Version | Should -Be $script:expectedPackageVersion
         $readiness.ExpectedTag | Should -Be $expectedTag
     }
 
-    It 'supports version-tag pushes and guarded manual dispatch through one release workflow' {
+    It 'supports guarded manual dispatch as the only automated stable release entry point' {
         $script:releaseWorkflow | Should -Match '(?m)^name: Publish Release$'
-        $script:releaseWorkflow | Should -Match "(?ms)^'on':\s+push:\s+tags:\s+- 'v\*'\s+workflow_dispatch:"
+        $script:releaseWorkflow | Should -Match "(?ms)^'on':\s+workflow_dispatch:"
+        $script:releaseWorkflow | Should -Not -Match '(?ms)^\s+push:'
         $script:releaseWorkflow | Should -Match '(?ms)workflow_dispatch:\s+inputs:\s+tag:'
         $script:releaseWorkflow | Should -Match '(?ms)confirm_publish:.*?type: boolean'
         $script:releaseWorkflow | Should -Match '(?ms)validate_quality:\s+name: Validate Release Commit\s+needs: release_context'
@@ -128,10 +129,10 @@ Describe 'PowerShell Gallery release workflow contract' {
         $script:releaseReadiness | Should -Match 'does not match module version'
     }
 
-    It 'creates or reuses only the exact approved manual tag after duplicate checks and before publication' {
+    It 'creates or reuses only the exact approved release tag after duplicate checks and before publication' {
         $galleryCheckIndex = $script:releaseWorkflow.IndexOf('Reject duplicate PowerShell Gallery version', [StringComparison]::Ordinal)
         $githubCheckIndex = $script:releaseWorkflow.IndexOf('Reject duplicate GitHub release', [StringComparison]::Ordinal)
-        $tagIndex = $script:releaseWorkflow.IndexOf('Ensure manual release tag', [StringComparison]::Ordinal)
+        $tagIndex = $script:releaseWorkflow.IndexOf('Ensure release tag', [StringComparison]::Ordinal)
         $galleryPublishIndex = $script:releaseWorkflow.IndexOf('Publish PowerShell Gallery package', [StringComparison]::Ordinal)
 
         $galleryCheckIndex | Should -BeGreaterThan -1

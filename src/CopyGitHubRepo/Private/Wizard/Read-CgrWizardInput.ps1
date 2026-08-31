@@ -38,7 +38,7 @@ function Read-CgrWizardInput {
         $promptParts.Add((Format-CgrWizardText -Text ($navigationParts -join '  ') -Style Hint))
     }
     if (-not [string]::IsNullOrWhiteSpace($DefaultValue)) {
-        $promptParts.Add((Format-CgrWizardText -Text ("({0})" -f $DefaultValue) -Style Hint))
+        $promptParts.Add((Format-CgrWizardText -Text ('({0})' -f $DefaultValue) -Style Hint))
     }
 
     Read-Host -Prompt ($promptParts -join '   ')

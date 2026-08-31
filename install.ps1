@@ -51,9 +51,9 @@ if ([string]::IsNullOrWhiteSpace($SourcePath)) {
 
         if ($manifestCandidates.Count -ne 1) {
             throw (ConvertTo-CgrApplicationErrorRecord `
-                -Message "Unable to resolve exactly one packaged CopyGitHubRepo module under '$packagedModuleRoot'." `
-                -ErrorId 'CopyGitHubRepo.PackagedModuleNotFound' `
-                -TargetObject $packagedModuleRoot)
+                    -Message "Unable to resolve exactly one packaged CopyGitHubRepo module under '$packagedModuleRoot'." `
+                    -ErrorId 'CopyGitHubRepo.PackagedModuleNotFound' `
+                    -TargetObject $packagedModuleRoot)
         }
 
         $SourcePath = $manifestCandidates[0].Directory.FullName
@@ -64,9 +64,9 @@ $SourcePath = [System.IO.Path]::GetFullPath($SourcePath)
 $sourceManifestPath = Join-Path $SourcePath 'CopyGitHubRepo.psd1'
 if (-not (Test-Path -LiteralPath $sourceManifestPath -PathType Leaf)) {
     throw (ConvertTo-CgrApplicationErrorRecord `
-        -Message "CopyGitHubRepo module manifest was not found at '$sourceManifestPath'." `
-        -ErrorId 'CopyGitHubRepo.ManifestNotFound' `
-        -TargetObject $sourceManifestPath)
+            -Message "CopyGitHubRepo module manifest was not found at '$sourceManifestPath'." `
+            -ErrorId 'CopyGitHubRepo.ManifestNotFound' `
+            -TargetObject $sourceManifestPath)
 }
 
 $sourceModule = Test-ModuleManifest -Path $sourceManifestPath -ErrorAction Stop
@@ -92,9 +92,9 @@ $destinationExists = Test-Path -LiteralPath $destinationPath
 
 if ($destinationExists -and -not $Force) {
     throw (ConvertTo-CgrApplicationErrorRecord `
-        -Message "CopyGitHubRepo $version is already installed at '$destinationPath'. Use -Force to replace that version." `
-        -ErrorId 'CopyGitHubRepo.VersionAlreadyInstalled' `
-        -TargetObject $destinationPath)
+            -Message "CopyGitHubRepo $version is already installed at '$destinationPath'. Use -Force to replace that version." `
+            -ErrorId 'CopyGitHubRepo.VersionAlreadyInstalled' `
+            -TargetObject $destinationPath)
 }
 
 $operation = if ($destinationExists) {
@@ -120,9 +120,9 @@ $installedManifestPath = Join-Path $destinationPath 'CopyGitHubRepo.psd1'
 $installedModule = Test-ModuleManifest -Path $installedManifestPath -ErrorAction Stop
 if ($installedModule.Version.ToString() -ne $version) {
     throw (ConvertTo-CgrApplicationErrorRecord `
-        -Message "Installed module version '$($installedModule.Version)' does not match source version '$version'." `
-        -ErrorId 'CopyGitHubRepo.InstalledVersionMismatch' `
-        -TargetObject $installedManifestPath)
+            -Message "Installed module version '$($installedModule.Version)' does not match source version '$version'." `
+            -ErrorId 'CopyGitHubRepo.InstalledVersionMismatch' `
+            -TargetObject $installedManifestPath)
 }
 
 [pscustomobject] @{

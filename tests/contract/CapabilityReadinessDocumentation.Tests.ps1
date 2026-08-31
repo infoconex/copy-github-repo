@@ -29,11 +29,11 @@ Describe 'Capability release readiness documentation contract' {
 
     It 'keeps scope and evidence/readiness semantics explicit' {
         foreach ($term in @(
-            'Required', 'Optional', 'Deferred', 'Unsupported',
-            'Not started', 'Implemented', 'Automatically tested', 'E2E-capable',
-            'Live-validated for RC', 'Documented', 'Blocked', 'Accepted limitation',
-            'Release-ready', 'Deferred / not in scope'
-        )) {
+                'Required', 'Optional', 'Deferred', 'Unsupported',
+                'Not started', 'Implemented', 'Automatically tested', 'E2E-capable',
+                'Live-validated for RC', 'Documented', 'Blocked', 'Accepted limitation',
+                'Release-ready', 'Deferred / not in scope'
+            )) {
             $script:readiness | Should -Match ([regex]::Escape($term))
         }
 
@@ -44,11 +44,11 @@ Describe 'Capability release readiness documentation contract' {
 
     It 'binds a go/no-go decision to one exact immutable release candidate' {
         foreach ($field in @(
-            'Version', 'Candidate commit', 'Candidate tag', 'Artifact identity', 'Decision',
-            'Decision timestamp', 'Decision authority', 'Quality Gate evidence',
-            'Required live E2E evidence', 'Security/readiness disposition',
-            'Non-functional disposition', 'Known limitations', 'Publication prerequisites', 'Final result'
-        )) {
+                'Version', 'Candidate commit', 'Candidate tag', 'Artifact identity', 'Decision',
+                'Decision timestamp', 'Decision authority', 'Quality Gate evidence',
+                'Required live E2E evidence', 'Security/readiness disposition',
+                'Non-functional disposition', 'Known limitations', 'Publication prerequisites', 'Final result'
+            )) {
             $script:readiness | Should -Match ([regex]::Escape($field))
         }
 
@@ -59,15 +59,15 @@ Describe 'Capability release readiness documentation contract' {
 
     It 'makes cross-cutting readiness concerns visible without stale pre-release status' {
         foreach ($term in @(
-            'Repository security baseline',
-            'Independent publisher signing',
-            'Non-functional resilience controls',
-            'Product scenario traceability',
-            'Release/deployment runbook',
-            'Repository-hosted installation rehearsal',
-            'Clean Snapshot qualification',
-            'Exact release-candidate evidence'
-        )) {
+                'Repository security baseline',
+                'Independent publisher signing',
+                'Non-functional resilience controls',
+                'Product scenario traceability',
+                'Release/deployment runbook',
+                'Repository-hosted installation rehearsal',
+                'Clean Snapshot qualification',
+                'Exact release-candidate evidence'
+            )) {
             $script:readiness | Should -Match ([regex]::Escape($term))
         }
 
@@ -79,13 +79,13 @@ Describe 'Capability release readiness documentation contract' {
 
     It 'records explicit v0.1.0 non-functional dispositions by control rather than tracking number' {
         foreach ($term in @(
-            'Native child-process timeout/cancellation',
-            'GitHub API throttling/transient retry',
-            'Large-repository/resource characterization',
-            'Local disk/temp resource preflight',
-            'Repeated-invocation retry/idempotency',
-            'Cross-platform interruption/signal handling'
-        )) {
+                'Native child-process timeout/cancellation',
+                'GitHub API throttling/transient retry',
+                'Large-repository/resource characterization',
+                'Local disk/temp resource preflight',
+                'Repeated-invocation retry/idempotency',
+                'Cross-platform interruption/signal handling'
+            )) {
             $script:readiness | Should -Match ([regex]::Escape($term))
         }
 
@@ -97,15 +97,15 @@ Describe 'Capability release readiness documentation contract' {
 
     It 'requires complete release-specific accepted-limitation evidence' {
         foreach ($term in @(
-            'exact release candidate commit/tag/artifact identity',
-            'affected capability/use case/scenario',
-            'why release is still acceptable',
-            'residual risk',
-            'compensating control or evidence',
-            'current decision authority',
-            'durable follow-up requirement/reference',
-            'effect on support/security/release messaging'
-        )) {
+                'exact release candidate commit/tag/artifact identity',
+                'affected capability/use case/scenario',
+                'why release is still acceptable',
+                'residual risk',
+                'compensating control or evidence',
+                'current decision authority',
+                'durable follow-up requirement/reference',
+                'effect on support/security/release messaging'
+            )) {
             $script:readiness | Should -Match ([regex]::Escape($term))
         }
 

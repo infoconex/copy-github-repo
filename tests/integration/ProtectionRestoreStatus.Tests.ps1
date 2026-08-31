@@ -31,6 +31,29 @@ Describe 'Repository protection restoration status' {
         }
     }
 
+    It 'does not rediscover source protection when an explicit planned configuration is null' {
+        InModuleScope CopyGitHubRepo {
+            $source = [pscustomobject] @{ FullName = 'infoconex/source'; DefaultBranch = 'main' }
+            $destination = [pscustomobject] @{ FullName = 'infoconex/destination'; DefaultBranch = 'main' }
+
+            Mock Get-CgrRepositoryProtectionConfiguration { throw 'Explicit null planned evidence must not trigger live protection discovery.' }
+            Mock Invoke-CgrGitHubApiMutation { throw 'Invalid planned protection evidence must not mutate the destination.' }
+
+            $result = Set-CgrRepositoryProtectionConfiguration `
+                -SourceRepository $source `
+                -DestinationRepository $destination `
+                -SourceConfiguration $null
+
+            $result.Status | Should -Be 'Unsupported'
+            $result.IsSuccessful | Should -BeTrue
+            $result.IsComplete | Should -BeFalse
+            @($result.Restored).Count | Should -Be 0
+            @($result.Skipped) | Should -Contain 'ProtectionPlanning:Invalid'
+            Should -Invoke Get-CgrRepositoryProtectionConfiguration -Times 0 -Exactly
+            Should -Invoke Invoke-CgrGitHubApiMutation -Times 0 -Exactly
+        }
+    }
+
     It 'distinguishes partial and unsupported successful outcomes' {
         InModuleScope CopyGitHubRepo {
             $partial = [pscustomobject] @{ Status = 'Partial'; Restored = @('rule'); Skipped = @('unsupported'); IsSuccessful = $true; IsComplete = $false }

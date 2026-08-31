@@ -46,6 +46,30 @@
             LiveValidation = 'Required'
             LiveEvidence = @('tests/e2e/Invoke-FullHistoryEndToEndTests.ps1')
         }
+        'SCN-GHREL-HAPPY-01' = @{
+            Classification = 'Required'
+            AutomatedEvidence = @('tests/integration/GitHubReleaseMigration.Tests.ps1', 'tests/unit/FullHistoryReleaseOrchestration.Tests.ps1')
+            LiveValidation = 'Required'
+            LiveEvidence = @('tests/e2e/Invoke-GitHubReleaseEndToEndTests.ps1')
+        }
+        'SCN-GHREL-SAFETY-01' = @{
+            Classification = 'Required'
+            AutomatedEvidence = @('tests/unit/GitHubReleaseExecution.Tests.ps1', 'tests/integration/GitHubReleaseMigration.Tests.ps1')
+            LiveValidation = 'NotRequired'
+            LiveEvidence = @()
+        }
+        'SCN-GHREL-VERIFY-01' = @{
+            Classification = 'Required'
+            AutomatedEvidence = @('tests/integration/GitHubReleaseVerification.Tests.ps1', 'tests/unit/GitHubReleaseExecution.Tests.ps1')
+            LiveValidation = 'Required'
+            LiveEvidence = @('tests/e2e/Invoke-GitHubReleaseEndToEndTests.ps1')
+        }
+        'SCN-GHREL-PARTIAL-01' = @{
+            Classification = 'Required'
+            AutomatedEvidence = @('tests/unit/FullHistoryReleaseOrchestration.Tests.ps1')
+            LiveValidation = 'NotRequired'
+            LiveEvidence = @()
+        }
         'SCN-DEST-VALIDATION-01' = @{
             Classification = 'Required'
             AutomatedEvidence = @('tests/integration/ExistingDestinationReplacement.Tests.ps1')
@@ -158,9 +182,9 @@
         }
         'SCN-VERIFY-HAPPY-01' = @{
             Classification = 'Required'
-            AutomatedEvidence = @('tests/integration/FullHistory.Tests.ps1', 'tests/integration/NewDestinationSnapshot.Tests.ps1')
+            AutomatedEvidence = @('tests/integration/FullHistory.Tests.ps1', 'tests/integration/NewDestinationSnapshot.Tests.ps1', 'tests/integration/GitHubReleaseVerification.Tests.ps1')
             LiveValidation = 'Required'
-            LiveEvidence = @('tests/e2e/Invoke-SnapshotEndToEndTests.ps1', 'tests/e2e/Invoke-FullHistoryEndToEndTests.ps1')
+            LiveEvidence = @('tests/e2e/Invoke-SnapshotEndToEndTests.ps1', 'tests/e2e/Invoke-FullHistoryEndToEndTests.ps1', 'tests/e2e/Invoke-GitHubReleaseEndToEndTests.ps1')
         }
         'SCN-EVID-HAPPY-01' = @{
             Classification = 'Required'
@@ -170,7 +194,7 @@
         }
         'SCN-RECOVER-RECOVERY-01' = @{
             Classification = 'Required'
-            AutomatedEvidence = @('tests/integration/Recovery.Tests.ps1', 'tests/integration/ReplacementExecutionEvidence.Tests.ps1')
+            AutomatedEvidence = @('tests/integration/Recovery.Tests.ps1', 'tests/integration/ReplacementExecutionEvidence.Tests.ps1', 'tests/unit/FullHistoryReleaseOrchestration.Tests.ps1')
             LiveValidation = 'Required'
             LiveEvidence = @('tests/e2e/Invoke-RecoveryEndToEndTests.ps1')
         }

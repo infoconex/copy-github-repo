@@ -107,15 +107,15 @@ try {
 
         $verificationHashes.Add($sha1)
         $files.Add([ordered]@{
-            SPDXID = "SPDXRef-File-$fileIndex"
-            fileName = "./$($entry.FullName.Replace('\\', '/'))"
-            checksums = @(
-                [ordered]@{ algorithm = 'SHA1'; checksumValue = $sha1 }
-                [ordered]@{ algorithm = 'SHA256'; checksumValue = $sha256 }
-            )
-            licenseConcluded = 'NOASSERTION'
-            copyrightText = 'NOASSERTION'
-        })
+                SPDXID = "SPDXRef-File-$fileIndex"
+                fileName = "./$($entry.FullName.Replace('\\', '/'))"
+                checksums = @(
+                    [ordered]@{ algorithm = 'SHA1'; checksumValue = $sha1 }
+                    [ordered]@{ algorithm = 'SHA256'; checksumValue = $sha256 }
+                )
+                licenseConcluded = 'NOASSERTION'
+                copyrightText = 'NOASSERTION'
+            })
     }
 
     if ($files.Count -eq 0) {
@@ -136,17 +136,17 @@ try {
     $packageId = 'SPDXRef-Package-CopyGitHubRepo'
     $relationships = [System.Collections.Generic.List[object]]::new()
     $relationships.Add([ordered]@{
-        spdxElementId = 'SPDXRef-DOCUMENT'
-        relationshipType = 'DESCRIBES'
-        relatedSpdxElement = $packageId
-    })
+            spdxElementId = 'SPDXRef-DOCUMENT'
+            relationshipType = 'DESCRIBES'
+            relatedSpdxElement = $packageId
+        })
 
     foreach ($file in $files) {
         $relationships.Add([ordered]@{
-            spdxElementId = $packageId
-            relationshipType = 'CONTAINS'
-            relatedSpdxElement = $file.SPDXID
-        })
+                spdxElementId = $packageId
+                relationshipType = 'CONTAINS'
+                relatedSpdxElement = $file.SPDXID
+            })
     }
 
     $packageComment = @(

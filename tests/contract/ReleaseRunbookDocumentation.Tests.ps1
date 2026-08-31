@@ -25,12 +25,12 @@ Describe 'Release and deployment runbook documentation contract' {
 
     It 'documents the canonical lifecycle and exact release mutation ordering' {
         foreach ($state in @(
-            'Planned', 'Release Candidate', 'Readiness Reviewed', 'Approved',
-            'Release Workflow Started', 'Validated', 'Artifacts Built',
-            'Integrity Evidence Generated', 'Attested', 'Tag Confirmed/Created',
-            'Published to PowerShell Gallery', 'Published to GitHub Release',
-            'Distribution Verified', 'Documentation Verified', 'Complete'
-        )) {
+                'Planned', 'Integrated to main', 'Release Candidate', 'Readiness Reviewed', 'Approved',
+                'Release Workflow Started', 'Validated', 'Artifacts Built',
+                'Integrity Evidence Generated', 'Attested', 'Tag Confirmed/Created',
+                'Published to PowerShell Gallery', 'Published to GitHub Release',
+                'Distribution Verified', 'Documentation Verified', 'Complete'
+            )) {
             $script:runbook | Should -Match ([regex]::Escape($state))
         }
 
@@ -43,36 +43,44 @@ Describe 'Release and deployment runbook documentation contract' {
 
     It 'requires exact-candidate readiness and release evidence before publication' {
         foreach ($term in @(
-            '40-character commit SHA',
-            'Release readiness is `GO`',
-            'RequireEmptyUnreleased',
-            'Windows, Ubuntu, and macOS Validate Project Quality',
-            'Applicable live E2E evidence',
-            'PSGALLERY_API_KEY',
-            'No immutable-version conflict exists'
-        )) {
+                '40-character commit SHA',
+                'Release readiness is `GO`',
+                'RequireEmptyUnreleased',
+                'Windows, Ubuntu, and macOS Validate Project Quality',
+                'Applicable live E2E evidence',
+                'PSGALLERY_API_KEY',
+                'No immutable-version conflict exists'
+            )) {
             $script:runbook | Should -Match ([regex]::Escape($term))
         }
         $script:readiness | Should -Match 'A later commit requires a new readiness review'
     }
 
+    It 'requires integration to main before exact-candidate qualification and publication' {
+        $script:runbook | Should -Match 'integrate the release branch into `main` before final qualification'
+        $script:runbook | Should -Match 'qualify the exact resulting `main` SHA'
+        $script:runbook | Should -Match 'Do not create the stable tag before final qualification'
+        $script:publishing | Should -Match 'Stable publication is manual-dispatch-only from `main`'
+    }
+
     It 'matches the supported manual dispatch safety contract' {
-        $script:runbook | Should -Match 'Preferred release procedure.*manual workflow dispatch'
+        $script:runbook | Should -Match 'Canonical release procedure.*manual workflow dispatch'
         $script:runbook | Should -Match 'confirm_publish'
-        $script:releaseWorkflow | Should -Match "github\.ref.*refs/heads/main"
+        $script:releaseWorkflow | Should -Match 'github\.ref.*refs/heads/main'
         $script:releaseWorkflow | Should -Match 'currentMainSha'
         $script:releaseWorkflow | Should -Match 'github\.sha'
-        $script:releaseWorkflow | Should -Match 'Ensure manual release tag'
+        $script:releaseWorkflow | Should -Match 'Ensure release tag'
+        $script:releaseWorkflow | Should -Not -Match '(?ms)^\s+push:'
     }
 
     It 'documents required integrity evidence without treating attestation as independent signing' {
         foreach ($term in @(
-            'CopyGitHubRepo-X.Y.Z.zip',
-            'CopyGitHubRepo-X.Y.Z.zip.sha256',
-            'CopyGitHubRepo-X.Y.Z.spdx.json',
-            'build-provenance attestation',
-            'SBOM attestation'
-        )) {
+                'CopyGitHubRepo-X.Y.Z.zip',
+                'CopyGitHubRepo-X.Y.Z.zip.sha256',
+                'CopyGitHubRepo-X.Y.Z.spdx.json',
+                'build-provenance attestation',
+                'SBOM attestation'
+            )) {
             $script:runbook | Should -Match ([regex]::Escape($term))
         }
         $script:runbook | Should -Match 'Independent publisher signing is not implied'
@@ -89,18 +97,18 @@ Describe 'Release and deployment runbook documentation contract' {
 
     It 'documents partial publication and immutable recovery boundaries' {
         foreach ($scenario in @(
-            'Version/tag/manifest/changelog mismatch',
-            'Validate Project Quality failure',
-            'Required live evidence missing/failed',
-            'Package/artifact/SBOM/attestation failure',
-            'Publishing credential/environment approval unavailable',
-            'Existing Gallery version detected',
-            'Existing GitHub Release detected',
-            'Tag exists but resolves to a different commit',
-            'Gallery succeeds, GitHub Release fails',
-            'Gallery publication succeeds but clean install/import verification fails',
-            'Documentation Pages deployment fails'
-        )) {
+                'Version/tag/manifest/changelog mismatch',
+                'Validate Project Quality failure',
+                'Required live evidence missing/failed',
+                'Package/artifact/SBOM/attestation failure',
+                'Publishing credential/environment approval unavailable',
+                'Existing Gallery version detected',
+                'Existing GitHub Release detected',
+                'Tag exists but resolves to a different commit',
+                'Gallery succeeds, GitHub Release fails',
+                'Gallery publication succeeds but clean install/import verification fails',
+                'Documentation Pages deployment fails'
+            )) {
             $script:runbook | Should -Match ([regex]::Escape($scenario))
         }
         $script:runbook | Should -Match 'Do not republish Gallery'
@@ -119,12 +127,12 @@ Describe 'Release and deployment runbook documentation contract' {
 
     It 'requires an auditable completion record and routes serious post-release failures to incident response' {
         foreach ($term in @(
-            'Publish Release workflow run ID',
-            'release ZIP filename/SHA-256',
-            'PowerShell Gallery publication and clean-install verification',
-            'GitHub Release publication and asset verification',
-            'final state: `Complete`, `Partial / recovery required`, or `Failed before publication`'
-        )) {
+                'Publish Release workflow run ID',
+                'release ZIP filename/SHA-256',
+                'PowerShell Gallery publication and clean-install verification',
+                'GitHub Release publication and asset verification',
+                'final state: `Complete`, `Partial / recovery required`, or `Failed before publication`'
+            )) {
             $script:runbook | Should -Match ([regex]::Escape($term))
         }
         $script:runbook | Should -Match 'incident-response\.md'

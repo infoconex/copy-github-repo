@@ -16,19 +16,19 @@ BeforeAll {
 Describe 'Post-release incident and emergency maintenance documentation contract' {
     It 'defines the required incident classes and severity model' {
         foreach ($term in @(
-            'critical functional defect',
-            'security vulnerability',
-            'publishing credential',
-            'release workflow/environment',
-            'tampering',
-            'supply-chain vulnerability',
-            'SBOM',
-            'VEX applicability statement',
-            'GitHub Release and PowerShell Gallery',
-            'installer/update/uninstall',
-            'GitHub CLI',
-            'documentation or security guidance'
-        )) {
+                'critical functional defect',
+                'security vulnerability',
+                'publishing credential',
+                'release workflow/environment',
+                'tampering',
+                'supply-chain vulnerability',
+                'SBOM',
+                'VEX applicability statement',
+                'GitHub Release and PowerShell Gallery',
+                'installer/update/uninstall',
+                'GitHub CLI',
+                'documentation or security guidance'
+            )) {
             $script:incident | Should -Match ([regex]::Escape($term))
         }
 
@@ -43,13 +43,13 @@ Describe 'Post-release incident and emergency maintenance documentation contract
         }
 
         foreach ($evidence in @(
-            '40-character commit SHA',
-            'release workflow run ID',
-            'ZIP/checksum/SBOM/attestation identities',
-            'timeline and key decisions',
-            'remediation commit/release identity',
-            'verification evidence'
-        )) {
+                '40-character commit SHA',
+                'release workflow run ID',
+                'ZIP/checksum/SBOM/attestation identities',
+                'timeline and key decisions',
+                'remediation commit/release identity',
+                'verification evidence'
+            )) {
             $script:incident | Should -Match ([regex]::Escape($evidence))
         }
 
@@ -58,26 +58,26 @@ Describe 'Post-release incident and emergency maintenance documentation contract
 
     It 'forbids unsafe mutation of immutable releases' {
         foreach ($term in @(
-            'never overwrite or republish the same Gallery version',
-            'never move a published stable tag to a different commit',
-            'never silently replace stable release assets',
-            'use a new semantic version for corrected shipped code/package content'
-        )) {
+                'never overwrite or republish the same Gallery version',
+                'never move a published stable tag to a different commit',
+                'never silently replace stable release assets',
+                'use a new semantic version for corrected shipped code/package content'
+            )) {
             $script:incident | Should -Match ([regex]::Escape($term))
         }
     }
 
     It 'keeps the emergency patch path inside normal integrity controls' {
         foreach ($term in @(
-            'Increment the version',
-            'Run release readiness',
-            'Run the Quality Gate',
-            'Run applicable live E2E evidence',
-            'Generate normal integrity evidence',
-            'Publish through the normal release workflow/runbook',
-            'Post-publication verify',
-            'Communicate'
-        )) {
+                'Increment the version',
+                'Run release readiness',
+                'Run the Quality Gate',
+                'Run applicable live E2E evidence',
+                'Generate normal integrity evidence',
+                'Publish through the normal release workflow/runbook',
+                'Post-publication verify',
+                'Communicate'
+            )) {
             $script:incident | Should -Match ([regex]::Escape($term))
         }
 
@@ -99,12 +99,12 @@ Describe 'Post-release incident and emergency maintenance documentation contract
 
     It 'covers partial distribution and prerequisite-specific incidents' {
         foreach ($scenario in @(
-            'Gallery package is bad; GitHub Release artifact is correct',
-            'GitHub Release artifact/evidence is bad; Gallery package is correct',
-            'Installer points to an unsafe/incorrect version',
-            'One capability/mode is affected',
-            'External prerequisite is affected'
-        )) {
+                'Gallery package is bad; GitHub Release artifact is correct',
+                'GitHub Release artifact/evidence is bad; Gallery package is correct',
+                'Installer points to an unsafe/incorrect version',
+                'One capability/mode is affected',
+                'External prerequisite is affected'
+            )) {
             $script:incident | Should -Match ([regex]::Escape($scenario))
         }
     }

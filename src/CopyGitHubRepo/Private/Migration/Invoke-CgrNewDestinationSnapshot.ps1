@@ -48,38 +48,17 @@ function Invoke-CgrNewDestinationSnapshot {
         }
         $completedSteps.Add([pscustomobject] @{ Order = 3; Name = 'VerifySnapshot'; MutatedGitHub = $false; Verified = $verification.IsSuccessful })
 
-        $failureStage = 'RestoreSupportedSettings'
-        $settings = Invoke-CgrActivityStage -Name 'RestoreSupportedSettings' -Message 'Restore supported repository settings' -Action {
-            if (-not $verification.IsSuccessful) {
-                return [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.SettingsRestoreResult'; Repository = $DestinationRepository.FullName; Restored = @(); Skipped = @('SnapshotVerificationFailed'); Unsupported = @(); IsSuccessful = $false }
-            }
-            if ($Plan.SkipSettings) {
-                return [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.SettingsRestoreResult'; Repository = $DestinationRepository.FullName; Restored = @(); Skipped = @('AllSettings'); Unsupported = @(); IsSuccessful = $true }
-            }
-            Set-CgrGitHubRepositorySetting -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -HostName $HostName
-        }
-        $completedSteps.Add([pscustomobject] @{ Order = 4; Name = 'RestoreSupportedSettings'; MutatedGitHub = -not $Plan.SkipSettings; Verified = $settings.IsSuccessful })
-
-        $failureStage = 'RestoreRepositoryProtection'
-        $planProtection = Get-CgrObjectProperty -InputObject $Plan -Name 'Protection'
-        $protection = Invoke-CgrActivityStage -Name 'RestoreRepositoryProtection' -Message 'Restore transferable repository protection' -Action {
-            if (-not $verification.IsSuccessful) {
-                return [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'; Repository = $DestinationRepository.FullName; Status = 'Failed'; Restored = @(); Skipped = @('SnapshotVerificationFailed'); IsSuccessful = $false; IsComplete = $false }
-            }
-            if ($Plan.SkipSettings) {
-                return [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'; Repository = $DestinationRepository.FullName; Status = 'Skipped'; Restored = @(); Skipped = @('AllSettings'); IsSuccessful = $true; IsComplete = $true }
-            }
-            if ($null -eq $planProtection) {
-                return Set-CgrRepositoryProtectionConfiguration -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -HostName $HostName
-            }
-            if ((Get-CgrObjectProperty -InputObject $planProtection -Name 'Status') -eq 'Captured') {
-                return Set-CgrRepositoryProtectionConfiguration -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -SourceConfiguration (Get-CgrObjectProperty -InputObject $planProtection -Name 'Configuration') -HostName $HostName
-            }
-
-            $planningStatus = [string] (Get-CgrObjectProperty -InputObject $planProtection -Name 'Status')
-            [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'; Repository = $DestinationRepository.FullName; Status = 'Unsupported'; Restored = @(); Skipped = @("ProtectionPlanning:$planningStatus"); IsSuccessful = $true; IsComplete = $false }
-        }
-        $completedSteps.Add([pscustomobject] @{ Order = 5; Name = 'RestoreRepositoryProtection'; MutatedGitHub = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings); Verified = $protection.IsSuccessful })
+        $configuration = Invoke-CgrPostVerificationConfigurationRestore `
+            -Plan $Plan `
+            -SourceRepository $SourceRepository `
+            -DestinationRepository $verifiedDestination `
+            -Verification $verification `
+            -VerificationFailureReason 'SnapshotVerificationFailed' `
+            -CompletedSteps $completedSteps `
+            -FailureStage ([ref] $failureStage) `
+            -HostName $HostName
+        $settings = $configuration.Settings
+        $protection = $configuration.Protection
 
         $snapshotSourceCommit = if ($sourceState) { Get-CgrObjectProperty -InputObject $sourceState -Name 'CommitSha' } else { Get-CgrObjectProperty -InputObject $snapshot -Name 'SourceCommitSha' }
         $snapshotTree = if ($sourceState) { Get-CgrObjectProperty -InputObject $sourceState -Name 'TreeSha' } else { Get-CgrObjectProperty -InputObject $snapshot -Name 'TreeSha' }
@@ -116,8 +95,8 @@ function Invoke-CgrNewDestinationSnapshot {
             DestinationBranch = Get-CgrObjectProperty -InputObject $snapshot -Name 'BranchName'; SnapshotCommitSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'CommitSha'; SourceTreeSha = $snapshotTree
             Provenance = $provenance; IsVerified = $verification.IsSuccessful; Verification = $verification; Settings = $settings; Protection = $protection; Plan = $Plan; CompletedSteps = @($completedSteps)
             StoppedBeforeSettingsRestore = -not $verification.IsSuccessful
-            SettingsRestored = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings -and $settings.IsSuccessful)
-            ProtectionRestored = [bool] ($verification.IsSuccessful -and -not $Plan.SkipSettings -and $protection.IsSuccessful -and $protection.IsComplete)
+            SettingsRestored = $configuration.SettingsRestored
+            ProtectionRestored = $configuration.ProtectionRestored
         }
 
         if ($ReportPath) { $failureStage = 'WriteCompletionReport'; Write-CgrMigrationExecutionReport -Result $executionResult -Path $ReportPath | Out-Null }
@@ -141,7 +120,8 @@ function Invoke-CgrNewDestinationSnapshot {
                 DestinationTreeSha = if ($snapshot) { Get-CgrObjectProperty -InputObject $snapshot -Name 'TreeSha' } else { $null }
             }
             $recoveryReportPath = Write-CgrMigrationRecoveryReport -Plan $Plan -DestinationRepository $DestinationRepository -FailureStage $failureStage -ErrorRecord $_ -CompletedSteps @($completedSteps) -Provenance $recoveryProvenance -PreferredReportPath $ReportPath
-        } catch { Write-Warning "Migration failed after destination creation, and the recovery report could not be written. Recovery reporting error: $($_.Exception.Message)" }
+        }
+        catch { Write-Warning "Migration failed after destination creation, and the recovery report could not be written. Recovery reporting error: $($_.Exception.Message)" }
         if ($recoveryReportPath) { Write-Warning "Migration failed after destination creation. Recovery report: $recoveryReportPath" }
         throw
     }

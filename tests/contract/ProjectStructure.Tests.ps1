@@ -37,7 +37,7 @@ Describe 'Project source structure' {
         $duplicates = @(
             Get-ChildItem -LiteralPath $script:privateRoot -Filter '*.ps1' -File -Recurse |
                 Group-Object -Property Name |
-                Where-Object Count -gt 1
+                Where-Object Count -GT 1
         )
 
         $duplicates.Count | Should -Be 0

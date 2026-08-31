@@ -123,10 +123,10 @@ Describe 'FullHistory migration engine' {
                 ($ArgumentList -join ' ') -like '* lfs push --all cgr-destination'
             }
             @($script:activityEvents | Where-Object {
-                $_.Name -eq 'InspectGitLfs' -and
-                $_.State -eq 'Completed' -and
-                $_.Message -eq 'No Git LFS objects found; no transfer required.'
-            }).Count | Should -Be 1
+                    $_.Name -eq 'InspectGitLfs' -and
+                    $_.State -eq 'Completed' -and
+                    $_.Message -eq 'No Git LFS objects found; no transfer required.'
+                }).Count | Should -Be 1
         }
     }
 
@@ -187,10 +187,11 @@ Describe 'FullHistory migration verification' {
             }
             Mock Invoke-CgrNativeCommand {
                 [pscustomobject] @{ ExitCode = 0; Output = @(
-                    'refs/heads/feature 2222222222222222222222222222222222222222'
-                    'refs/heads/main 1111111111111111111111111111111111111111'
-                    'refs/tags/v1.0.0 3333333333333333333333333333333333333333'
-                ); ErrorText = '' }
+                        'refs/heads/feature 2222222222222222222222222222222222222222'
+                        'refs/heads/main 1111111111111111111111111111111111111111'
+                        'refs/tags/v1.0.0 3333333333333333333333333333333333333333'
+                    ); ErrorText = '' 
+                }
             } -ParameterFilter {
                 ($ArgumentList -join ' ') -like '* for-each-ref --format=%(refname) %(objectname) refs/heads refs/tags'
             }
@@ -225,9 +226,9 @@ Describe 'FullHistory migration verification' {
             $result.DestinationRefCount | Should -Be 3
             $result.SourceReachableCommitCount | Should -Be 3
             $result.DestinationReachableCommitCount | Should -Be 3
-            @($result.Checks | Where-Object Name -eq 'BranchAndTagTargetsMatch')[0].Passed | Should -BeTrue
-            @($result.Checks | Where-Object Name -eq 'BranchTipTreesMatch')[0].Passed | Should -BeTrue
-            @($result.Checks | Where-Object Name -eq 'GitLfsObjectsAvailable')[0].Passed | Should -BeTrue
+            @($result.Checks | Where-Object Name -EQ 'BranchAndTagTargetsMatch')[0].Passed | Should -BeTrue
+            @($result.Checks | Where-Object Name -EQ 'BranchTipTreesMatch')[0].Passed | Should -BeTrue
+            @($result.Checks | Where-Object Name -EQ 'GitLfsObjectsAvailable')[0].Passed | Should -BeTrue
         }
     }
 }

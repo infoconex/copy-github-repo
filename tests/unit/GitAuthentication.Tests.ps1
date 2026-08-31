@@ -71,8 +71,8 @@ Describe 'Git authentication isolation' {
                     -PrefixArgumentList @('-NoLogo') `
                     -ArgumentList @('-NoProfile', '-Command', $command) `
                     -Environment @{
-                        $variableName = 'child'
-                    }
+                    $variableName = 'child'
+                }
 
                 $result.ExitCode | Should -Be 0
                 @($result.Output)[0].ToString() | Should -Be 'child'
@@ -131,8 +131,8 @@ Describe 'Git authentication isolation' {
                     -FilePath $powerShellPath `
                     -ArgumentList @('-NoLogo', '-NoProfile', '-Command', $command) `
                     -Environment @{
-                        $VariableName = $ChildValue
-                    }
+                    $VariableName = $ChildValue
+                }
             } $VariableName $ChildValue
         }
 

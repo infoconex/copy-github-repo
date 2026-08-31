@@ -98,8 +98,8 @@ function Copy-CgrRepositorySnapshot {
             -Name 'TransferGitLfs' `
             -Message "Transfer Git LFS objects to '$($DestinationRepository.FullName)'" `
             -Action {
-                Copy-CgrGitLfsObject -SourcePath $sourcePath -SourceRepository $SourceRepository -DestinationRepository $DestinationRepository -BranchName $BranchName
-            }
+            Copy-CgrGitLfsObject -SourcePath $sourcePath -SourceRepository $SourceRepository -DestinationRepository $DestinationRepository -BranchName $BranchName
+        }
 
         $pushRef = "$($commitSha):refs/heads/$BranchName"
         $pushResult = Invoke-CgrGitCommand -HostName $DestinationRepository.HostName -ArgumentList @('-C', $sourcePath, 'push', $DestinationRepository.CloneUrl, $pushRef)

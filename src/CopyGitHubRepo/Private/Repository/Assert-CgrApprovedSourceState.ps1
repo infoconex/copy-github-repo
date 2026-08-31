@@ -55,17 +55,17 @@ function Assert-CgrApprovedSourceState {
     $stateMatches = $identityMatches -and $currentState.DefaultBranch -eq (Get-CgrObjectProperty -InputObject $SourceState -Name 'DefaultBranch')
     if ($contentMode -eq 'FullHistory') {
         $stateMatches = $stateMatches -and
-            (($currentState.Refs | Sort-Object) -join "`n") -eq ((@(Get-CgrObjectProperty -InputObject $SourceState -Name 'Refs') | Sort-Object) -join "`n") -and
-            $currentState.ReachableCommitCount -eq (Get-CgrObjectProperty -InputObject $SourceState -Name 'ReachableCommitCount') -and
-            (($currentState.BranchTrees | Sort-Object) -join "`n") -eq ((@(Get-CgrObjectProperty -InputObject $SourceState -Name 'BranchTrees') | Sort-Object) -join "`n") -and
-            $currentState.GitLfsObjectsAvailable -eq [bool] (Get-CgrObjectProperty -InputObject $SourceState -Name 'GitLfsObjectsAvailable')
+        (($currentState.Refs | Sort-Object) -join "`n") -eq ((@(Get-CgrObjectProperty -InputObject $SourceState -Name 'Refs') | Sort-Object) -join "`n") -and
+        $currentState.ReachableCommitCount -eq (Get-CgrObjectProperty -InputObject $SourceState -Name 'ReachableCommitCount') -and
+        (($currentState.BranchTrees | Sort-Object) -join "`n") -eq ((@(Get-CgrObjectProperty -InputObject $SourceState -Name 'BranchTrees') | Sort-Object) -join "`n") -and
+        $currentState.GitLfsObjectsAvailable -eq [bool] (Get-CgrObjectProperty -InputObject $SourceState -Name 'GitLfsObjectsAvailable')
     }
     else {
         $stateMatches = $stateMatches -and
-            $currentState.CommitSha -eq (Get-CgrObjectProperty -InputObject $SourceState -Name 'CommitSha') -and
-            $currentState.TreeSha -eq (Get-CgrObjectProperty -InputObject $SourceState -Name 'TreeSha') -and
-            $currentState.GitLfsObjectsAvailable -eq [bool] (Get-CgrObjectProperty -InputObject $SourceState -Name 'GitLfsObjectsAvailable') -and
-            (($currentState.GitLfsPointerFiles | Sort-Object) -join "`n") -eq ((@(Get-CgrObjectProperty -InputObject $SourceState -Name 'GitLfsPointerFiles') | Sort-Object) -join "`n")
+        $currentState.CommitSha -eq (Get-CgrObjectProperty -InputObject $SourceState -Name 'CommitSha') -and
+        $currentState.TreeSha -eq (Get-CgrObjectProperty -InputObject $SourceState -Name 'TreeSha') -and
+        $currentState.GitLfsObjectsAvailable -eq [bool] (Get-CgrObjectProperty -InputObject $SourceState -Name 'GitLfsObjectsAvailable') -and
+        (($currentState.GitLfsPointerFiles | Sort-Object) -join "`n") -eq ((@(Get-CgrObjectProperty -InputObject $SourceState -Name 'GitLfsPointerFiles') | Sort-Object) -join "`n")
     }
 
     if (-not $stateMatches) {

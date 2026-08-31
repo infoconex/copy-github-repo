@@ -100,7 +100,7 @@ function Get-CgrRepositoryFullHistoryIdentity {
         }
 
         $workspaceBytes = (Get-ChildItem -LiteralPath $workspacePath -File -Recurse -Force |
-            Measure-Object -Property Length -Sum).Sum
+                Measure-Object -Property Length -Sum).Sum
         if ($null -eq $workspaceBytes) { $workspaceBytes = 0 }
 
         [pscustomobject] @{

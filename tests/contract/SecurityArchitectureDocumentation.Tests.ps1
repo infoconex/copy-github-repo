@@ -10,25 +10,25 @@ BeforeAll {
 Describe 'Security architecture documentation contract' {
     It 'defines protected assets actors trust boundaries and privileged operations' {
         foreach ($heading in @(
-            '## Protected assets',
-            '## Actors and trust assumptions',
-            '## Trust boundaries and sensitive-data flow',
-            '## Privileged and destructive operations'
-        )) {
+                '## Protected assets',
+                '## Actors and trust assumptions',
+                '## Trust boundaries and sensitive-data flow',
+                '## Privileged and destructive operations'
+            )) {
             $script:securityArchitecture | Should -Match ([regex]::Escape($heading))
         }
     }
 
     It 'addresses the required threat classes and recovery semantics' {
         foreach ($term in @(
-            'Shell/command injection',
-            'Stale-state substitution / TOCTOU',
-            'Destination overwrite / destructive confusion',
-            'Credential leakage',
-            'Partial mutation',
-            'Release artifact substitution',
-            'Dependency/workflow compromise'
-        )) {
+                'Shell/command injection',
+                'Stale-state substitution / TOCTOU',
+                'Destination overwrite / destructive confusion',
+                'Credential leakage',
+                'Partial mutation',
+                'Release artifact substitution',
+                'Dependency/workflow compromise'
+            )) {
             $script:securityArchitecture | Should -Match ([regex]::Escape($term))
         }
         $script:securityArchitecture | Should -Match 'does not automatically delete repositories or rename archives back'
@@ -42,12 +42,12 @@ Describe 'Security architecture documentation contract' {
 
     It 'distinguishes implemented verified platform planned and residual-risk states' {
         foreach ($status in @(
-            'Implemented',
-            'Automatically verified',
-            'Platform-provided / live verification required',
-            'Planned / open',
-            'Residual risk'
-        )) {
+                'Implemented',
+                'Automatically verified',
+                'Platform-provided / live verification required',
+                'Planned / open',
+                'Residual risk'
+            )) {
             $script:securityArchitecture | Should -Match ([regex]::Escape($status))
         }
     }

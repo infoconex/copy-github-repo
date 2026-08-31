@@ -9,13 +9,13 @@ BeforeAll {
 Describe 'User capabilities and scenario documentation' {
     It 'provides a complete user progression' {
         foreach ($text in @(
-            'Choose the outcome'
-            'Install and authenticate'
-            'Preview before mutation'
-            'Execute deliberately'
-            'Verify the result'
-            'Preserve evidence if something fails'
-        )) {
+                'Choose the outcome'
+                'Install and authenticate'
+                'Preview before mutation'
+                'Execute deliberately'
+                'Verify the result'
+                'Preserve evidence if something fails'
+            )) {
             $script:userGuide | Should -Match ([regex]::Escape($text))
         }
     }
@@ -40,32 +40,32 @@ Describe 'User capabilities and scenario documentation' {
     It 'defines the user-facing what gets copied matrix for supported and unsupported state' {
         $script:userGuide | Should -Match '## What gets copied\?'
         foreach ($item in @(
-            'Git LFS'
-            'Description and homepage'
-            'Transferable repository-level rulesets'
-            'Pull requests'
-            'Issues and issue history'
-            'GitHub Releases / release history'
-            'GitHub Actions workflow-run history'
-            'GitHub Pages configuration'
-            'Secret values'
-            'Collaborator/team access'
-            'Packages / deployments'
-        )) {
+                'Git LFS'
+                'Description and homepage'
+                'Transferable repository-level rulesets'
+                'Pull requests'
+                'Issues and issue history'
+                'GitHub Releases / release history'
+                'GitHub Actions workflow-run history'
+                'GitHub Pages configuration'
+                'Secret values'
+                'Collaborator/team access'
+                'Packages / deployments'
+            )) {
             $script:userGuide | Should -Match ([regex]::Escape($item))
         }
     }
 
     It 'documents the required user scenarios by intent' {
         foreach ($heading in @(
-            '### Publish a clean Snapshot to a new destination'
-            '### Copy FullHistory to a new destination'
-            '### Replace an existing different destination'
-            '### Replace a repository under the same name'
-            '### Preview without mutation'
-            '### Run non-interactively'
-            '### Verify independently'
-        )) {
+                '### Publish a clean Snapshot to a new destination'
+                '### Copy FullHistory to a new destination'
+                '### Replace an existing different destination'
+                '### Replace a repository under the same name'
+                '### Preview without mutation'
+                '### Run non-interactively'
+                '### Verify independently'
+            )) {
             $script:userGuide | Should -Match ([regex]::Escape($heading))
         }
     }

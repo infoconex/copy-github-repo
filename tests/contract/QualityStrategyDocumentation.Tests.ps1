@@ -14,12 +14,12 @@ Describe 'Quality strategy documentation contract' {
     It 'links product traceability IDs to automated and live evidence' {
         $content = Get-Content -LiteralPath $script:qualityStrategyPath -Raw
         foreach ($term in @(
-            'CAP-PLAN', 'CAP-SNAP', 'CAP-HIST', 'CAP-DEST', 'CAP-SAME', 'CAP-LFS',
-            'CAP-SET', 'CAP-PROT', 'CAP-WIZ', 'CAP-VERIFY', 'CAP-EVID', 'CAP-DIST', 'CAP-REL',
-            'SCN-API-RESILIENCE-01', 'SCN-NATIVE-RESILIENCE-01', 'SCN-RESOURCE-RESILIENCE-01',
-            'SCN-RETRY-RESILIENCE-01', 'SCN-RETRY-RESILIENCE-02', 'SCN-SCALE-RESILIENCE-01',
-            'SCN-INTERRUPT-RESILIENCE-01'
-        )) {
+                'CAP-PLAN', 'CAP-SNAP', 'CAP-HIST', 'CAP-DEST', 'CAP-SAME', 'CAP-LFS',
+                'CAP-SET', 'CAP-PROT', 'CAP-WIZ', 'CAP-VERIFY', 'CAP-EVID', 'CAP-DIST', 'CAP-REL',
+                'SCN-API-RESILIENCE-01', 'SCN-NATIVE-RESILIENCE-01', 'SCN-RESOURCE-RESILIENCE-01',
+                'SCN-RETRY-RESILIENCE-01', 'SCN-RETRY-RESILIENCE-02', 'SCN-SCALE-RESILIENCE-01',
+                'SCN-INTERRUPT-RESILIENCE-01'
+            )) {
             $content | Should -Match ([regex]::Escape($term))
         }
     }
@@ -27,9 +27,9 @@ Describe 'Quality strategy documentation contract' {
     It 'maps resilience scenarios to concrete automated or characterization evidence' {
         $content = Get-Content -LiteralPath $script:qualityStrategyPath -Raw
         foreach ($term in @(
-            'GitHubApiAdapters.Tests.ps1', 'NativeCommandStreams.Tests.ps1', 'LocalResourcePreflight.Tests.ps1',
-            'InterruptionContract.Tests.ps1', 'SnapshotPagination.Tests.ps1', 'scale characterization'
-        )) {
+                'GitHubApiAdapters.Tests.ps1', 'NativeCommandStreams.Tests.ps1', 'LocalResourcePreflight.Tests.ps1',
+                'InterruptionContract.Tests.ps1', 'SnapshotPagination.Tests.ps1', 'scale characterization'
+            )) {
             $content | Should -Match ([regex]::Escape($term))
         }
     }

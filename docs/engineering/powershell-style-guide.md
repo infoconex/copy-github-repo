@@ -5,9 +5,9 @@ description: "Follow CopyGitHubRepo's PowerShell conventions for terminology, na
 
 # PowerShell style guide
 
-This guide defines the PowerShell engineering conventions for Copy GitHub Repository. It records conventions already established by the codebase and distinguishes enforceable rules from readability preferences.
+This guide defines the PowerShell engineering conventions for Copy GitHub Repository. It records conventions already established by the codebase, identifies deliberate project decisions, distinguishes mandatory engineering contracts from readability preferences, and defines how external PowerShell guidance applies when the project has not already made a deliberate choice.
 
-The repository targets PowerShell 7.4 or newer. `PSScriptAnalyzerSettings.psd1` is the machine-enforced policy; this guide is the human-readable contract.
+The repository targets PowerShell 7.4 or newer. `PSScriptAnalyzerSettings.psd1` is the authoritative machine-readable analyzer configuration; this guide is the human-readable engineering contract.
 
 ## Product terminology
 
@@ -23,8 +23,27 @@ The repository targets PowerShell 7.4 or newer. `PSScriptAnalyzerSettings.psd1` 
 
 ## Rule categories
 
-- **Required** conventions protect correctness, public API consistency, safety, or maintainability. PSScriptAnalyzer or Pester should enforce them when practical.
-- **Preferred** conventions improve readability where PowerShell permits more than one reasonable form. Reviewers should use judgment rather than demand churn with no functional or maintenance benefit.
+- **Required** means a mandatory engineering contract. Violations must be corrected or covered by an explicitly permitted and documented exception. PSScriptAnalyzer, Pester, or another deterministic quality check should enforce an objective Required rule when practical and low-noise.
+- **Preferred** means the normal/default choice when PowerShell permits more than one technically valid approach. A deviation is not, by itself, a quality-gate failure, and reviewers should not demand churn without a concrete readability or maintenance benefit.
+- **Allowed** means an explicitly acceptable alternative. Code using an Allowed form should not be rewritten merely to make it match a Preferred form elsewhere.
+- **Discouraged** means avoid in new or modified code unless there is a concrete technical, compatibility, or architectural reason to use it.
+- **Prohibited** means the form must not be introduced. Any retained existing use requires an explicit compatibility, exception, or remediation disposition.
+
+## Standards and decision hierarchy
+
+A documented CopyGitHubRepo rule, compatibility contract, ADR, or deliberate architectural boundary takes precedence for this repository unless the project explicitly revisits that decision. External guidance informs unresolved decisions; it does not silently override established project policy.
+
+When no documented project rule resolves a PowerShell engineering decision, use the following order of guidance:
+
+1. Microsoft PowerShell documentation and design guidance.
+2. Applicable PSScriptAnalyzer rules and their documented intent.
+3. PowerShell Practice and Style guidance.
+4. Established PowerShell community practice.
+5. Local consistency when multiple valid approaches remain.
+
+This hierarchy is a decision aid, not a command to apply every external recommendation mechanically. A PSScriptAnalyzer rule is an enforcement mechanism for a documented engineering concern; the existence of a rule does not automatically make every optional configuration or Information-level recommendation appropriate for this repository.
+
+Before classifying an inconsistency as a defect, determine whether it is explained by an existing project rule, ADR, compatibility requirement, architectural boundary, or documented exception. Only unexplained divergence should be treated as accidental inconsistency. Avoid cosmetic churn where multiple forms are already valid under this guide.
 
 ## Naming
 
@@ -65,7 +84,7 @@ The `Cgr` prefix is an intentional project convention and must not be expanded o
 - Put spaces around operators and after separators, and use normal spacing around braces and pipelines.
 - Existing compact PowerShell forms such as `param()` are acceptable; the project does not require inserting a space before every opening parenthesis.
 
-The four-space/no-tabs indentation convention is a required review standard, but `PSUseConsistentIndentation` is intentionally not enabled. Evaluation against the existing repository showed that the rule also normalizes established multiline continuation layouts and produced widespread warnings even with pipeline indentation normalization disabled. Enabling it would therefore require broad cosmetic rewrites unrelated to correctness or maintainability. The deliberately scoped `PSUseConsistentWhitespace` configuration enforces the objective whitespace checks that fit the existing codebase without that churn.
+The four-space/no-tabs indentation convention is machine-enforced with `PSUseConsistentIndentation`. The project uses spaces, four-space indentation, and `IncreaseIndentationForFirstPipeline` so multiline pipelines follow the standard first-pipeline indentation behavior. Existing source has been normalized to this policy rather than weakening the rule.
 
 ### Multiline parameter declarations
 
@@ -84,6 +103,10 @@ Example:
 
 ### Multiline command invocation and splatting
 
+**Required**
+
+- Avoid positional-parameter invocation where `PSAvoidUsingPositionalParameters` applies. This convention is deliberately promoted through the focused Information-rule contract; it is not an accidental consequence of enabling Information severity globally.
+
 **Preferred**
 
 - Use named parameters for nontrivial command calls.
@@ -95,7 +118,7 @@ Example:
 
 ### Quoting
 
-**Preferred**
+**Required**
 
 - Use single-quoted strings for literals.
 - Use double-quoted strings when interpolation or PowerShell escape processing is required.
@@ -131,6 +154,22 @@ Example:
 - Internal helpers live under `src/CopyGitHubRepo/Private` and use the `Cgr` prefix.
 - Public commands own public parameter semantics, safety decisions, user-facing output selection, and dispatch. Internal helpers own cohesive implementation behavior.
 - Do not export private helpers.
+
+### Advanced functions and automation
+
+**Required**
+
+- Every manifest-exported public function uses `[CmdletBinding()]` so common-parameter and advanced-function semantics are explicit and testable.
+- Every state-changing exported command enables `SupportsShouldProcess`, declares an explicit `ConfirmImpact` appropriate to its risk, and gates mutation through `ShouldProcess()` using the command's PowerShell cmdlet context before mutation dispatch. A delegated execution guard may use a captured `$PSCmdlet` reference when the public command retains ownership of the decision.
+- Supported automation scenarios must not depend on `Read-Host`, interactive host input, or wizard-only selection. A command that can prompt must expose and document a noninteractive path or identify the direct noninteractive public command that automation should use.
+- `Copy-GitHubRepository` is the automation boundary for repository-copy execution. Its `-NonInteractive` path requires the documented `-Force` acknowledgement for mutation while preserving independent exact replacement confirmations.
+- The interactive wizard may own host-oriented presentation and selection behavior, but automation uses the structured public commands directly rather than scraping wizard output.
+- Routine confirmation bypass and independent safety confirmation are distinct contracts. `-Force` and `-Confirm:$false` may suppress routine PowerShell confirmation where documented, but they must not bypass exact replacement confirmation, source-state validation, or other independent product safety invariants.
+- Public success output remains structured and suitable for assignment, filtering, serialization, and automation. Presentation-only behavior stays separate from the success pipeline.
+
+**Preferred**
+
+- Use `[OutputType()]` when it accurately and stably describes a public command's output contract. Do not require it universally when output is mode-dependent or when the attribute would misrepresent the actual public API.
 
 ### Types and validation attributes
 
@@ -199,10 +238,10 @@ The status word is intentionally redundant with both symbol and color. This keep
 
 **Required**
 
-- Public state-changing operations use `SupportsShouldProcess` and call `$PSCmdlet.ShouldProcess()` before mutation.
+- Public state-changing operations use `SupportsShouldProcess` and gate mutation through `ShouldProcess()` using their PowerShell cmdlet context before mutation. Direct commands normally call `$PSCmdlet.ShouldProcess()`; a delegated execution guard may call `ShouldProcess()` through a captured `$PSCmdlet` reference when the public command retains ownership of the decision.
 - `-WhatIf` must remain non-mutating.
-- `-Confirm:$false` must not bypass independent product safety requirements such as exact same-name replacement confirmation.
-- `-Force` may satisfy explicitly documented guards, but must not become a generic bypass for product safety invariants.
+- `-Confirm:$false` may suppress routine PowerShell confirmation but must not bypass independent product safety requirements such as exact same-name or existing-destination replacement confirmation.
+- `-Force` may satisfy explicitly documented routine guards, but must not become a generic bypass for product safety invariants.
 
 ## Native commands and security-sensitive code
 
@@ -232,18 +271,42 @@ The status word is intentionally redundant with both symbol and color. This keep
 
 ## PSScriptAnalyzer policy
 
-`PSScriptAnalyzerSettings.psd1` retains the default Error/Warning rule set and explicitly enables two additional rules:
+The configured PSScriptAnalyzer Error and Warning policy is mandatory. Code must produce no unsuppressed Error or Warning diagnostics under the repository's analyzer configuration. Any suppression must satisfy the documented suppression requirements below.
 
-| Rule | Why it is enabled |
+`PSScriptAnalyzerSettings.psd1` is the authoritative machine-readable analyzer configuration. This guide documents the project-specific baseline, additions, exclusions, configuration choices, suppression policy, and rationale; it does not duplicate the complete PSScriptAnalyzer rule catalog.
+
+The normal analyzer pass retains the default Error/Warning rule set and explicitly configures the objective rules adopted by this project:
+
+| Rule | Project policy |
 | --- | --- |
-| `PSUseConsistentWhitespace` | Enforces useful whitespace consistency around braces, operators, separators, and pipelines. The opening-parenthesis check is intentionally disabled because established, readable forms such as `param()` are widespread and changing them would create cosmetic churn without improving safety or maintainability. Parameter-alignment checks are also disabled to avoid alignment-only rewrites. |
-| `PSAvoidExclaimOperator` | Prevents the `!` alias and keeps boolean negation explicit as `-not`. |
+| `PSAvoidExclaimOperator` | Requires explicit `-not` rather than the `!` alias. |
+| `PSAvoidSemicolonsAsLineTerminators` | Prohibits semicolons used only as line terminators. |
+| `PSPlaceOpenBrace` / `PSPlaceCloseBrace` | Enforces same-line opening braces, normal newline behavior, and no empty line immediately before a closing brace while leaving one-line blocks intact. |
+| `PSUseConsistentIndentation` | Enforces spaces, four-space indentation, and `IncreaseIndentationForFirstPipeline`. |
+| `PSUseConsistentWhitespace` | Enforces the adopted brace, parenthesis, operator, pipeline, separator, parameter, and redundant-pipeline-whitespace checks. |
+| `PSUseConsistentParameterSetName` | Requires consistent parameter-set naming. |
+| `PSUseConsistentParametersKind` | Requires parameter declarations to use the `ParamBlock` form. |
+| `PSUseSingleValueFromPipelineParameter` | Prevents ambiguous multiple value-from-pipeline parameters. |
+| `PSUseCorrectCasing` | Enforces keyword and operator casing through the focused Information-rule contract. Runtime command lookup is disabled; literal command-name casing is enforced by the deterministic AST contract described below. |
+| `PSAvoidUsingDoubleQuotesForConstantString` | Requires single quotes for constant strings through the focused Information-rule contract. |
 
-`PSUseConsistentIndentation` was evaluated but is not enabled. With the repository's existing multiline continuations it reports widespread indentation warnings even when pipeline normalization is disabled, so enforcing it would primarily mandate cosmetic rewrites rather than prevent a concrete defect class. Four-space, space-based indentation remains a required project convention and review expectation.
+The main recursive analyzer gate intentionally remains limited to Error and Warning diagnostics. The Required Information-severity conventions `PSUseCorrectCasing`, `PSAvoidUsingDoubleQuotesForConstantString`, and `PSAvoidUsingPositionalParameters` are promoted by a focused contract test instead of enabling every Information diagnostic globally. For `PSUseCorrectCasing`, `CheckCommands` is deliberately disabled while keyword and operator casing remain enabled. The `PSAvoidUsingPositionalParameters` promotion is a deliberate project decision retained from the adopted analyzer policy; it is not an accidental side effect of Information severity.
 
-`PSUseCorrectCasing` is not enabled because it reports at Information severity while this repository intentionally gates Error and Warning findings. Expanding the quality gate to Information severity solely for casing would make the analyzer policy substantially noisier without a corresponding correctness benefit.
+`PSAvoidLongLines`, `PSAlignAssignmentStatement`, and `PSUseConstrainedLanguageMode` remain outside the mandatory policy because they are subjective or specialized for this repository. Compatibility is established by the PowerShell 7.4+ contract and the actual Windows, Linux, and macOS CI matrix rather than by obsolete analyzer compatibility profiles.
 
-Formatting rules or subchecks that would mainly force alignment or broad cosmetic rewrites are not enabled merely because they exist. Additional rules should be evaluated against this repository, enabled only when they prevent a concrete class of defect or materially improve maintainability, and documented here when adopted.
+Additional rules should be evaluated against this repository and adopted when they express an objective engineering contract with acceptable signal-to-noise characteristics.
+
+### Pester and AST enforcement
+
+PSScriptAnalyzer remains the preferred mechanism for objective language and formatting rules that it can express accurately. Repository-structure and project-specific conventions that are narrower than built-in analyzer rules are enforced by deterministic Pester contracts using the PowerShell AST and source discovery.
+
+`tests/contract/PowerShellSourceConventions.Tests.ps1` enforces the Required conventions that explicitly declared parameters use PascalCase, private functions use approved PowerShell verbs with the `Cgr` noun prefix, manifest-exported commands have exactly one matching public source file and do not use the private `Cgr` prefix, and governed Public/Private PowerShell source does not use tab indentation. Public command coverage is derived from `FunctionsToExport`; the contract does not maintain a second hard-coded command inventory.
+
+`tests/contract/PowerShellCommandCasing.Tests.ps1` enforces literal command-name casing without runtime command discovery. Repository-defined function names are derived from parsed declarations, while `tests/CommandCasing.psd1` owns canonical casing for PowerShell, Pester, module, and native commands used by governed repository source. A newly introduced literal command must have a deterministic canonical entry rather than being resolved through `Get-Command` during analysis. Dynamic invocations whose command name cannot be determined statically are outside this literal casing contract.
+
+`tests/contract/PublicCommandAutomationSemantics.Tests.ps1` derives the exported public command set from `FunctionsToExport` and requires every export to have an explicit automation classification. It enforces `[CmdletBinding()]` on every export, verifies state-changing `SupportsShouldProcess`/`ConfirmImpact` semantics and command-specific mutation gating, checks the direct noninteractive copy path, and verifies the documented automation alternative to the interactive wizard.
+
+These AST/Pester checks complement the analyzer configuration rather than replacing it. They are intentionally narrow so project-specific structure can be enforced without enabling broader analyzer behavior that would create unrelated formatting churn or false positives.
 
 ## Suppressions
 
@@ -258,3 +321,15 @@ Any suppression must continue to follow these rules:
 5. Add a test when the exception protects an important product behavior or compatibility contract.
 
 A suppression is an explicit engineering decision, not a shortcut for making the quality gate green.
+
+## External references
+
+Use durable upstream documentation as the primary external reference for unresolved PowerShell engineering questions:
+
+- [PowerShell documentation](https://learn.microsoft.com/powershell/)
+- [PowerShell cmdlet development guidelines](https://learn.microsoft.com/powershell/scripting/developer/cmdlet/cmdlet-development-guidelines)
+- [Approved verbs for PowerShell commands](https://learn.microsoft.com/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands)
+- [PSScriptAnalyzer documentation](https://learn.microsoft.com/powershell/utility-modules/psscriptanalyzer/overview)
+- [PowerShell Practice and Style](https://github.com/PoshCode/PowerShellPracticeAndStyle)
+
+These references guide decisions where CopyGitHubRepo has not already established an intentional project contract. They do not replace this guide, compatibility requirements, ADRs, or deliberate architectural boundaries.

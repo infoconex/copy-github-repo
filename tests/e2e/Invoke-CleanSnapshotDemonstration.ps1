@@ -108,63 +108,63 @@ try {
     New-DemoRepository -Repository $sourceRepository
 
     New-Item -Path $sourcePath -ItemType Directory -Force | Out-Null
-    Invoke-DemoNativeCommand git @('init', '-b', 'main') $sourcePath | Out-Null
-    Invoke-DemoNativeCommand git @('config', 'user.name', 'Copy GitHub Repo Demo') $sourcePath | Out-Null
-    Invoke-DemoNativeCommand git @('config', 'user.email', 'copy-github-repo-demo@users.noreply.github.com') $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('init', '-b', 'main') -WorkingDirectory $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('config', 'user.name', 'Copy GitHub Repo Demo') -WorkingDirectory $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('config', 'user.email', 'copy-github-repo-demo@users.noreply.github.com') -WorkingDirectory $sourcePath | Out-Null
 
     Set-Content (Join-Path $sourcePath 'README.md') "# Clean Snapshot Demonstration`n" -Encoding utf8NoBOM
-    Invoke-DemoNativeCommand git @('add', 'README.md') $sourcePath | Out-Null
-    Invoke-DemoNativeCommand git @('commit', '-m', 'Start development history') $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('add', 'README.md') -WorkingDirectory $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('commit', '-m', 'Start development history') -WorkingDirectory $sourcePath | Out-Null
 
     New-Item -Path (Join-Path $sourcePath 'src') -ItemType Directory -Force | Out-Null
     Set-Content (Join-Path $sourcePath 'src/app.txt') 'version 1' -Encoding utf8NoBOM
-    Invoke-DemoNativeCommand git @('add', 'src/app.txt') $sourcePath | Out-Null
-    Invoke-DemoNativeCommand git @('commit', '-m', 'Add application') $sourcePath | Out-Null
-    Invoke-DemoNativeCommand git @('tag', 'v0.0.1') $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('add', 'src/app.txt') -WorkingDirectory $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('commit', '-m', 'Add application') -WorkingDirectory $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('tag', 'v0.0.1') -WorkingDirectory $sourcePath | Out-Null
 
-    Invoke-DemoNativeCommand git @('switch', '-c', 'feature/history-only') $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('switch', '-c', 'feature/history-only') -WorkingDirectory $sourcePath | Out-Null
     Set-Content (Join-Path $sourcePath 'feature.txt') 'This branch must not appear in the Snapshot destination.' -Encoding utf8NoBOM
-    Invoke-DemoNativeCommand git @('add', 'feature.txt') $sourcePath | Out-Null
-    Invoke-DemoNativeCommand git @('commit', '-m', 'Add feature branch history') $sourcePath | Out-Null
-    Invoke-DemoNativeCommand git @('switch', 'main') $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('add', 'feature.txt') -WorkingDirectory $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('commit', '-m', 'Add feature branch history') -WorkingDirectory $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('switch', 'main') -WorkingDirectory $sourcePath | Out-Null
 
     Add-Content (Join-Path $sourcePath 'README.md') 'Current release-ready state.' -Encoding utf8NoBOM
-    Invoke-DemoNativeCommand git @('add', 'README.md') $sourcePath | Out-Null
-    Invoke-DemoNativeCommand git @('commit', '-m', 'Prepare release-ready state') $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('add', 'README.md') -WorkingDirectory $sourcePath | Out-Null
+    Invoke-DemoNativeCommand -FilePath git -ArgumentList @('commit', '-m', 'Prepare release-ready state') -WorkingDirectory $sourcePath | Out-Null
 
     $lfsIncluded = $false
     if (-not $SkipLfs) {
         & git lfs version *> $null
         if ($LASTEXITCODE -eq 0) {
-            Invoke-DemoNativeCommand git @('lfs', 'install', '--local') $sourcePath | Out-Null
-            Invoke-DemoNativeCommand git @('lfs', 'track', '*.bin') $sourcePath | Out-Null
+            Invoke-DemoNativeCommand -FilePath git -ArgumentList @('lfs', 'install', '--local') -WorkingDirectory $sourcePath | Out-Null
+            Invoke-DemoNativeCommand -FilePath git -ArgumentList @('lfs', 'track', '*.bin') -WorkingDirectory $sourcePath | Out-Null
             Set-Content (Join-Path $sourcePath 'fixture.bin') 'CopyGitHubRepo demonstration LFS payload' -Encoding utf8NoBOM
-            Invoke-DemoNativeCommand git @('add', '.gitattributes', 'fixture.bin') $sourcePath | Out-Null
-            Invoke-DemoNativeCommand git @('commit', '-m', 'Add LFS fixture') $sourcePath | Out-Null
+            Invoke-DemoNativeCommand -FilePath git -ArgumentList @('add', '.gitattributes', 'fixture.bin') -WorkingDirectory $sourcePath | Out-Null
+            Invoke-DemoNativeCommand -FilePath git -ArgumentList @('commit', '-m', 'Add LFS fixture') -WorkingDirectory $sourcePath | Out-Null
             $lfsIncluded = $true
         }
     }
 
     Push-DemoRepository -Repository $sourceRepository -Path $sourcePath
 
-    Invoke-DemoNativeCommand gh @('repo', 'edit', $sourceRepository, '--description', 'Clean Snapshot demonstration source', '--homepage', 'https://example.invalid/copy-github-repo-demo', '--enable-issues', '--enable-wiki') | Out-Null
+    Invoke-DemoNativeCommand -FilePath gh -ArgumentList @('repo', 'edit', $sourceRepository, '--description', 'Clean Snapshot demonstration source', '--homepage', 'https://example.invalid/copy-github-repo-demo', '--enable-issues', '--enable-wiki') | Out-Null
     $topics = @{ names = @('powershell', 'github', 'snapshot-demo') } | ConvertTo-Json -Compress
     $topicsFile = Join-Path $tempRoot 'topics.json'
     Set-Content -LiteralPath $topicsFile -Value $topics -Encoding utf8NoBOM
-    Invoke-DemoNativeCommand gh @('api', '-X', 'PUT', "repos/$sourceRepository/topics", '--input', $topicsFile) | Out-Null
+    Invoke-DemoNativeCommand -FilePath gh -ArgumentList @('api', '-X', 'PUT', "repos/$sourceRepository/topics", '--input', $topicsFile) | Out-Null
 
     $milestoneJson = @{ title = 'Demo milestone'; description = 'Historical record that must not migrate.' } | ConvertTo-Json -Compress
     $milestoneFile = Join-Path $tempRoot 'milestone.json'
     Set-Content -LiteralPath $milestoneFile -Value $milestoneJson -Encoding utf8NoBOM
-    Invoke-DemoNativeCommand gh @('api', '-X', 'POST', "repos/$sourceRepository/milestones", '--input', $milestoneFile) | Out-Null
+    Invoke-DemoNativeCommand -FilePath gh -ArgumentList @('api', '-X', 'POST', "repos/$sourceRepository/milestones", '--input', $milestoneFile) | Out-Null
 
-    Invoke-DemoNativeCommand gh @('issue', 'create', '--repo', $sourceRepository, '--title', 'Historical development issue', '--body', 'This issue must not appear in the Snapshot destination.', '--milestone', 'Demo milestone') | Out-Null
-    Invoke-DemoNativeCommand gh @('pr', 'create', '--repo', $sourceRepository, '--head', 'feature/history-only', '--base', 'main', '--title', 'Historical development pull request', '--body', 'This pull request must not appear in the Snapshot destination.') | Out-Null
+    Invoke-DemoNativeCommand -FilePath gh -ArgumentList @('issue', 'create', '--repo', $sourceRepository, '--title', 'Historical development issue', '--body', 'This issue must not appear in the Snapshot destination.', '--milestone', 'Demo milestone') | Out-Null
+    Invoke-DemoNativeCommand -FilePath gh -ArgumentList @('pr', 'create', '--repo', $sourceRepository, '--head', 'feature/history-only', '--base', 'main', '--title', 'Historical development pull request', '--body', 'This pull request must not appear in the Snapshot destination.') | Out-Null
 
-    $sourceCommitCount = [int](Invoke-DemoNativeCommand git @('rev-list', '--count', 'main') $sourcePath | Select-Object -First 1)
-    $sourceTree = [string](Invoke-DemoNativeCommand git @('rev-parse', 'main^{tree}') $sourcePath | Select-Object -First 1)
-    $sourceBranches = @(Invoke-DemoNativeCommand git @('for-each-ref', '--format=%(refname:short)', 'refs/heads') $sourcePath)
-    $sourceTags = @(Invoke-DemoNativeCommand git @('tag', '--list') $sourcePath)
+    $sourceCommitCount = [int](Invoke-DemoNativeCommand -FilePath git -ArgumentList @('rev-list', '--count', 'main') -WorkingDirectory $sourcePath | Select-Object -First 1)
+    $sourceTree = [string](Invoke-DemoNativeCommand -FilePath git -ArgumentList @('rev-parse', 'main^{tree}') -WorkingDirectory $sourcePath | Select-Object -First 1)
+    $sourceBranches = @(Invoke-DemoNativeCommand -FilePath git -ArgumentList @('for-each-ref', '--format=%(refname:short)', 'refs/heads') -WorkingDirectory $sourcePath)
+    $sourceTags = @(Invoke-DemoNativeCommand -FilePath git -ArgumentList @('tag', '--list') -WorkingDirectory $sourcePath)
 
     $createdRepositories.Add($destinationRepository)
     $result = Copy-GitHubRepository -SourceRepository $sourceRepository -DestinationRepository $destinationRepository -ReportPath $reportPath -NonInteractive -Force
@@ -177,10 +177,10 @@ try {
     } "https://github.com/$destinationRepository.git" $destinationPath
     if ($cloneResult.ExitCode -ne 0) { throw "Failed to clone destination. $($cloneResult.ErrorText)" }
 
-    $destinationCommitCount = [int](Invoke-DemoNativeCommand git @('rev-list', '--count', 'main') $destinationPath | Select-Object -First 1)
-    $destinationTree = [string](Invoke-DemoNativeCommand git @('rev-parse', 'main^{tree}') $destinationPath | Select-Object -First 1)
-    $destinationBranches = @(Invoke-DemoNativeCommand git @('for-each-ref', '--format=%(refname:short)', 'refs/heads') $destinationPath)
-    $destinationTags = @(Invoke-DemoNativeCommand git @('tag', '--list') $destinationPath)
+    $destinationCommitCount = [int](Invoke-DemoNativeCommand -FilePath git -ArgumentList @('rev-list', '--count', 'main') -WorkingDirectory $destinationPath | Select-Object -First 1)
+    $destinationTree = [string](Invoke-DemoNativeCommand -FilePath git -ArgumentList @('rev-parse', 'main^{tree}') -WorkingDirectory $destinationPath | Select-Object -First 1)
+    $destinationBranches = @(Invoke-DemoNativeCommand -FilePath git -ArgumentList @('for-each-ref', '--format=%(refname:short)', 'refs/heads') -WorkingDirectory $destinationPath)
+    $destinationTags = @(Invoke-DemoNativeCommand -FilePath git -ArgumentList @('tag', '--list') -WorkingDirectory $destinationPath)
 
     $destinationIssues = @(gh issue list --repo $destinationRepository --state all --json number | ConvertFrom-Json)
     $destinationPrs = @(gh pr list --repo $destinationRepository --state all --json number | ConvertFrom-Json)

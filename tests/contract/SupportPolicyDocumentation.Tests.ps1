@@ -43,9 +43,9 @@ Describe 'Support compatibility and deprecation policy documentation contract' {
     It 'defines the PowerShell prerequisite and host baselines precisely' {
         $script:supportPolicy | Should -Match 'current normative minimum is \*\*PowerShell 7\.4\*\*'
         $script:supportPolicy | Should -Match 'does not imply Windows PowerShell 5\.1 support'
-        $script:supportPolicy | Should -Match 'current `0\.1\.x` release line supports \*\*GitHub\.com only\*\*'
+        $script:supportPolicy | Should -Match 'current `0\.2\.x` release line supports \*\*GitHub\.com only\*\*'
         $script:manifest.PowerShellVersion | Should -Be '7.4'
-        $script:hostSupport | Should -Match 'current `0\.1\.x` release line supports GitHub\.com only'
+        $script:hostSupport | Should -Match 'current `0\.2\.x` release line supports GitHub\.com only'
         $script:hostSupport | Should -Match 'support-policy\.md'
     }
 
@@ -69,14 +69,14 @@ Describe 'Support compatibility and deprecation policy documentation contract' {
 
     It 'covers compatibility-sensitive deprecation and accelerated safety removals' {
         foreach ($surface in @(
-            'exported commands',
-            'public parameters',
-            'structured output/report fields',
-            'error identifiers',
-            'default behaviors and safety semantics',
-            'supported installation/release workflows',
-            'documented features'
-        )) {
+                'exported commands',
+                'public parameters',
+                'structured output/report fields',
+                'error identifiers',
+                'default behaviors and safety semantics',
+                'supported installation/release workflows',
+                'documented features'
+            )) {
             $script:supportPolicy | Should -Match ([regex]::Escape($surface))
         }
         $script:supportPolicy | Should -Match 'at least one subsequent stable release before removal'

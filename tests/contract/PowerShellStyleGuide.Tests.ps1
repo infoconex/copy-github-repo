@@ -30,43 +30,102 @@ Describe 'Project PowerShell engineering policy' {
         $script:styleGuide | Should -Match 'structured objects on the success pipeline'
     }
 
-    It 'distinguishes required policy from readability preferences' {
-        $script:styleGuide | Should -Match '\*\*Required\*\*'
-        $script:styleGuide | Should -Match '\*\*Preferred\*\*'
-        $script:styleGuide | Should -Match 'Prefer splatting when an invocation has many arguments'
-        $script:styleGuide | Should -Match 'Do not convert stable readable calls to splatting solely for stylistic uniformity'
+    It 'documents public advanced-function and automation semantics' {
+        $script:styleGuide | Should -Match 'Every manifest-exported public function uses `\[CmdletBinding\(\)\]`'
+        $script:styleGuide | Should -Match 'Every state-changing exported command enables `SupportsShouldProcess`'
+        $script:styleGuide | Should -Match 'declares an explicit `ConfirmImpact`'
+        $script:styleGuide | Should -Match 'gates mutation through `ShouldProcess\(\)` using the command''s PowerShell cmdlet context'
+        $script:styleGuide | Should -Match 'delegated execution guard may use a captured `\$PSCmdlet` reference'
+        $script:styleGuide | Should -Match 'Supported automation scenarios must not depend on `Read-Host`'
+        $script:styleGuide | Should -Match '`Copy-GitHubRepository` is the automation boundary'
+        $script:styleGuide | Should -Match 'Routine confirmation bypass and independent safety confirmation are distinct contracts'
+        $script:styleGuide | Should -Match 'Use `\[OutputType\(\)\]` when it accurately and stably describes'
     }
 
-    It 'keeps the contributor guide linked to the project style guide' {
-        $script:contributing | Should -Match 'docs/engineering/powershell-style-guide\.md'
-        $script:contributing | Should -Match 'Retain the `Cgr` prefix for private helpers'
-    }
-
-    It 'enables only the selected additional analyzer rules with project settings' {
-        $script:analyzerSettings.IncludeDefaultRules | Should -BeTrue
+    It 'documents deliberate positional-parameter policy rather than analyzer-severity accident' {
+        $script:styleGuide | Should -Match 'Avoid positional-parameter invocation where `PSAvoidUsingPositionalParameters` applies'
+        $script:styleGuide | Should -Match '`PSAvoidUsingPositionalParameters` promotion is a deliberate project decision'
         (@($script:analyzerSettings.Severity) -join ',') | Should -Be 'Error,Warning'
-
-        $rules = $script:analyzerSettings.Rules
-        (@($rules.Keys | Sort-Object) -join ',') | Should -Be 'PSAvoidExclaimOperator,PSUseConsistentWhitespace'
-
-        $rules.PSAvoidExclaimOperator.Enable | Should -BeTrue
-        $rules.PSUseConsistentWhitespace.Enable | Should -BeTrue
-        $rules.PSUseConsistentWhitespace.CheckOpenParen | Should -BeFalse
-        $rules.PSUseConsistentWhitespace.CheckParameter | Should -BeFalse
     }
 
-    It 'documents why every explicitly enabled analyzer rule exists and why noisy candidates are excluded' {
-        foreach ($ruleName in $script:analyzerSettings.Rules.Keys) {
-            $escapedRuleName = [regex]::Escape(('`{0}`' -f $ruleName))
-            $script:styleGuide | Should -Match $escapedRuleName
+    It 'defines policy categories used by engineering reviews' {
+        foreach ($category in @('Required', 'Preferred', 'Allowed', 'Discouraged', 'Prohibited')) {
+            $script:styleGuide | Should -Match ('\*\*{0}\*\*' -f $category)
         }
 
-        $script:styleGuide | Should -Match 'whitespace consistency around braces, operators, separators, and pipelines'
-        $script:styleGuide | Should -Match 'opening-parenthesis check is intentionally disabled'
-        $script:styleGuide | Should -Match 'keeps boolean negation explicit as `-not`'
-        $script:styleGuide | Should -Match '`PSUseConsistentIndentation` was evaluated but is not enabled'
-        $script:styleGuide | Should -Match 'widespread indentation warnings even when pipeline normalization is disabled'
-        $script:styleGuide | Should -Match '`PSUseCorrectCasing` is not enabled because it reports at Information severity'
+        $script:styleGuide | Should -Match 'Required.*mandatory engineering contract'
+        $script:styleGuide | Should -Match 'Preferred.*normal/default choice'
+        $script:styleGuide | Should -Match 'Allowed.*explicitly acceptable alternative'
+        $script:styleGuide | Should -Match 'Discouraged.*avoid in new or modified code'
+        $script:styleGuide | Should -Match 'Prohibited.*must not be introduced'
+    }
+
+    It 'documents the standards decision hierarchy without overriding deliberate project policy' {
+        $script:styleGuide | Should -Match 'documented CopyGitHubRepo rule.*takes precedence'
+        $script:styleGuide | Should -Match 'Microsoft PowerShell documentation and design guidance'
+        $script:styleGuide | Should -Match 'applicable PSScriptAnalyzer rules'
+        $script:styleGuide | Should -Match 'PowerShell Practice and Style'
+        $script:styleGuide | Should -Match 'established PowerShell community practice'
+        $script:styleGuide | Should -Match 'local consistency'
+        $script:styleGuide | Should -Match 'Before classifying an inconsistency as a defect'
+    }
+
+    It 'keeps the main analyzer gate focused on Error and Warning findings' {
+        $script:analyzerSettings.IncludeDefaultRules | Should -BeTrue
+        (@($script:analyzerSettings.Severity) -join ',') | Should -Be 'Error,Warning'
+        $script:styleGuide | Should -Match '`PSScriptAnalyzerSettings.psd1` is the authoritative machine-readable analyzer configuration'
+    }
+
+    It 'enables the adopted industry-standard formatting and language rules' {
+        $rules = $script:analyzerSettings.Rules
+
+        foreach ($ruleName in @(
+                'PSAvoidExclaimOperator',
+                'PSAvoidSemicolonsAsLineTerminators',
+                'PSPlaceOpenBrace',
+                'PSPlaceCloseBrace',
+                'PSUseConsistentIndentation',
+                'PSUseConsistentWhitespace',
+                'PSUseConsistentParameterSetName',
+                'PSUseConsistentParametersKind',
+                'PSUseSingleValueFromPipelineParameter',
+                'PSUseCorrectCasing',
+                'PSAvoidUsingDoubleQuotesForConstantString'
+            )) {
+            $rules[$ruleName].Enable | Should -BeTrue -Because "$ruleName is part of the adopted PowerShell engineering baseline"
+        }
+
+        $rules.PSPlaceOpenBrace.OnSameLine | Should -BeTrue
+        $rules.PSPlaceCloseBrace.NoEmptyLineBefore | Should -BeTrue
+        $rules.PSUseConsistentIndentation.Kind | Should -Be 'space'
+        $rules.PSUseConsistentIndentation.IndentationSize | Should -Be 4
+        $rules.PSUseConsistentParametersKind.ParametersKind | Should -Be 'ParamBlock'
+        $rules.PSUseConsistentWhitespace.CheckOpenParen | Should -BeTrue
+        $rules.PSUseConsistentWhitespace.CheckParameter | Should -BeTrue
+        $rules.PSUseConsistentWhitespace.CheckPipeForRedundantWhitespace | Should -BeTrue
+        $rules.PSUseCorrectCasing.CheckCommands | Should -BeFalse
+        $rules.PSUseCorrectCasing.CheckKeyword | Should -BeTrue
+        $rules.PSUseCorrectCasing.CheckOperator | Should -BeTrue
+    }
+
+    It 'does not turn subjective or specialized rules into mandatory policy' {
+        $rules = $script:analyzerSettings.Rules
+        $rules.ContainsKey('PSAvoidLongLines') | Should -BeFalse
+        $rules.ContainsKey('PSAlignAssignmentStatement') | Should -BeFalse
+        $rules.ContainsKey('PSUseConstrainedLanguageMode') | Should -BeFalse
+    }
+
+    It 'documents the analyzer and AST/Pester enforcement boundary' {
+        $script:styleGuide | Should -Match '### Pester and AST enforcement'
+        $script:styleGuide | Should -Match '`tests/contract/PowerShellSourceConventions\.Tests\.ps1`'
+        $script:styleGuide | Should -Match 'explicitly declared parameters use PascalCase'
+        $script:styleGuide | Should -Match 'private functions use approved PowerShell verbs with the `Cgr` noun prefix'
+        $script:styleGuide | Should -Match 'Public/Private PowerShell source does not use tab indentation'
+        $script:styleGuide | Should -Match 'Public command coverage is derived from `FunctionsToExport`'
+        $script:styleGuide | Should -Match '`tests/contract/PowerShellCommandCasing\.Tests\.ps1`'
+        $script:styleGuide | Should -Match '`tests/CommandCasing\.psd1` owns canonical casing'
+        $script:styleGuide | Should -Match 'Dynamic invocations whose command name cannot be determined statically are outside this literal casing contract'
+        $script:styleGuide | Should -Match '`tests/contract/PublicCommandAutomationSemantics\.Tests\.ps1`'
     }
 
     It 'requires narrow justified analyzer suppressions' {
@@ -74,6 +133,11 @@ Describe 'Project PowerShell engineering policy' {
         $script:styleGuide | Should -Match 'Name the exact rule being suppressed'
         $script:styleGuide | Should -Match 'Include a nearby comment explaining why'
         $script:styleGuide | Should -Match 'Do not disable a useful rule globally'
+    }
+
+    It 'links to durable external PowerShell standards references' {
+        $script:styleGuide | Should -Match 'learn\.microsoft\.com/powershell/'
+        $script:styleGuide | Should -Match 'github\.com/PoshCode/PowerShellPracticeAndStyle'
     }
 
     It 'continues recursively analyzing the repository root' {

@@ -14,46 +14,47 @@ Describe 'Product journey and behavioral model documentation' {
 
     It 'defines explicit product intent goals non-goals and evidence-based success criteria' {
         foreach ($heading in @(
-            '## Product intent for v0.1.0'
-            '### Problem'
-            '### Intended outcome'
-            '### Goals'
-            '### Non-goals for v0.1.0'
-            '### Evidence-based release success criteria'
-        )) {
+                '## Product intent'
+                '### Problem'
+                '### Intended outcome'
+                '### Goals'
+                '### Non-goals'
+                '### Evidence-based release success criteria'
+            )) {
             $script:model | Should -Match ([regex]::Escape($heading))
         }
     }
 
     It 'maps all seven primary personas to journeys' {
         foreach ($persona in @(
-            'User / Operator'
-            'Contributor / Maintainer'
-            'Quality Engineer'
-            'Architect / Engineering Reviewer'
-            'Security Reviewer'
-            'Governance / Compliance Reviewer'
-            'Product / Program Manager'
-        )) {
+                'User / Operator'
+                'Contributor / Maintainer'
+                'Quality Engineer'
+                'Architect / Engineering Reviewer'
+                'Security Reviewer'
+                'Governance / Compliance Reviewer'
+                'Product / Program Manager'
+            )) {
             $script:model | Should -Match ([regex]::Escape($persona))
         }
     }
 
     It 'defines stable capability use-case and scenario identifiers' {
         foreach ($id in @(
-            'CAP-DISC', 'CAP-PLAN', 'CAP-SNAP', 'CAP-HIST', 'CAP-DEST', 'CAP-SAME',
-            'CAP-LFS', 'CAP-SET', 'CAP-PROT', 'CAP-WIZ', 'CAP-AUTO', 'CAP-VERIFY',
-            'CAP-EVID', 'CAP-DIST', 'CAP-REL',
-            'UC-SNAP-NEW', 'UC-HIST-NEW', 'UC-DEST-REPLACE', 'UC-SAME-REPLACE',
-            'UC-WIZ-01', 'UC-AUTO-01', 'UC-RECOVER-01',
-            'SCN-SNAP-HAPPY-01', 'SCN-SNAP-VERIFY-01', 'SCN-HIST-HAPPY-01',
-            'SCN-DEST-SAFETY-01', 'SCN-DEST-PARTIAL-01', 'SCN-SAME-SAFETY-01',
-            'SCN-WIZ-NOOP-01', 'SCN-RECOVER-RECOVERY-01',
-            'SCN-API-RESILIENCE-01', 'SCN-NATIVE-RESILIENCE-01',
-            'SCN-RESOURCE-RESILIENCE-01', 'SCN-RETRY-RESILIENCE-01',
-            'SCN-RETRY-RESILIENCE-02', 'SCN-SCALE-RESILIENCE-01',
-            'SCN-INTERRUPT-RESILIENCE-01'
-        )) {
+                'CAP-DISC', 'CAP-PLAN', 'CAP-SNAP', 'CAP-HIST', 'CAP-GHREL', 'CAP-DEST', 'CAP-SAME',
+                'CAP-LFS', 'CAP-SET', 'CAP-PROT', 'CAP-WIZ', 'CAP-AUTO', 'CAP-VERIFY',
+                'CAP-EVID', 'CAP-DIST', 'CAP-REL',
+                'UC-SNAP-NEW', 'UC-HIST-NEW', 'UC-HIST-REL', 'UC-DEST-REPLACE', 'UC-SAME-REPLACE',
+                'UC-WIZ-01', 'UC-AUTO-01', 'UC-RECOVER-01',
+                'SCN-SNAP-HAPPY-01', 'SCN-SNAP-VERIFY-01', 'SCN-HIST-HAPPY-01',
+                'SCN-GHREL-HAPPY-01', 'SCN-GHREL-SAFETY-01', 'SCN-GHREL-VERIFY-01', 'SCN-GHREL-PARTIAL-01',
+                'SCN-DEST-SAFETY-01', 'SCN-DEST-PARTIAL-01', 'SCN-SAME-SAFETY-01',
+                'SCN-WIZ-NOOP-01', 'SCN-RECOVER-RECOVERY-01',
+                'SCN-API-RESILIENCE-01', 'SCN-NATIVE-RESILIENCE-01',
+                'SCN-RESOURCE-RESILIENCE-01', 'SCN-RETRY-RESILIENCE-01',
+                'SCN-RETRY-RESILIENCE-02', 'SCN-SCALE-RESILIENCE-01',
+                'SCN-INTERRUPT-RESILIENCE-01'
+            )) {
             $script:model | Should -Match ([regex]::Escape($id))
         }
     }

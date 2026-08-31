@@ -69,7 +69,7 @@ Describe 'Accessibility documentation and site contract' {
         $script:layoutCss | Should -Match '@media\(prefers-reduced-motion:reduce\)'
         $script:layoutCss | Should -Match '@media\(max-width:900px\)\{\.brand__text span\{display:none\}\}'
         $script:layoutCss | Should -Match '@media\(max-width:760px\)\{\.brand__text\{display:none\}\}'
-        $script:siteJs | Should -Match "prefers-reduced-motion: reduce"
+        $script:siteJs | Should -Match 'prefers-reduced-motion: reduce'
         $script:siteJs | Should -Match "behavior: reduceMotion \? 'auto' : 'smooth'"
     }
 

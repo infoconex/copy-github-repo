@@ -28,12 +28,14 @@ Describe 'Release integration pull request validation' {
         $quality | Should -Match "needs\.scope\.outputs\.run-quality != 'true'"
     }
 
-    It 'keeps release publication tag-only and does not publish from release integration branches' {
+    It 'requires stable publication to be manually dispatched from the qualified main commit' {
         $publish = (Get-Content -LiteralPath (Join-Path $script:workflowRoot 'publish-release.yml') -Raw) -replace "`r`n?", "`n"
 
-        $publish | Should -Match "(?ms)^'on':\s+push:\s+tags:\s+- 'v\*'\s+workflow_dispatch:"
+        $publish | Should -Match "(?ms)^'on':\s+workflow_dispatch:"
+        $publish | Should -Not -Match '(?ms)^\s+push:'
         $publish | Should -Not -Match '(?m)^\s*pull_request:'
-        $publish | Should -Not -Match '(?ms)^\s+push:\s+branches:'
+        $publish | Should -Match ([regex]::Escape("if ('${{ github.ref }}' -cne 'refs/heads/main')"))
+        $publish | Should -Match ([regex]::Escape("if ($currentMainSha -cne '${{ github.sha }}')"))
     }
 
     It 'keeps documentation deployment limited to main pushes' {

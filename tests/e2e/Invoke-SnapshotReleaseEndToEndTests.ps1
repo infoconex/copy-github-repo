@@ -330,7 +330,7 @@ function Invoke-E2eNewDestinationScenario {
     }
 
     Write-E2eMessage -Message 'Independent verification: running Test-GitHubRepositoryMigration and direct GitHub API tag/tree/release checks.'
-    $verification = Test-GitHubRepositoryMigration -SourceRepository $Fixture.Repository -DestinationRepository $destination -ContentMode Snapshot -IncludeReleases -ReleaseTag 'v1.*'
+    $verification = Test-GitHubRepositoryMigration -SourceRepository $Fixture.Repository -DestinationRepository $destination -ContentMode Snapshot -IncludeReleases -ApprovedPlan $result.Plan
     if (-not $verification.IsSuccessful -or -not $verification.ReleasesVerified) {
         throw 'Independent Snapshot release verification failed.'
     }
@@ -395,7 +395,7 @@ function Invoke-E2eHeadEqualScenario {
     }
 
     Write-E2eMessage -Message 'Independent verification: validating release checkpoint and final HEAD through independent verifier and GitHub API trees.'
-    $verification = Test-GitHubRepositoryMigration -SourceRepository $Fixture.Repository -DestinationRepository $destination -ContentMode Snapshot -IncludeReleases -ReleaseTag 'v1.1.0' -ReleaseCount 1
+    $verification = Test-GitHubRepositoryMigration -SourceRepository $Fixture.Repository -DestinationRepository $destination -ContentMode Snapshot -IncludeReleases -ApprovedPlan $result.Plan
     if (-not $verification.IsSuccessful) {
         throw 'Independent HEAD-equal Snapshot release verification failed.'
     }
@@ -448,7 +448,7 @@ function Invoke-E2eSameNameScenario {
         throw 'Same-name replacement reused the original GitHub repository identity.'
     }
 
-    $verification = Test-GitHubRepositoryMigration -SourceRepository $archiveRepository -DestinationRepository $source -ContentMode Snapshot -IncludeReleases -ReleaseTag 'v1.1.0' -ReleaseCount 1
+    $verification = Test-GitHubRepositoryMigration -SourceRepository $archiveRepository -DestinationRepository $source -ContentMode Snapshot -IncludeReleases -ApprovedPlan $result.Plan
     if (-not $verification.IsSuccessful) {
         throw 'Independent same-name Snapshot release verification failed.'
     }

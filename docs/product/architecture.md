@@ -101,9 +101,12 @@ flowchart TD
     J -- FullHistory --> L[Push approved branches/tags/history and reachable LFS]
     K --> M[Verify destination content]
     L --> M
-    M --> N[Restore ordinary supported settings]
-    N --> O[Restore transferable protection]
-    O --> P[Return provenance / verification result]
+    M --> N{Releases requested?}
+    N -- Yes --> Q[Restore and verify approved releases]
+    N -- No --> O[Restore ordinary supported settings]
+    Q --> O
+    O --> P[Restore transferable protection]
+    P --> S[Return provenance / verification result]
 
     F -. post-mutation failure .-> R[Preserve repositories and recovery evidence]
     H -. post-mutation failure .-> R
@@ -111,17 +114,18 @@ flowchart TD
     K -. failure .-> R
     L -. failure .-> R
     M -. failure .-> R
-    N -. failure .-> R
+    Q -. failure .-> R
     O -. failure .-> R
+    P -. failure .-> R
 ```
 
-The Snapshot and FullHistory branches share planning, replacement, verification staging, settings/protection ordering, provenance, and recovery semantics. Their content invariants remain deliberately different.
+The Snapshot and FullHistory branches share planning, replacement, verification staging, requested-release restoration ordering, settings/protection ordering, provenance, and recovery semantics. Their content and tag-target invariants remain deliberately different.
 
 ## Planning boundary
 
 `New-CgrMigrationPlan` validates source/destination/archive intent, captures supported source protection/configuration evidence, and captures `SourceState` before returning the plan.
 
-Snapshot `SourceState` contains the approved repository identity when available, default branch, commit SHA, tree SHA, and Git LFS evidence.
+Snapshot `SourceState` contains the approved repository identity when available, default branch, commit SHA, tree SHA, and Git LFS evidence. With `-IncludeReleases`, the plan additionally binds the exact approved release selection and immutable Snapshot release-checkpoint evidence derived from it.
 
 FullHistory `SourceState` contains the approved repository identity when available, default branch, sorted branch/tag ref targets, reachable commit count, branch-tip trees, and Git LFS availability.
 
@@ -131,9 +135,9 @@ Planning performs no GitHub mutation.
 
 The normative behavior of `Snapshot -IncludeReleases` is defined only in [`product-contract.md#snapshot-release-checkpoint-contract`](product-contract.md#snapshot-release-checkpoint-contract). Architecture does not duplicate its topology rules.
 
-Architecturally, Snapshot release preservation is a distinct **checkpoint-history construction** path inside the Snapshot content boundary, not a FullHistory rewrite and not a conventional squash/rebase of the source graph. The path must consume reviewed release/tag evidence, normalize supported annotated and lightweight tags to peeled commit targets, validate the product contract's deterministic ancestry ordering, and fail closed before mutation when the reviewed selected topology cannot be represented safely.
+Architecturally, Snapshot release preservation is a distinct **checkpoint-history construction** path inside the Snapshot content boundary, not a FullHistory rewrite and not a conventional squash/rebase of the source graph. The path consumes reviewed release/tag evidence, normalizes supported annotated and lightweight tags to peeled commit targets, validates the product contract's deterministic ancestry ordering, and fails closed before mutation when the reviewed selected topology cannot be represented safely.
 
-Plain Snapshot remains the one-unrelated-root path when `-IncludeReleases` is absent. FullHistory remains the history-preserving path. Dependent issues own the planning data shape, checkpoint construction mechanics, tag/release restoration, verification, recovery, and wizard integration needed to execute the product contract.
+Plain Snapshot remains the one-unrelated-root path when `-IncludeReleases` is absent. FullHistory remains the history-preserving path. The implemented Snapshot release path reuses shared approved release-selection/restoration infrastructure where the contracts match while keeping checkpoint construction, recreated tag targets, verification/provenance, recovery evidence, and wizard integration mode-aware.
 
 ## Approved-plan execution boundary
 
@@ -147,7 +151,7 @@ The public command creates one plan, applies its validation/`ShouldProcess`/conf
 
 The wizard uses native PowerShell interaction helpers. Valid contextual controls are displayed explicitly: `[? help]`, `[B back]`, `[C cancel]`, and `[F filter]` only for repository filtering. Enter accepts the displayed default. Hidden long-form navigation commands are not accepted.
 
-The wizard displays **Repository copy plan** with mode-specific human language. Snapshot is described as clean publication into one unrelated root commit; FullHistory is described as history-preserving copy. Internal/debug objects are not rendered as user-facing protection status.
+The wizard displays **Repository copy plan** with mode-specific human language. Plain Snapshot is described as clean publication into one unrelated root commit. When Snapshot release preservation is selected, the wizard explains that selected release states become new checkpoint commits and that original source commit identities/ancestry are not preserved; its release filters are passed into the real planning path. FullHistory is described as history-preserving copy. Internal/debug objects are not rendered as user-facing protection status.
 
 After the user selects Execute, the wizard's `ShouldProcess` guard runs and then the exact displayed plan is sent to the approved-plan boundary. If `SourceStateChangedSincePlanning` is returned before mutation, the wizard reports the stale plan and returns to plan generation/review. It does not silently approve the newly observed source state.
 
@@ -155,7 +159,7 @@ After the user selects Execute, the wizard's `ShouldProcess` guard runs and then
 
 The pre-mutation source check closes the plan/review TOCTOU window, but source state is also checked inside the cloned workspace before destination publication:
 
-- Snapshot verifies the cloned commit/tree and LFS evidence against the approved Snapshot state before creating/pushing the destination Snapshot history.
+- Snapshot verifies the cloned commit/tree and LFS evidence against the approved Snapshot state before creating/pushing the destination Snapshot history. With release preservation, the checkpoint path additionally consumes the reviewed release/tag/tree evidence already captured by the approved plan.
 - FullHistory verifies the bare clone's ref targets, reachable commit count, branch-tip trees, and LFS evidence before pushing LFS objects, branches, or tags.
 
 This prevents a moving source from being substituted between preflight and clone.
@@ -164,11 +168,11 @@ This prevents a moving source from being substituted between preflight and clone
 
 Execution verification does not reclone a potentially moved source and redefine success after publication.
 
-Plain Snapshot destination verification compares the destination tree and one-root-commit history shape with the approved/copied Snapshot evidence. Snapshot release-checkpoint verification must prove the checkpoint shape and state-equivalence rules defined by the product contract once that dependent implementation lands.
+Plain Snapshot destination verification compares the destination tree and one-root-commit history shape with the approved/copied Snapshot evidence. Snapshot release-checkpoint verification independently proves the expected generated checkpoint sequence/parentage, checkpoint tree/state equivalence, selected release tag targets, and final reviewed HEAD state from immutable reviewed checkpoint evidence. Release metadata/assets and Latest designation are verified separately against the same approved selection.
 
-FullHistory destination verification compares the destination's branch/tag targets, reachable commit count, branch-tip trees, default branch, and LFS availability with the approved FullHistory evidence.
+FullHistory destination verification compares the destination's branch/tag targets, reachable commit count, branch-tip trees, default branch, and LFS availability with the approved FullHistory evidence. FullHistory release verification retains original tag commit-identity semantics.
 
-`Test-GitHubRepositoryMigration` remains a separate explicit command for callers who want a fresh current-state comparison outside an execution plan.
+`Test-GitHubRepositoryMigration` remains a separate explicit read-only command. Snapshot release verification requires the approved plan so it cannot rerun live selection/topology discovery; FullHistory release verification retains its current-source comparison behavior.
 
 ## Replacement flow
 
@@ -183,8 +187,9 @@ flowchart TD
     F --> G
     G --> H[Verify replacement has distinct identity where required]
     H --> I[Copy approved content and verify]
-    I --> J[Restore settings]
-    J --> K[Restore protection]
+    I --> J[Restore requested releases]
+    J --> K[Restore settings]
+    K --> L[Restore protection]
 
     C -. failure .-> R[Preserve archive and evidence]
     D -. failure .-> R
@@ -193,9 +198,10 @@ flowchart TD
     I -. failure .-> R
     J -. failure .-> R
     K -. failure .-> R
+    L -. failure .-> R
 ```
 
-Same-name replacement uses the archive's canonical identity/clone URL after rename rather than relying on an old-name redirect. Existing-destination archive-and-replace verifies the archived destination identity before creating the replacement.
+Same-name replacement uses the archive's canonical identity/clone URL after rename rather than relying on an old-name redirect. Existing-destination archive-and-replace verifies the archived destination identity before creating the replacement. For Snapshot release preservation, selected archive release/tag evidence remains bound to the reviewed checkpoint plan while destination tags are recreated against new checkpoint commits; FullHistory retains original tag targets.
 
 ## Mutation and recovery state model
 
@@ -205,26 +211,26 @@ Architectural interpretation:
 
 - Before first mutation, a rejected/stale operation must remain a no-op against GitHub.
 - Archive/rename and destination creation are explicit mutation boundaries.
-- Verification separates "published" from "verified." Settings/protection can therefore fail after content is already verified.
+- Verification separates "published" from "verified." Requested release restoration, settings, or protection can therefore fail after content is already verified.
 - A post-mutation failure transitions to preservation/recovery, not automatic rollback.
 
 ## Configuration restoration
 
-Ordinary supported repository settings are restored only after content verification and are read back for verification. Transferable repository protection is restored last so protection cannot block initial content publication.
+Ordinary supported repository settings are restored only after content verification and are read back for verification. When releases are requested, their restoration and verification occur after content verification and before ordinary supported repository settings restoration. Transferable repository protection is restored last so protection cannot block initial content publication or requested release restoration.
 
 Plans retain captured protection evidence; execution reuses that evidence rather than performing an unrelated late source rediscovery. Security semantics that cannot be transferred safely are reported as skipped/unsupported rather than weakened.
 
 ## Provenance and recovery
 
-Structured execution results distinguish `ApprovedSourceState` from `ActualCopiedSourceState`/copied evidence. Snapshot provenance also records destination root commit/tree and repository identities. Replacement results expose original/archive/replacement identity explicitly.
+Structured execution results distinguish `ApprovedSourceState` from `ActualCopiedSourceState`/copied evidence. Plain Snapshot provenance records destination root commit/tree and repository identities. Snapshot release-preservation provenance additionally records reviewed/generated checkpoint and recreated tag/release evidence. Replacement results expose original/archive/replacement identity explicitly.
 
-Recovery reports retain the failure stage, completed steps, known repository identities, and available planned-versus-copied evidence. Recovery does not automatically delete repositories or rename them back.
+Recovery reports retain the failure stage, completed steps, known repository identities, and available planned-versus-copied evidence. Snapshot release recovery can retain created checkpoint/tag/release evidence without treating it as rollback state. Recovery does not automatically delete repositories, commits, tags, or releases or rename repositories back.
 
 ## Runtime and infrastructure
 
-The compatibility baseline is PowerShell 7.4+ on Windows, macOS, and Linux. Git and GitHub CLI are prerequisites. HTTPS Git operations use GitHub CLI as a command-scoped credential helper without changing global Git configuration. FullHistory requires Git LFS; Snapshot requires it when the approved Snapshot contains LFS-tracked content.
+The compatibility baseline is PowerShell 7.4+ on Windows, macOS, and Linux. Git and GitHub CLI are prerequisites. HTTPS Git operations use GitHub CLI as a command-scoped credential helper without changing global Git configuration. FullHistory requires Git LFS; Snapshot requires it when any approved Snapshot state contains LFS-tracked content.
 
-v0.1.0 supports only `github.com`, case-insensitively, and fails closed for unsupported hosts.
+The current release line supports only `github.com`, case-insensitively, and fails closed for unsupported hosts.
 
 ## Architecture fitness functions
 
@@ -234,10 +240,11 @@ Architecture claims are protected through executable conformance rather than rev
 | --- | --- |
 | Plan is bound to immutable approved source state and stale plans fail closed | `ApprovedSourceState.Tests.ps1`, `StaleStateSafety.Tests.ps1` |
 | Snapshot retains clean one-root-commit semantics unless release checkpoints are explicitly requested | `NewDestinationSnapshot.Tests.ps1`, `SnapshotReleaseSafety.Tests.ps1`, `DocumentationContract.Tests.ps1`, Snapshot E2E harness |
+| Snapshot release preservation constructs/verifies reviewed checkpoints and recreated releases without preserving source commit identity | Snapshot release planning/execution/verification integration suites and `Invoke-SnapshotReleaseEndToEndTests.ps1` |
 | FullHistory preserves approved refs/history | `FullHistory.Tests.ps1`, FullHistory E2E harness |
 | Existing/same-name replacement preserves identity and does not silently overwrite | `ExistingDestinationReplacement.Tests.ps1`, `SameNameSafety.Tests.ps1`, `SameNameExecution.Tests.ps1`, same-name E2E harnesses |
 | Partial failure retains recovery evidence instead of auto-rollback | `Recovery.Tests.ps1`, `RiskFailurePaths.Tests.ps1`, recovery E2E harness |
-| Settings follow content verification and protection is restored last | `RepositorySettings.Tests.ps1`, `Protection.Tests.ps1`, `ProtectionRestoreStatus.Tests.ps1` |
+| Settings follow content/requested-release verification and protection is restored last | `RepositorySettings.Tests.ps1`, `Protection.Tests.ps1`, `ProtectionRestoreStatus.Tests.ps1` |
 | Wizard delegates to shared application semantics | `WizardMigrationIntegration.Tests.ps1`, `WizardOrchestration.Tests.ps1` |
 | Native commands use controlled process invocation | `NativeCommandStreams.Tests.ps1` plus PSScriptAnalyzer/style contracts |
 | Unsupported hosts fail closed | `HostName.Tests.ps1` |

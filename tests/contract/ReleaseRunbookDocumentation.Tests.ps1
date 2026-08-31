@@ -25,7 +25,7 @@ Describe 'Release and deployment runbook documentation contract' {
 
     It 'documents the canonical lifecycle and exact release mutation ordering' {
         foreach ($state in @(
-                'Planned', 'Release Candidate', 'Readiness Reviewed', 'Approved',
+                'Planned', 'Integrated to main', 'Release Candidate', 'Readiness Reviewed', 'Approved',
                 'Release Workflow Started', 'Validated', 'Artifacts Built',
                 'Integrity Evidence Generated', 'Attested', 'Tag Confirmed/Created',
                 'Published to PowerShell Gallery', 'Published to GitHub Release',
@@ -56,13 +56,21 @@ Describe 'Release and deployment runbook documentation contract' {
         $script:readiness | Should -Match 'A later commit requires a new readiness review'
     }
 
+    It 'requires integration to main before exact-candidate qualification and publication' {
+        $script:runbook | Should -Match 'integrate the release branch into `main` before final qualification'
+        $script:runbook | Should -Match 'qualify the exact resulting `main` SHA'
+        $script:runbook | Should -Match 'Do not create the stable tag before final qualification'
+        $script:publishing | Should -Match 'Stable publication is manual-dispatch-only from `main`'
+    }
+
     It 'matches the supported manual dispatch safety contract' {
-        $script:runbook | Should -Match 'Preferred release procedure.*manual workflow dispatch'
+        $script:runbook | Should -Match 'Canonical release procedure.*manual workflow dispatch'
         $script:runbook | Should -Match 'confirm_publish'
         $script:releaseWorkflow | Should -Match 'github\.ref.*refs/heads/main'
         $script:releaseWorkflow | Should -Match 'currentMainSha'
         $script:releaseWorkflow | Should -Match 'github\.sha'
-        $script:releaseWorkflow | Should -Match 'Ensure manual release tag'
+        $script:releaseWorkflow | Should -Match 'Ensure release tag'
+        $script:releaseWorkflow | Should -Not -Match '(?ms)^\s+push:'
     }
 
     It 'documents required integrity evidence without treating attestation as independent signing' {

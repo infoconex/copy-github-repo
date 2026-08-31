@@ -216,7 +216,7 @@ Architectural interpretation:
 
 ## Configuration restoration
 
-Ordinary supported repository settings are restored only after content and requested release verification and are read back for verification. Transferable repository protection is restored last so protection cannot block initial content publication or requested release restoration.
+Ordinary supported repository settings are restored only after content verification and are read back for verification. When releases are requested, their restoration and verification occur after content verification and before ordinary supported repository settings restoration. Transferable repository protection is restored last so protection cannot block initial content publication or requested release restoration.
 
 Plans retain captured protection evidence; execution reuses that evidence rather than performing an unrelated late source rediscovery. Security semantics that cannot be transferred safely are reported as skipped/unsupported rather than weakened.
 

@@ -71,8 +71,8 @@ Describe 'Validate Project Quality workflow contract' {
     }
 
     It 'runs full quality validation for new ref pushes with an all-zero before SHA' {
-        $script:workflow | Should -Match "(?m)^\s+if \(\$baseSha -eq \('0' \* 40\)\) \{$"
-        $script:workflow | Should -Match "(?ms)if \(\$baseSha -eq \('0' \* 40\)\) \{\s+'run-quality=true' >> \$env:GITHUB_OUTPUT\s+exit 0\s+\}"
+        $script:workflow | Should -Match '(?m)^\s+if \(\$baseSha -eq \(''0'' \* 40\)\) \{$'
+        $script:workflow | Should -Match '(?ms)if \(\$baseSha -eq \(''0'' \* 40\)\) \{\s+''run-quality=true'' >> \$env:GITHUB_OUTPUT\s+exit 0\s+\}'
     }
 
     It 'classifies every rendered-site source as site-only without classifying code as site-only' {

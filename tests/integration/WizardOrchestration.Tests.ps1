@@ -15,6 +15,7 @@ Describe 'Wizard orchestration' {
                 DestinationRepository = 'infoconex/destination'
                 ArchiveRepository = $null
                 ContentMode = 'Snapshot'
+                IncludeReleases = $false
                 CommitMessage = 'Initial repository commit'
                 DestinationVisibility = 'public'
                 SourceState = $sourceState
@@ -28,6 +29,7 @@ Describe 'Wizard orchestration' {
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Snapshot' } -ParameterFilter { $Title -eq 'Content mode' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'public' } -ParameterFilter { $Title -eq 'Destination visibility' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Restore' } -ParameterFilter { $Title -eq 'Supported repository settings' }
+            Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Skip' } -ParameterFilter { $Title -eq 'Snapshot release preservation' }
             Mock Read-CgrWizardTextValue { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Initial repository commit' } -ParameterFilter { $Title -eq 'Snapshot commit message' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Execute' } -ParameterFilter { $Title -eq 'Repository copy plan' }
             Mock Copy-GitHubRepository { $plan } -ParameterFilter { $PlanOnly }
@@ -40,7 +42,7 @@ Describe 'Wizard orchestration' {
             $result.Status | Should -Be 'Completed'
             $result.Plan | Should -Be $plan
             Should -Invoke Copy-GitHubRepository -Times 1 -Exactly -ParameterFilter {
-                $PlanOnly -and $CommitMessage -eq 'Initial repository commit'
+                $PlanOnly -and $CommitMessage -eq 'Initial repository commit' -and -not $IncludeReleases
             }
             Should -Invoke Invoke-CgrApprovedMigrationPlan -Times 1 -Exactly -ParameterFilter {
                 [object]::ReferenceEquals($Plan, $plan) -and $SourceRepository.FullName -eq 'infoconex/source'
@@ -78,6 +80,7 @@ Describe 'Wizard orchestration' {
                 DestinationRepository = 'infoconex/destination'
                 ArchiveRepository = $null
                 ContentMode = 'Snapshot'
+                IncludeReleases = $false
                 CommitMessage = 'Initial repository commit'
                 DestinationVisibility = 'public'
                 SourceState = [pscustomobject] @{ ContentMode = 'Snapshot'; CommitSha = 'source-commit'; TreeSha = 'source-tree'; DefaultBranch = 'main' }
@@ -91,6 +94,7 @@ Describe 'Wizard orchestration' {
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Snapshot' } -ParameterFilter { $Title -eq 'Content mode' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'public' } -ParameterFilter { $Title -eq 'Destination visibility' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Restore' } -ParameterFilter { $Title -eq 'Supported repository settings' }
+            Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Skip' } -ParameterFilter { $Title -eq 'Snapshot release preservation' }
             Mock Read-CgrWizardTextValue { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Initial repository commit' } -ParameterFilter { $Title -eq 'Snapshot commit message' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Cancel } -ParameterFilter { $Title -eq 'Repository copy plan' }
             Mock Copy-GitHubRepository { $plan } -ParameterFilter { $PlanOnly }

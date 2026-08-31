@@ -67,7 +67,7 @@ For an interactive guided experience, use [`Start-CopyGitHubRepositoryWizard`](S
 | `SameNameConfirmation` | `String` | Conditionally | — | Exact `SOURCE=...;ARCHIVE=...;REPLACEMENT=...` text | Exact same-name replacement confirmation. `-Force` cannot bypass it. |
 | `ExistingDestinationArchiveName` | `String` | Conditionally | — | Repository name only | Enables archive-and-replace for a different existing destination. |
 | `ExistingDestinationConfirmation` | `String` | Conditionally | — | Exact `DESTINATION=...;ARCHIVE=...;REPLACEMENT=...` text | Exact existing-destination replacement confirmation. |
-| `CommitMessage` | `String` | No | `Initial repository commit` | Non-empty text | Snapshot commit message. Plain Snapshot uses it for the root commit; Snapshot checkpoint history uses the Snapshot commit-message contract for its generated commits. FullHistory does not rewrite commits. |
+| `CommitMessage` | `String` | No | `Initial repository commit` | Non-empty text | Specifies the Snapshot commit message used by Snapshot publication. FullHistory preserves existing commits and does not rewrite them. |
 | `RestorePages` | `Switch` | No | `$false` | Switch | Reserved in plans; mutating execution rejects it because Pages restoration is not implemented. |
 | `EnableActionsAfterMigration` | `Switch` | No | `$false` | Switch | Reserved in plans; mutating execution rejects it because Actions activation is not implemented. |
 | `SkipSettings` | `Switch` | No | `$false` | Switch | Skips ordinary supported repository settings and repository-protection restoration. Requested release restoration still runs. |

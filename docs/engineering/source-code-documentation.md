@@ -143,6 +143,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `tests/e2e/Invoke-SameNameEndToEndTests.ps1` | Exercises live same-name Snapshot archive-and-replace behavior. |
 | `tests/e2e/Invoke-SameNameFullHistoryEndToEndTests.ps1` | Exercises live same-name FullHistory archive-and-replace behavior. |
 | `tests/e2e/Invoke-SnapshotEndToEndTests.ps1` | Exercises live clean Snapshot publication and verification. |
+| `tests/e2e/Invoke-SnapshotReleaseEndToEndTests.ps1` | Exercises Snapshot release preservation against disposable GitHub repositories, including filtered sequential checkpoints, assets, Latest designation, final-HEAD behavior, same-name replacement safeguards, and independent Git/GitHub verification. |
 
 The E2E scripts create and delete real repositories and therefore require authenticated GitHub access with repository creation and deletion capability. They remain outside the routine Quality Gate by design.
 

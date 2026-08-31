@@ -7,11 +7,17 @@ BeforeAll {
 Describe 'Wizard to migration integration' {
     It 'carries a reviewed Snapshot plan through real execution orchestration and verification' {
         InModuleScope CopyGitHubRepo {
-            $source = [pscustomobject] @{ FullName = 'acme/source'; Owner = 'acme'; Visibility = 'public'; Id = 10L; NodeId = 'R_source' }
-            $destination = [pscustomobject] @{ FullName = 'acme/destination'; Visibility = 'public'; Id = 20L; NodeId = 'R_destination'; HtmlUrl = 'https://github.com/acme/destination' }
+            $source = [pscustomobject] @{
+                FullName = 'acme/source'; Owner = 'acme'; Visibility = 'public'; Id = 10L; NodeId = 'R_source'
+            }
+            $destination = [pscustomobject] @{
+                FullName = 'acme/destination'; Visibility = 'public'; Id = 20L; NodeId = 'R_destination'
+                HtmlUrl = 'https://github.com/acme/destination'
+            }
             $sourceState = [pscustomobject] @{
                 Repository = 'acme/source'; RepositoryId = 10L; RepositoryNodeId = 'R_source'; ContentMode = 'Snapshot'
-                DefaultBranch = 'main'; CommitSha = 'source-commit'; TreeSha = 'source-tree'; GitLfsObjectsAvailable = $true; GitLfsPointerFiles = @()
+                DefaultBranch = 'main'; CommitSha = 'source-commit'; TreeSha = 'source-tree'
+                GitLfsObjectsAvailable = $true; GitLfsPointerFiles = @()
             }
             $plan = [pscustomobject] @{
                 PSTypeName = 'CopyGitHubRepo.MigrationPlan'; SchemaVersion = 1
@@ -33,13 +39,38 @@ Describe 'Wizard to migration integration' {
             Mock Read-CgrWizardTextValue { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Initial repository commit' } -ParameterFilter { $Title -eq 'Snapshot commit message' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Execute' } -ParameterFilter { $Title -eq 'Repository copy plan' }
 
-            Mock Get-CgrPrerequisiteStatus { [pscustomobject] @{ Git = [pscustomobject] @{ Found = $true }; GitHubCli = [pscustomobject] @{ Found = $true }; Authentication = [pscustomobject] @{ Authenticated = $true; Message = 'ok' } } }
-            Mock Get-CgrRepository { if ($Repository -eq 'acme/source') { return $source }; return $destination }
+            Mock Get-CgrPrerequisiteStatus {
+                [pscustomobject] @{
+                    Git = [pscustomobject] @{ Found = $true }
+                    GitHubCli = [pscustomobject] @{ Found = $true }
+                    Authentication = [pscustomobject] @{ Authenticated = $true; Message = 'ok' }
+                }
+            }
+            Mock Get-CgrRepository {
+                if ($Repository -eq 'acme/source') { return $source }
+                return $destination
+            }
             Mock New-CgrMigrationPlan { $plan }
-            Mock Get-CgrRepositoryDefaultBranchTree { [pscustomobject] @{ BranchName = 'main'; CommitSha = 'source-commit'; TreeSha = 'source-tree'; GitLfsObjectsAvailable = $true; GitLfsPointerFiles = @() } }
+            Mock Get-CgrRepositoryDefaultBranchTree {
+                [pscustomobject] @{
+                    BranchName = 'main'; CommitSha = 'source-commit'; TreeSha = 'source-tree'
+                    GitLfsObjectsAvailable = $true; GitLfsPointerFiles = @()
+                }
+            }
             Mock New-CgrGitHubRepository { $destination }
-            Mock Copy-CgrRepositorySnapshot { [pscustomobject] @{ Verified = $true; SourceCommitSha = 'source-commit'; TreeSha = 'source-tree'; CommitSha = 'destination-root'; BranchName = 'main' } }
-            Mock Invoke-CgrRepositorySnapshotVerification { [pscustomobject] @{ PSTypeName = 'CopyGitHubRepo.MigrationVerification'; SchemaVersion = 1; ContentMode = 'Snapshot'; IsSuccessful = $true; IsMatch = $true; SourceTree = 'source-tree'; DestinationTree = 'source-tree'; Checks = @() } }
+            Mock Copy-CgrRepositorySnapshot {
+                [pscustomobject] @{
+                    Verified = $true; SourceCommitSha = 'source-commit'; TreeSha = 'source-tree'
+                    CommitSha = 'destination-root'; BranchName = 'main'
+                }
+            }
+            Mock Invoke-CgrRepositorySnapshotVerification {
+                [pscustomobject] @{
+                    PSTypeName = 'CopyGitHubRepo.MigrationVerification'; SchemaVersion = 1
+                    ContentMode = 'Snapshot'; IsSuccessful = $true; IsMatch = $true
+                    SourceTree = 'source-tree'; DestinationTree = 'source-tree'; Checks = @()
+                }
+            }
 
             $result = Invoke-CgrRepositoryCopyWizard -HostName 'github.com' -ExecutionGuard { $true }
 

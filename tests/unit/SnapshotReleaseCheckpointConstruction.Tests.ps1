@@ -29,6 +29,14 @@ Describe 'Snapshot release checkpoint construction' {
             }
             $script:generatedCommitShas = [System.Collections.Generic.Queue[string]]::new()
             $script:remoteTip = $null
+            $script:tagRefs = @{
+                'v1.0.0' = [pscustomobject] @{ object = [pscustomobject] @{ type = 'commit'; sha = 'c1' } }
+                v1 = [pscustomobject] @{ object = [pscustomobject] @{ type = 'commit'; sha = 'c1' } }
+                v2 = [pscustomobject] @{ object = [pscustomobject] @{ type = 'commit'; sha = 'c2' } }
+                'v2-a' = [pscustomobject] @{ object = [pscustomobject] @{ type = 'commit'; sha = 'c2' } }
+                'v2-b' = [pscustomobject] @{ object = [pscustomobject] @{ type = 'commit'; sha = 'c2' } }
+                v3 = [pscustomobject] @{ object = [pscustomobject] @{ type = 'commit'; sha = 'c3' } }
+            }
 
             Mock Send-CgrActivityEvent {}
             Mock Get-CgrGitCommitIdentity { [pscustomobject] @{ Name = 'CopyGitHubRepo'; Email = 'copy@example.test' } }
@@ -36,13 +44,14 @@ Describe 'Snapshot release checkpoint construction' {
             Mock Invoke-CgrActivityStage { & $Action }
             Mock Invoke-CgrGitHubApiReadRequest {
                 $path = [string] $ArgumentList[-1]
-                if ($path -match '/git/ref/tags/v1$') {
-                    return [pscustomobject] @{ ExitCode = 0; Output = @('{"object":{"type":"commit","sha":"c1"}}'); ErrorText = '' }
+                if ($path -notmatch '/git/ref/tags/(.+)$') {
+                    throw "Unexpected GitHub API read: $($ArgumentList -join ' ')"
                 }
-                if ($path -match '/git/ref/tags/v2$') {
-                    return [pscustomobject] @{ ExitCode = 0; Output = @('{"object":{"type":"commit","sha":"c2"}}'); ErrorText = '' }
+                $tagName = [uri]::UnescapeDataString($Matches[1])
+                if (-not $script:tagRefs.ContainsKey($tagName)) {
+                    return [pscustomobject] @{ ExitCode = 1; Output = @(); ErrorText = 'not found' }
                 }
-                throw "Unexpected GitHub API read: $($ArgumentList -join ' ')"
+                return [pscustomobject] @{ ExitCode = 0; Output = @($script:tagRefs[$tagName] | ConvertTo-Json -Compress -Depth 10); ErrorText = '' }
             }
             Mock Invoke-CgrGitCommand {
                 $joined = $ArgumentList -join ' '
@@ -82,6 +91,7 @@ Describe 'Snapshot release checkpoint construction' {
             $script:remoteTip = 'destination-root'
             $checkpointPlan = [pscustomobject] @{
                 SourceHead = [pscustomobject] @{ CommitSha = 'head'; TreeSha = 'tree-head' }
+                ReleaseEvidence = @([pscustomobject] @{ SelectionOrder = 1; TagName = 'v1.0.0'; TagObjectType = 'commit'; TagObjectSha = 'c1'; PeeledCommitSha = 'c1' })
                 Checkpoints = @([pscustomobject] @{ Order = 1; SourceCommitSha = 'c1'; SourceTreeSha = 'tree-c1'; TagNames = @('v1.0.0') })
                 FinalHeadCheckpointRequired = $false
             }
@@ -143,6 +153,10 @@ Describe 'Snapshot release checkpoint construction' {
             $script:remoteTip = 'destination-shared'
             $checkpointPlan = [pscustomobject] @{
                 SourceHead = [pscustomobject] @{ CommitSha = 'head'; TreeSha = 'tree-head' }
+                ReleaseEvidence = @(
+                    [pscustomobject] @{ SelectionOrder = 1; TagName = 'v2-a'; TagObjectType = 'commit'; TagObjectSha = 'c2'; PeeledCommitSha = 'c2' },
+                    [pscustomobject] @{ SelectionOrder = 2; TagName = 'v2-b'; TagObjectType = 'commit'; TagObjectSha = 'c2'; PeeledCommitSha = 'c2' }
+                )
                 Checkpoints = @([pscustomobject] @{ Order = 1; SourceCommitSha = 'c2'; SourceTreeSha = 'tree-c2'; TagNames = @('v2-a', 'v2-b') })
                 FinalHeadCheckpointRequired = $false
             }
@@ -163,6 +177,7 @@ Describe 'Snapshot release checkpoint construction' {
             $script:remoteTip = 'destination-c3'
             $checkpointPlan = [pscustomobject] @{
                 SourceHead = [pscustomobject] @{ CommitSha = 'head'; TreeSha = 'tree-c3' }
+                ReleaseEvidence = @([pscustomobject] @{ SelectionOrder = 1; TagName = 'v3'; TagObjectType = 'commit'; TagObjectSha = 'c3'; PeeledCommitSha = 'c3' })
                 Checkpoints = @([pscustomobject] @{ Order = 1; SourceCommitSha = 'c3'; SourceTreeSha = 'tree-c3'; TagNames = @('v3') })
                 FinalHeadCheckpointRequired = $false
             }
@@ -180,6 +195,7 @@ Describe 'Snapshot release checkpoint construction' {
             $script:checkpointTrees.c1 = 'drifted-tree'
             $checkpointPlan = [pscustomobject] @{
                 SourceHead = [pscustomobject] @{ CommitSha = 'head'; TreeSha = 'tree-head' }
+                ReleaseEvidence = @([pscustomobject] @{ SelectionOrder = 1; TagName = 'v1'; TagObjectType = 'commit'; TagObjectSha = 'c1'; PeeledCommitSha = 'c1' })
                 Checkpoints = @([pscustomobject] @{ Order = 1; SourceCommitSha = 'c1'; SourceTreeSha = 'tree-c1'; TagNames = @('v1') })
                 FinalHeadCheckpointRequired = $false
             }

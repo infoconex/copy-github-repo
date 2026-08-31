@@ -215,7 +215,7 @@ function Copy-CgrRepositorySnapshot {
                 Published = $false
             }
             $generatedCommits.Add($generatedCommit)
-            if ($RecoveryGeneratedCommits) { $RecoveryGeneratedCommits.Add($generatedCommit) }
+            if ($null -ne $RecoveryGeneratedCommits) { $RecoveryGeneratedCommits.Add($generatedCommit) }
         }
 
         if ($checkpoints.Count -eq 0 -or $finalHeadCheckpointRequired) {
@@ -246,7 +246,7 @@ function Copy-CgrRepositorySnapshot {
                 Published = $false
             }
             $generatedCommits.Add($generatedCommit)
-            if ($RecoveryGeneratedCommits) { $RecoveryGeneratedCommits.Add($generatedCommit) }
+            if ($null -ne $RecoveryGeneratedCommits) { $RecoveryGeneratedCommits.Add($generatedCommit) }
         }
 
         $commitSha = $parentCommitSha

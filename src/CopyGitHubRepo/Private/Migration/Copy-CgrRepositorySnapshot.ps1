@@ -11,6 +11,11 @@ function Copy-CgrRepositorySnapshot {
     destination history in the exact reviewed checkpoint order. It never reruns live
     release selection or topology ordering.
 
+    Selected release tags are recreated from the exact reviewed tag evidence and checkpoint
+    mapping. Source lightweight and annotated tags are both normalized to lightweight
+    destination refs that point at the newly generated Snapshot checkpoint commits; source
+    annotated-tag object identity and metadata are intentionally not preserved by Snapshot.
+
     Generated checkpoint messages use the deterministic convention
     "Snapshot release checkpoint <order>: <reviewed tag names>" and an optional final
     reviewed HEAD commit uses "Snapshot current state". Destination commit identities,
@@ -18,8 +23,8 @@ function Copy-CgrRepositorySnapshot {
 
     .NOTES
     This is a Git mutation boundary called after the public ShouldProcess decision.
-    The temporary workspace is always removed. Approved-state mismatch stops before
-    the destination branch is published so a reviewed plan cannot silently drift.
+    The temporary workspace is always removed. Approved-state or reviewed release-tag
+    mismatch stops before the destination branch or release tags are published.
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions',
@@ -88,6 +93,7 @@ function Copy-CgrRepositorySnapshot {
         }
 
         $checkpoints = @()
+        $releaseEvidence = @()
         $finalHeadCheckpointRequired = $false
         if ($ReleaseCheckpointPlan) {
             $plannedSourceHead = Get-CgrObjectProperty -InputObject $ReleaseCheckpointPlan -Name 'SourceHead'
@@ -100,7 +106,44 @@ function Copy-CgrRepositorySnapshot {
                 $PSCmdlet.ThrowTerminatingError($errorRecord)
             }
             $checkpoints = @(Get-CgrObjectProperty -InputObject $ReleaseCheckpointPlan -Name 'Checkpoints')
+            $releaseEvidence = @(Get-CgrObjectProperty -InputObject $ReleaseCheckpointPlan -Name 'ReleaseEvidence')
             $finalHeadCheckpointRequired = [bool] (Get-CgrObjectProperty -InputObject $ReleaseCheckpointPlan -Name 'FinalHeadCheckpointRequired')
+        }
+
+        if ($releaseEvidence.Count -gt 0) {
+            foreach ($evidence in $releaseEvidence) {
+                $tagName = [string] (Get-CgrObjectProperty -InputObject $evidence -Name 'TagName')
+                $expectedTagObjectType = [string] (Get-CgrObjectProperty -InputObject $evidence -Name 'TagObjectType')
+                $expectedTagObjectSha = [string] (Get-CgrObjectProperty -InputObject $evidence -Name 'TagObjectSha')
+                $expectedPeeledCommitSha = [string] (Get-CgrObjectProperty -InputObject $evidence -Name 'PeeledCommitSha')
+                $mappedCheckpoint = @($checkpoints | Where-Object { [string] (Get-CgrObjectProperty -InputObject $_ -Name 'SourceCommitSha') -eq $expectedPeeledCommitSha })
+                if ([string]::IsNullOrWhiteSpace($tagName) -or $mappedCheckpoint.Count -ne 1 -or $tagName -notin @(Get-CgrObjectProperty -InputObject $mappedCheckpoint[0] -Name 'TagNames')) {
+                    $message = "Approved Snapshot release-tag evidence for '$tagName' does not map exactly once to its reviewed checkpoint boundary. Nothing was published."
+                    $exception = [System.InvalidOperationException]::new($message)
+                    $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'SnapshotReleaseTagPlanMappingInvalid', [System.Management.Automation.ErrorCategory]::InvalidData, $tagName)
+                    $PSCmdlet.ThrowTerminatingError($errorRecord)
+                }
+
+                $tagRefResult = Invoke-CgrGitHubApiReadRequest `
+                    -ArgumentList @('api', '--hostname', $SourceRepository.HostName, "repos/$($SourceRepository.FullName)/git/ref/tags/$([uri]::EscapeDataString($tagName))")
+                if ($tagRefResult.ExitCode -ne 0) {
+                    $message = "Selected release tag '$tagName' no longer matches the approved Snapshot release-tag evidence. Nothing was published. Recreate and review the repository copy plan."
+                    $exception = [System.InvalidOperationException]::new($message)
+                    $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'SnapshotReleaseTagStateChangedSincePlanning', [System.Management.Automation.ErrorCategory]::InvalidResult, $tagName)
+                    $PSCmdlet.ThrowTerminatingError($errorRecord)
+                }
+
+                $tagRefJson = ($tagRefResult.Output | ForEach-Object { [string] $_ }) -join "`n"
+                $tagRef = $tagRefJson | ConvertFrom-Json -Depth 20
+                $actualTagObjectType = [string] $tagRef.object.type
+                $actualTagObjectSha = [string] $tagRef.object.sha
+                if ($actualTagObjectType -ne $expectedTagObjectType -or $actualTagObjectSha -ne $expectedTagObjectSha) {
+                    $message = "Selected release tag '$tagName' changed after planning. Expected reviewed $expectedTagObjectType object '$expectedTagObjectSha' but found $actualTagObjectType object '$actualTagObjectSha'. Nothing was published."
+                    $exception = [System.InvalidOperationException]::new($message)
+                    $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'SnapshotReleaseTagStateChangedSincePlanning', [System.Management.Automation.ErrorCategory]::InvalidResult, $tagName)
+                    $PSCmdlet.ThrowTerminatingError($errorRecord)
+                }
+            }
         }
 
         $commitIdentity = Get-CgrGitCommitIdentity -HostName $DestinationRepository.HostName
@@ -199,6 +242,29 @@ function Copy-CgrRepositorySnapshot {
 
         $commitSha = $parentCommitSha
         $rootCommitSha = [string] (Get-CgrObjectProperty -InputObject $generatedCommits[0] -Name 'CommitSha')
+        $releaseTags = [System.Collections.Generic.List[object]]::new()
+        foreach ($evidence in $releaseEvidence) {
+            $tagName = [string] (Get-CgrObjectProperty -InputObject $evidence -Name 'TagName')
+            $peeledCommitSha = [string] (Get-CgrObjectProperty -InputObject $evidence -Name 'PeeledCommitSha')
+            $generatedCheckpoint = @($generatedCommits | Where-Object {
+                    (Get-CgrObjectProperty -InputObject $_ -Name 'Kind') -eq 'ReleaseCheckpoint' -and
+                    [string] (Get-CgrObjectProperty -InputObject $_ -Name 'SourceCommitSha') -eq $peeledCommitSha
+                })
+            if ($generatedCheckpoint.Count -ne 1) {
+                $message = "Reviewed Snapshot release tag '$tagName' could not be mapped to exactly one generated destination checkpoint commit. Nothing was published."
+                $exception = [System.InvalidOperationException]::new($message)
+                $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'SnapshotReleaseTagDestinationMappingInvalid', [System.Management.Automation.ErrorCategory]::InvalidData, $tagName)
+                $PSCmdlet.ThrowTerminatingError($errorRecord)
+            }
+            $releaseTags.Add([pscustomobject] @{
+                    TagName = $tagName
+                    SourceTagObjectType = [string] (Get-CgrObjectProperty -InputObject $evidence -Name 'TagObjectType')
+                    SourceTagObjectSha = [string] (Get-CgrObjectProperty -InputObject $evidence -Name 'TagObjectSha')
+                    SourcePeeledCommitSha = $peeledCommitSha
+                    DestinationCommitSha = [string] (Get-CgrObjectProperty -InputObject $generatedCheckpoint[0] -Name 'CommitSha')
+                    DestinationTagType = 'lightweight'
+                })
+        }
 
         $gitLfs = Invoke-CgrActivityStage `
             -Name 'TransferGitLfs' `
@@ -207,11 +273,18 @@ function Copy-CgrRepositorySnapshot {
             Copy-CgrGitLfsObject -SourcePath $sourcePath -SourceRepository $SourceRepository -DestinationRepository $DestinationRepository -BranchName $BranchName
         }
 
-        $pushRef = "$($commitSha):refs/heads/$BranchName"
-        $pushResult = Invoke-CgrGitCommand -HostName $DestinationRepository.HostName -ArgumentList @('-C', $sourcePath, 'push', $DestinationRepository.CloneUrl, $pushRef)
+        $pushArguments = @('-C', $sourcePath, 'push')
+        if ($releaseTags.Count -gt 0) {
+            $pushArguments += '--atomic'
+        }
+        $pushArguments += @($DestinationRepository.CloneUrl, "$($commitSha):refs/heads/$BranchName")
+        foreach ($releaseTag in $releaseTags) {
+            $pushArguments += "$($releaseTag.DestinationCommitSha):refs/tags/$($releaseTag.TagName)"
+        }
+        $pushResult = Invoke-CgrGitCommand -HostName $DestinationRepository.HostName -ArgumentList $pushArguments
         if ($pushResult.ExitCode -ne 0) {
             Send-CgrActivityEvent -Name 'PublishSnapshot' -State Failed -Message "Publish clean Snapshot to '$($DestinationRepository.FullName)'"
-            $message = "Git failed to push snapshot commit to '$($DestinationRepository.FullName)'. $($pushResult.ErrorText)"
+            $message = "Git failed to push snapshot history and reviewed release tags to '$($DestinationRepository.FullName)'. $($pushResult.ErrorText)"
             $exception = [System.InvalidOperationException]::new($message.Trim())
             $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationRepositorySnapshotPushFailed', [System.Management.Automation.ErrorCategory]::InvalidOperation, $DestinationRepository.FullName)
             $PSCmdlet.ThrowTerminatingError($errorRecord)
@@ -249,6 +322,7 @@ function Copy-CgrRepositorySnapshot {
             ApprovedSourceState = $ApprovedSourceState
             ReleaseCheckpointPlan = $ReleaseCheckpointPlan
             GeneratedCommits = $generatedCommits.ToArray()
+            ReleaseTags = $releaseTags.ToArray()
             FinalHeadCommitCreated = [bool] ($ReleaseCheckpointPlan -and $checkpoints.Count -gt 0 -and $finalHeadCheckpointRequired)
             Verified = $true
         }

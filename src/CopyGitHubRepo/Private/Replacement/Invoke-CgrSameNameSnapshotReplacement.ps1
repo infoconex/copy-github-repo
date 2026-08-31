@@ -30,6 +30,7 @@ function Invoke-CgrSameNameSnapshotReplacement {
     $destination = $null
     $snapshot = $null
     $snapshotRootCommitSha = $null
+    $verifiedDestination = $null
     $repositoryIdentity = $null
     $sourceState = Get-CgrObjectProperty -InputObject $Plan -Name 'SourceState'
     $releaseCheckpointPlan = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseCheckpointPlan'

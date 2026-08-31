@@ -108,6 +108,42 @@ Describe 'Normative documentation consistency' {
         $script:documents.WizardContract | Should -Not -Match 'The review heading is \*\*Migration plan\*\*'
     }
 
+    It 'defines Snapshot release checkpoint history as state construction rather than history rewriting' {
+        $script:documents.ProductContract | Should -Match 'Snapshot -IncludeReleases` constructs a \*\*new unrelated linear history of repository-state checkpoints\*\*'
+        $script:documents.ProductContract | Should -Match 'not a Git squash, rebase, filter, or ancestry rewrite'
+        $script:documents.ProductContract | Should -Match 'Destination checkpoint commits are intentionally new commits'
+        $script:documents.Architecture | Should -Match 'product-contract\.md#snapshot-release-checkpoint-contract'
+        $script:documents.Architecture | Should -Match 'does not duplicate its topology rules'
+    }
+
+    It 'defines deterministic fail-closed Snapshot release topology semantics' {
+        $script:documents.ProductContract | Should -Match 'peeled source commit ancestry'
+        $script:documents.ProductContract | Should -Match 'every pair of distinct selected release commit targets must be comparable by ancestry'
+        $script:documents.ProductContract | Should -Match 'Publication order differs from ancestry'
+        $script:documents.ProductContract | Should -Match 'Divergent selected tags'
+        $script:documents.ProductContract | Should -Match 'Moved or deleted tags'
+        $script:documents.ProductContract | Should -Match 'Annotated and lightweight tags'
+        $script:documents.ProductContract | Should -Match 'No selected releases'
+    }
+
+    It 'defines duplicate-target, state-equivalence, and final HEAD checkpoint behavior' {
+        $script:documents.ProductContract | Should -Match 'Multiple selected releases at the same source commit'
+        $script:documents.ProductContract | Should -Match 'all such releases share one Snapshot checkpoint'
+        $script:documents.ProductContract | Should -Match 'complete Git trees are identical'
+        $script:documents.ProductContract | Should -Match 'State equivalence is deliberately different from commit-SHA preservation'
+        $script:documents.ProductContract | Should -Match 'HEAD equals the final selected release state'
+        $script:documents.ProductContract | Should -Match 'do not create an additional current-state commit'
+        $script:documents.ProductContract | Should -Match 'HEAD differs from the final selected release state'
+        $script:documents.ProductContract | Should -Match 'create exactly one final Snapshot commit'
+    }
+
+    It 'preserves plain Snapshot and FullHistory release contracts while defining Snapshot checkpoints' {
+        $script:documents.ProductContract | Should -Match 'Plain `Snapshot` without `-IncludeReleases` remains unchanged'
+        $script:documents.ProductContract | Should -Match 'FullHistory -IncludeReleases` remains unchanged'
+        $script:documents.Architecture | Should -Match 'Plain Snapshot remains the one-unrelated-root path when `-IncludeReleases` is absent'
+        $script:documents.Architecture | Should -Match 'FullHistory remains the history-preserving path'
+    }
+
     It 'documents the implemented wizard across release-facing surfaces' {
         $script:documents.Readme | Should -Match 'Start-CopyGitHubRepositoryWizard'
         $script:documents.Readme | Should -Not -Match '## Planned experience'

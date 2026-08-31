@@ -51,6 +51,11 @@ jobs:
               $headSha = '${{ github.sha }}'
           }
 
+          if ($baseSha -eq ('0' * 40)) {
+              'run-quality=true' >> $env:GITHUB_OUTPUT
+              exit 0
+          }
+
           $changedFiles = @(git diff --name-only $baseSha $headSha)
           if ($LASTEXITCODE -ne 0) {
               throw 'Unable to determine changed files for quality-scope evaluation.'

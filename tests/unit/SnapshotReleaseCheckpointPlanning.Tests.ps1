@@ -161,11 +161,11 @@ Describe 'Snapshot release checkpoint planning evidence' {
                 if ($joined -match '/commits/(c\d+)') {
                     return [pscustomobject] @{ ExitCode = 0; Output = @("tree-$($Matches[1])"); ErrorText = '' }
                 }
-                if ($joined -match '/compare/c1\.\.\.c2|/compare/c2\.\.\.c3|/compare/c1\.\.\.c3') {
-                    $pair = ($joined -split '/compare/')[1] -split ' ' | Select-Object -First 1
-                    $parts = $pair -split '\.\.\.'
+                if ($joined -match '/compare/(c[123])\.\.\.(c[123])') {
+                    $left = $Matches[1]
+                    $right = $Matches[2]
                     $rank = @{ c1 = 1; c2 = 2; c3 = 3 }
-                    return [pscustomobject] @{ ExitCode = 0; Output = @(if ($rank[$parts[0]] -lt $rank[$parts[1]]) { 'ahead' } else { 'behind' }); ErrorText = '' }
+                    return [pscustomobject] @{ ExitCode = 0; Output = @(if ($rank[$left] -lt $rank[$right]) { 'ahead' } else { 'behind' }); ErrorText = '' }
                 }
                 if ($joined -match '/compare/c3\.\.\.head') {
                     return [pscustomobject] @{ ExitCode = 0; Output = @('diverged'); ErrorText = '' }
@@ -187,6 +187,123 @@ Describe 'Snapshot release checkpoint planning evidence' {
             $result.FinalHeadCheckpointRequired | Should -BeTrue
             $result.PlannedSnapshotCommitCount | Should -Be 1
             Should -Invoke Invoke-CgrGitHubApiReadRequest -Times 0
+        }
+    }
+}
+
+Describe 'Snapshot IncludeReleases planning integration' {
+    It 'resolves the release inventory once and passes that exact reviewed selection to checkpoint planning' {
+        InModuleScope CopyGitHubRepo {
+            $sourceRepository = [pscustomobject] @{
+                FullName = 'acme/source'
+                Owner = 'acme'
+                DefaultBranch = 'main'
+                Visibility = 'private'
+                Id = $null
+            }
+            $sourceState = [pscustomobject] @{
+                ContentMode = 'Snapshot'
+                Repository = 'acme/source'
+                DefaultBranch = 'main'
+                CommitSha = 'head'
+                TreeSha = 'tree-head'
+                GitLfsPointerFiles = @()
+                GitLfsObjectsAvailable = $true
+                HistoricalRecords = $null
+            }
+            $selection = [pscustomobject] @{
+                SelectedReleaseCount = 1
+                SelectedAssetCount = 0
+                Releases = @([pscustomobject] @{ ReleaseId = 1; TagName = 'v1'; TargetCommitSha = 'c1' })
+            }
+            $checkpointPlan = [pscustomobject] @{ CheckpointCount = 1; FinalHeadCheckpointRequired = $true }
+
+            Mock Test-CgrGitHubRepositoryExistence { $false }
+            Mock Get-CgrApprovedSourceState { $sourceState }
+            Mock Get-CgrGitHubReleaseSelection { $selection }
+            Mock New-CgrSnapshotReleaseCheckpointPlan { $checkpointPlan }
+
+            $plan = New-CgrMigrationPlan `
+                -SourceRepository $sourceRepository `
+                -DestinationRepository acme/destination `
+                -ContentMode Snapshot `
+                -IncludeReleases `
+                -ReleaseTag 'v1.*' `
+                -DestinationVisibility private `
+                -CommitMessage 'Initial repository commit' `
+                -SkipSettings `
+                -PlanOnly
+
+            $plan.ReleaseSelection | Should -BeSameInstanceAs $selection
+            $plan.ReleaseCheckpointPlan | Should -BeSameInstanceAs $checkpointPlan
+            Should -Invoke Get-CgrGitHubReleaseSelection -Times 1 -Exactly -ParameterFilter {
+                $Repository -eq $sourceRepository -and $ReleaseTag -eq 'v1.*'
+            }
+            Should -Invoke New-CgrSnapshotReleaseCheckpointPlan -Times 1 -Exactly -ParameterFilter {
+                $Repository -eq $sourceRepository -and $ReleaseSelection -eq $selection -and $SourceState -eq $sourceState
+            }
+        }
+    }
+}
+
+Describe 'Snapshot release checkpoint plan rendering' {
+    It 'shows release selection order separately from Git-ancestry checkpoint construction order' {
+        InModuleScope CopyGitHubRepo {
+            $plan = [pscustomobject] @{
+                SourceRepository = 'acme/source'
+                DestinationRepository = 'acme/destination'
+                ArchiveRepository = $null
+                Mode = 'NewDestination'
+                ContentMode = 'Snapshot'
+                SourceVisibility = 'private'
+                DestinationVisibility = 'private'
+                IncludeReleases = $true
+                RestorePages = $false
+                EnableActionsAfterMigration = $false
+                SkipSettings = $true
+                PlanOnly = $true
+                SourceState = [pscustomobject] @{
+                    Repository = 'acme/source'
+                    RepositoryId = 1
+                    RepositoryNodeId = 'R1'
+                    DefaultBranch = 'main'
+                    CommitSha = 'head'
+                    TreeSha = 'tree-head'
+                    GitLfsPointerFiles = @()
+                    GitLfsObjectsAvailable = $true
+                    HistoricalRecords = $null
+                }
+                ReleaseSelection = [pscustomobject] @{
+                    AvailableReleaseCount = 2
+                    SelectedReleaseCount = 2
+                    IncludePatterns = @()
+                    ExcludePatterns = @()
+                    IncludePrerelease = $false
+                    IncludeDraftReleases = $false
+                    ReleaseCount = $null
+                }
+                ReleaseCheckpointPlan = [pscustomobject] @{
+                    CheckpointCount = 2
+                    PlannedSnapshotCommitCount = 3
+                    FinalHeadCheckpointRequired = $true
+                    SourceHead = [pscustomobject] @{ CommitSha = 'head'; TreeSha = 'tree-head' }
+                    ReleaseEvidence = @(
+                        [pscustomobject] @{ SelectionOrder = 1; TagName = 'v2'; TagObjectType = 'commit'; TagObjectSha = 'ref-v2'; PeeledCommitSha = 'c2'; TreeSha = 'tree-c2' },
+                        [pscustomobject] @{ SelectionOrder = 2; TagName = 'v1'; TagObjectType = 'tag'; TagObjectSha = 'ref-v1'; PeeledCommitSha = 'c1'; TreeSha = 'tree-c1' }
+                    )
+                    Checkpoints = @(
+                        [pscustomobject] @{ Order = 1; SourceCommitSha = 'c1'; SourceTreeSha = 'tree-c1'; TagNames = @('v1') },
+                        [pscustomobject] @{ Order = 2; SourceCommitSha = 'c2'; SourceTreeSha = 'tree-c2'; TagNames = @('v2') }
+                    )
+                }
+                Steps = @()
+            }
+
+            $markdown = Format-CgrMigrationPlan -Plan $plan -Format Markdown
+
+            $markdown | Should -Match 'Release filtering determines the approved release inventory; checkpoint order below is independently derived from peeled source commit ancestry'
+            $markdown | Should -Match '\| 1 \| v2 \| commit \| ref-v2 \| c2 \| tree-c2 \|'
+            $markdown | Should -Match '\| 1 \| c1 \| tree-c1 \| v1 \|'
         }
     }
 }

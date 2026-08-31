@@ -61,7 +61,18 @@ function Invoke-CgrNewDestinationSnapshot {
 
         $failureStage = 'VerifySnapshot'
         $verification = Invoke-CgrActivityStage -Name 'VerifyDestinationContent' -Message 'Verify destination content' -Action {
-            Invoke-CgrRepositorySnapshotVerification -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -ApprovedSourceState $sourceState
+            if ($releaseCheckpointPlan) {
+                Invoke-CgrApprovedSnapshotReleaseVerification `
+                    -SourceRepository $SourceRepository `
+                    -DestinationRepository $verifiedDestination `
+                    -ReleaseCheckpointPlan $releaseCheckpointPlan
+            }
+            else {
+                Invoke-CgrRepositorySnapshotVerification `
+                    -SourceRepository $SourceRepository `
+                    -DestinationRepository $verifiedDestination `
+                    -ApprovedSourceState $sourceState
+            }
         }
         $completedSteps.Add([pscustomobject] @{ Order = 3; Name = 'VerifySnapshot'; MutatedGitHub = $false; Verified = $verification.IsSuccessful })
 
@@ -115,6 +126,7 @@ function Invoke-CgrNewDestinationSnapshot {
         $snapshotTree = if ($sourceState) { Get-CgrObjectProperty -InputObject $sourceState -Name 'TreeSha' } else { Get-CgrObjectProperty -InputObject $snapshot -Name 'TreeSha' }
         if ($null -eq $snapshotTree) { $snapshotTree = Get-CgrObjectProperty -InputObject $verification -Name 'SourceTree' }
         $destinationTree = Get-CgrObjectProperty -InputObject $verification -Name 'DestinationTree'
+        if ($null -eq $destinationTree) { $destinationTree = Get-CgrObjectProperty -InputObject $verification -Name 'DestinationHeadTreeSha' }
         if ($null -eq $destinationTree) { $destinationTree = $snapshotTree }
 
         $provenance = [pscustomobject] @{

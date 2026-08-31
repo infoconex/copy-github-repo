@@ -79,7 +79,18 @@ function Invoke-CgrSameNameSnapshotReplacement {
         $verifiedDestination = Get-CgrRepository -Repository $destination.FullName -HostName $HostName
         $failureStage = 'VerifySnapshot'
         $verification = Invoke-CgrActivityStage -Name 'VerifyDestinationContent' -Message 'Verify destination content' -Action {
-            Invoke-CgrRepositorySnapshotVerification -SourceRepository $archive -DestinationRepository $verifiedDestination -ApprovedSourceState $sourceState
+            if ($releaseCheckpointPlan) {
+                Invoke-CgrApprovedSnapshotReleaseVerification `
+                    -SourceRepository $archive `
+                    -DestinationRepository $verifiedDestination `
+                    -ReleaseCheckpointPlan $releaseCheckpointPlan
+            }
+            else {
+                Invoke-CgrRepositorySnapshotVerification `
+                    -SourceRepository $archive `
+                    -DestinationRepository $verifiedDestination `
+                    -ApprovedSourceState $sourceState
+            }
         }
         $completedSteps.Add([pscustomobject] @{ Order = 6; Name = 'VerifySnapshot'; MutatedGitHub = $false; Verified = $verification.IsSuccessful })
 
@@ -119,7 +130,7 @@ function Invoke-CgrSameNameSnapshotReplacement {
 
         $configuration = Invoke-CgrPostVerificationConfigurationRestore `
             -Plan $Plan `
-            -SourceRepository $SourceRepository `
+            -SourceRepository $archive `
             -DestinationRepository $verifiedDestination `
             -Verification $verification `
             -VerificationFailureReason 'SnapshotVerificationFailed' `
@@ -133,6 +144,7 @@ function Invoke-CgrSameNameSnapshotReplacement {
         $sourceTreeSha = Get-CgrObjectProperty -InputObject $sourceState -Name 'TreeSha'
         $snapshotTreeSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'TreeSha'
         if ($null -eq $snapshotTreeSha) { $snapshotTreeSha = Get-CgrObjectProperty -InputObject $verification -Name 'DestinationTree' }
+        if ($null -eq $snapshotTreeSha) { $snapshotTreeSha = Get-CgrObjectProperty -InputObject $verification -Name 'DestinationHeadTreeSha' }
         $archiveRepositoryNodeId = Get-CgrObjectProperty -InputObject $archive -Name 'NodeId'
         $destinationRepositoryNodeId = Get-CgrObjectProperty -InputObject $verifiedDestination -Name 'NodeId'
         $provenance = [pscustomobject] @{
@@ -142,7 +154,7 @@ function Invoke-CgrSameNameSnapshotReplacement {
             SourceRepository = $Plan.SourceRepository
             SourceRepositoryId = $repositoryIdentity.SourceRepositoryId
             SourceRepositoryNodeId = $sourceRepositoryNodeId
-            SourceDefaultBranch = Get-CgrObjectProperty -InputObject $sourceState -Name 'DefaultBranch'
+            SourceDefaultBranch = $Plan.SourceDefaultBranch
             SourceCommitSha = $sourceCommitSha
             SourceTreeSha = $sourceTreeSha
             PlannedSourceState = $sourceState

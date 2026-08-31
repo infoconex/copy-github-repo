@@ -30,6 +30,7 @@ Describe 'Wizard repository copy options' {
             Invoke-CgrRepositoryCopyWizard -HostName github.com -ExecutionGuard { $true } | Out-Null
 
             Should -Invoke Read-CgrWizardTextValue -Times 0 -Exactly
+            Should -Invoke Read-CgrWizardChoice -Times 0 -Exactly -ParameterFilter { $Title -eq 'Snapshot release preservation' }
             Should -Invoke Copy-GitHubRepository -Times 1 -Exactly -ParameterFilter {
                 $PlanOnly -and $ContentMode -eq 'FullHistory' -and $DestinationVisibility -eq 'private'
             }
@@ -45,7 +46,7 @@ Describe 'Wizard repository copy options' {
             $expected = 'SOURCE=infoconex/source;ARCHIVE=infoconex/source-archive;REPLACEMENT=infoconex/source'
             $plan = [pscustomobject] @{
                 Mode = 'SameNameReplacement'; SourceRepository = 'infoconex/source'; DestinationRepository = 'infoconex/source'; ArchiveRepository = 'infoconex/source-archive'
-                ContentMode = 'Snapshot'; CommitMessage = 'Initial repository commit'; DestinationVisibility = 'public'
+                ContentMode = 'Snapshot'; IncludeReleases = $false; CommitMessage = 'Initial repository commit'; DestinationVisibility = 'public'
                 SourceState = [pscustomobject] @{ ContentMode = 'Snapshot'; CommitSha = 'source-commit'; TreeSha = 'source-tree'; DefaultBranch = 'main' }
                 Steps = @([pscustomobject] @{ Description = 'Preserve source as archive.' })
             }
@@ -57,6 +58,7 @@ Describe 'Wizard repository copy options' {
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Snapshot' } -ParameterFilter { $Title -eq 'Content mode' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'public' } -ParameterFilter { $Title -eq 'Destination visibility' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Restore' } -ParameterFilter { $Title -eq 'Supported repository settings' }
+            Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Skip' } -ParameterFilter { $Title -eq 'Snapshot release preservation' }
             Mock Read-CgrWizardTextValue { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Initial repository commit' } -ParameterFilter { $Title -eq 'Snapshot commit message' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Execute' } -ParameterFilter { $Title -eq 'Repository copy plan' }
             Mock Read-CgrWizardInput { $expected }
@@ -66,7 +68,7 @@ Describe 'Wizard repository copy options' {
             Invoke-CgrRepositoryCopyWizard -HostName github.com -ExecutionGuard { $true } | Out-Null
 
             Should -Invoke Copy-GitHubRepository -Times 1 -Exactly -ParameterFilter {
-                $PlanOnly -and $ArchiveRepositoryName -eq 'source-archive' -and $CommitMessage -eq 'Initial repository commit'
+                $PlanOnly -and $ArchiveRepositoryName -eq 'source-archive' -and $CommitMessage -eq 'Initial repository commit' -and -not $IncludeReleases
             }
             Should -Invoke Invoke-CgrApprovedMigrationPlan -Times 1 -Exactly -ParameterFilter {
                 $Plan.ArchiveRepository -eq 'infoconex/source-archive' -and $SameNameConfirmation -ceq $expected
@@ -79,7 +81,7 @@ Describe 'Wizard repository copy options' {
             $source = [pscustomobject] @{ FullName = 'infoconex/source'; Owner = 'infoconex'; Visibility = 'public' }
             $plan = [pscustomobject] @{
                 Mode = 'NewDestination'; SourceRepository = 'infoconex/source'; DestinationRepository = 'infoconex/destination'; ArchiveRepository = $null
-                ContentMode = 'Snapshot'; CommitMessage = 'Imported repository baseline'; DestinationVisibility = 'public'
+                ContentMode = 'Snapshot'; IncludeReleases = $false; CommitMessage = 'Imported repository baseline'; DestinationVisibility = 'public'
                 SourceState = [pscustomobject] @{ ContentMode = 'Snapshot'; CommitSha = 'source-commit'; TreeSha = 'source-tree'; DefaultBranch = 'main' }
                 Steps = @([pscustomobject] @{ Description = 'Create destination.' })
             }
@@ -91,6 +93,7 @@ Describe 'Wizard repository copy options' {
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Snapshot' } -ParameterFilter { $Title -eq 'Content mode' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'public' } -ParameterFilter { $Title -eq 'Destination visibility' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Restore' } -ParameterFilter { $Title -eq 'Supported repository settings' }
+            Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Skip' } -ParameterFilter { $Title -eq 'Snapshot release preservation' }
             Mock Read-CgrWizardTextValue { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Imported repository baseline' } -ParameterFilter { $Title -eq 'Snapshot commit message' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Execute' } -ParameterFilter { $Title -eq 'Repository copy plan' }
             Mock Copy-GitHubRepository { $plan } -ParameterFilter { $PlanOnly }
@@ -98,7 +101,7 @@ Describe 'Wizard repository copy options' {
 
             Invoke-CgrRepositoryCopyWizard -HostName github.com -ExecutionGuard { $true } | Out-Null
 
-            Should -Invoke Copy-GitHubRepository -Times 1 -Exactly -ParameterFilter { $PlanOnly -and $CommitMessage -eq 'Imported repository baseline' }
+            Should -Invoke Copy-GitHubRepository -Times 1 -Exactly -ParameterFilter { $PlanOnly -and $CommitMessage -eq 'Imported repository baseline' -and -not $IncludeReleases }
             Should -Invoke Invoke-CgrApprovedMigrationPlan -Times 1 -Exactly -ParameterFilter { $Plan.CommitMessage -eq 'Imported repository baseline' }
         }
     }
@@ -110,7 +113,7 @@ Describe 'Wizard repository copy options' {
             $expected = "DESTINATION=infoconex/destination;ARCHIVE=infoconex/$archiveName;REPLACEMENT=infoconex/destination"
             $plan = [pscustomobject] @{
                 Mode = 'ExistingDestinationReplacement'; SourceRepository = 'infoconex/source'; DestinationRepository = 'infoconex/destination'; ArchiveRepository = "infoconex/$archiveName"
-                ContentMode = 'Snapshot'; CommitMessage = 'Initial repository commit'; DestinationVisibility = 'public'
+                ContentMode = 'Snapshot'; IncludeReleases = $false; CommitMessage = 'Initial repository commit'; DestinationVisibility = 'public'
                 SourceState = [pscustomobject] @{ ContentMode = 'Snapshot'; CommitSha = 'source-commit'; TreeSha = 'source-tree'; DefaultBranch = 'main' }
                 Steps = @([pscustomobject] @{ Description = 'Rename existing destination to archive.' }, [pscustomobject] @{ Description = 'Create fresh replacement.' })
             }
@@ -125,6 +128,7 @@ Describe 'Wizard repository copy options' {
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Snapshot' } -ParameterFilter { $Title -eq 'Content mode' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'public' } -ParameterFilter { $Title -eq 'Destination visibility' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Restore' } -ParameterFilter { $Title -eq 'Supported repository settings' }
+            Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Skip' } -ParameterFilter { $Title -eq 'Snapshot release preservation' }
             Mock Read-CgrWizardTextValue { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Initial repository commit' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Execute' } -ParameterFilter { $Title -eq 'Repository copy plan' }
             Mock Read-CgrWizardInput { $expected }
@@ -133,7 +137,7 @@ Describe 'Wizard repository copy options' {
 
             Invoke-CgrRepositoryCopyWizard -HostName github.com -ExecutionGuard { $true } | Out-Null
 
-            Should -Invoke Copy-GitHubRepository -Times 1 -Exactly -ParameterFilter { $PlanOnly -and $ExistingDestinationArchiveName -eq $archiveName }
+            Should -Invoke Copy-GitHubRepository -Times 1 -Exactly -ParameterFilter { $PlanOnly -and $ExistingDestinationArchiveName -eq $archiveName -and -not $IncludeReleases }
             Should -Invoke Invoke-CgrApprovedMigrationPlan -Times 1 -Exactly -ParameterFilter {
                 $Plan.ArchiveRepository -eq "infoconex/$archiveName" -and $ExistingDestinationConfirmation -ceq $expected
             }

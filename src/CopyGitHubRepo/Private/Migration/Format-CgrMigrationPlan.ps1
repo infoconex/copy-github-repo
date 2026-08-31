@@ -86,7 +86,13 @@ function Format-CgrMigrationPlan {
 
                     if ($Plan.Mode -eq 'SameNameReplacement' -and ($tagCount -gt 0 -or $releaseCount -gt 0)) {
                         $lines.Add('')
-                        $lines.Add('**Release safety:** create any selected release tags and GitHub Releases on the clean replacement only after Snapshot publication and verification complete successfully.')
+                        $releaseSafety = if ($includeReleases) {
+                            '**Release safety:** create any selected release tags and GitHub Releases on the clean replacement only after Snapshot publication and verification complete successfully.'
+                        }
+                        else {
+                            '**Release safety:** create the new release tag and GitHub Release on the clean replacement only after Snapshot publication and verification complete successfully.'
+                        }
+                        $lines.Add($releaseSafety)
                     }
                 }
             }

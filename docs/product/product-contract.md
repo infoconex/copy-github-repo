@@ -87,7 +87,7 @@ Structured results and recovery/provenance evidence distinguish the **approved/p
 
 ## Snapshot release-checkpoint contract
 
-This section is the authoritative product definition of `Snapshot -IncludeReleases`. Architecture and later implementation must reference this contract rather than maintain a competing definition.
+This section is the authoritative product definition of `Snapshot -IncludeReleases`. Architecture and implementation must reference this contract rather than maintain a competing definition.
 
 ### History model
 
@@ -134,11 +134,13 @@ Plain `Snapshot` without `-IncludeReleases` remains unchanged: it creates one un
 
 ### Scope boundary
 
-This contract settles history shape, topology, state equivalence, tag-target normalization, duplicate-target behavior, drift semantics, and the final-HEAD rule. Detailed checkpoint-construction mechanics, tag recreation, GitHub Release restoration, verification implementation, recovery implementation, planning data-shape changes, and wizard behavior are defined and implemented by later work unless required to uphold these normative rules.
+This contract settles history shape, topology, state equivalence, tag-target normalization, duplicate-target behavior, drift semantics, and the final-HEAD rule. The implemented planning, checkpoint construction, tag/release restoration, verification, recovery, and wizard paths consume this contract rather than redefining it.
 
 ## Guided wizard
 
 `Start-CopyGitHubRepositoryWizard` owns interactive selection, contextual help, review, cancellation, progress, and final presentation. It uses `Get-GitHubRepository` for discovery and `Copy-GitHubRepository -PlanOnly` to create the real review artifact.
+
+For Snapshot, the wizard defaults to plain Snapshot without releases. The operator may opt into release preservation, use the same include/exclude tag, prerelease, draft, and release-count selection controls as the deterministic command, and review the resulting real checkpoint plan before execution. The wizard explains that selected release states become newly created Snapshot checkpoint commits and that source commit identities and ancestry are not preserved.
 
 The wizard executes the exact plan object it displayed through the private approved-plan application boundary; it does not reconstruct an equivalent mutating command after review. If source state changes after review, the wizard explains that the plan is stale, returns to plan generation, and requires the newly captured state to be reviewed before another Execute decision.
 
@@ -158,7 +160,7 @@ Normal cancellation before mutation is a structured no-change outcome. `ShouldPr
 
 Same-name replacement preserves the source under an unused archive name before the original name is reused. Source state is checked before rename, then the archive is checked again against the same approved state before replacement creation. Immutable GitHub repository identity continuity is verified when available, and the replacement must receive a distinct immutable ID before content copy.
 
-When same-name FullHistory release migration is requested, the archived original is the source of approved release metadata and assets after rename. The archived release state must still match the approved plan before destination releases are created.
+When same-name release migration is requested, the archived original is the source of approved release metadata and assets after rename. Snapshot still constructs new checkpoint commits in the replacement repository; FullHistory preserves the archived original's Git history and tag targets. The archived release state must still match the approved plan before destination releases are created.
 
 Existing-destination archive-and-replace checks approved source state before the existing destination is renamed. The archived destination must retain the original destination identity before its replacement is created.
 
@@ -169,9 +171,11 @@ Exact confirmations remain case-sensitive and name the identities involved:
 
 ## GitHub Release preservation
 
-GitHub Release preservation is implemented for `FullHistory`. The Snapshot release-checkpoint behavior is normatively defined above for the 0.3.0 release line; checkpoint construction and release restoration are enabled only as the dependent implementation work lands.
+GitHub Release preservation is implemented for both `Snapshot` and `FullHistory`. Snapshot follows the release-checkpoint contract above and recreates selected release tags against new checkpoint commits whose repository states correspond to the reviewed source releases. FullHistory preserves the original Git graph and tag commit targets and recreates selected GitHub Releases against those preserved tags.
 
 With `-IncludeReleases` and no additional release filters, all stable, non-draft releases are selected. Release filter parameters require `-IncludeReleases`.
+
+For Snapshot, the exact selected release inventory and checkpoint evidence are bound during planning. Checkpoint construction, tag recreation, release restoration, and independent verification consume that reviewed evidence rather than rerunning live release selection or inventing topology.
 
 For `FullHistory`, release restoration occurs only after FullHistory content verification succeeds. For each approved release:
 
@@ -182,6 +186,8 @@ For `FullHistory`, release restoration occurs only after FullHistory content ver
 - release name/body and draft/prerelease state are recreated where GitHub permits;
 - approved release assets are downloaded from the source and uploaded to the destination; and
 - the destination release is read back and metadata plus asset name, label, size, content type, and available digest evidence are verified.
+
+For Snapshot, the corresponding destination tag-target check is against the expected newly generated checkpoint commit from the reviewed checkpoint plan, not against the original source commit SHA. The checkpoint tree must be state-equivalent to the reviewed selected release state before the release is considered correctly represented.
 
 If the source release marked Latest at planning time is part of the approved selection, execution explicitly preserves that designation and verifies the destination Latest release resolves to the same selected tag. When filtering excludes the source Latest release, the product does not claim to preserve an omitted release; GitHub determines Latest among the releases that actually exist at the destination.
 
@@ -219,17 +225,19 @@ The following remain outside the implemented restoration contract:
 
 ## Provenance and recovery
 
-Snapshot intentionally severs Git ancestry, so successful execution exposes publication provenance outside the clean Git graph. Evidence includes approved source commit/tree state, actual copied source evidence, destination root commit/tree, repository identities when available, UTC time, and verification outcome. Same-name results also record archive identity continuity and distinct replacement identity.
+Snapshot intentionally severs Git ancestry, so successful execution exposes publication provenance outside the clean Git graph. Plain Snapshot evidence includes approved source commit/tree state, actual copied source evidence, destination root commit/tree, repository identities when available, UTC time, and verification outcome. Snapshot release-preservation evidence additionally records the reviewed checkpoint plan and available created checkpoint commits, recreated tag targets, restored releases/assets, and verification state. Same-name results also record archive identity continuity and distinct replacement identity.
 
 FullHistory release results expose the approved/restored release count, per-release source/destination release IDs, source/destination commit SHAs, latest-release preservation evidence when applicable, asset counts, and verification state. Recovery evidence includes the approved release selection and any available release restoration result when failure occurs during or after that stage.
 
-This evidence does not add marker files, tags, notes, parents, or extra commits to the destination.
+This evidence does not add marker files, provenance tags, notes, or source-history parents to the destination.
 
-Post-mutation terminating failures write durable recovery evidence when possible. Recovery records the failure stage, completed steps, known original/archive/replacement identities, and available planned-versus-copied content/release evidence. Recovery does not automatically delete repositories, releases, or rename repositories back.
+Post-mutation terminating failures write durable recovery evidence when possible. Recovery records the failure stage, completed steps, known original/archive/replacement identities, and available planned-versus-copied content/release evidence. Snapshot release recovery can identify created checkpoint commits and recreated release tags in addition to restored releases/assets. Recovery does not automatically delete repositories, commits, tags, releases, or rename repositories back.
 
 ## Verification
 
-Snapshot verification proves that the destination tree matches the approved Snapshot tree and that the destination branch contains exactly one root commit for plain Snapshot. Snapshot release-checkpoint verification semantics are governed by the authoritative checkpoint contract above and will be implemented by dependent 0.3.0 work. Required LFS transfer must also succeed.
+Plain Snapshot verification proves that the destination tree matches the approved Snapshot tree and that the destination branch contains exactly one root commit.
+
+Snapshot release-checkpoint verification is implemented against the authoritative checkpoint contract and immutable reviewed checkpoint evidence. It independently proves the expected generated checkpoint count/sequence and parentage, tree/state equivalence for each checkpoint, selected release-tag targets, the final reviewed HEAD state and optional final current-state commit rule, selected release metadata/assets, and Latest designation where applicable. `Test-GitHubRepositoryMigration -ContentMode Snapshot -IncludeReleases` requires the approved plan so standalone verification cannot rerun live selection or topology discovery and redefine the expected state.
 
 FullHistory verification compares destination branch/tag targets, reachable commit count, branch-tip trees, default branch, and LFS availability with the approved FullHistory state.
 
@@ -237,7 +245,7 @@ When `-IncludeReleases` is requested during FullHistory migration, execution-int
 
 Ordinary settings and transferable protection are independently read back after restoration.
 
-`Test-GitHubRepositoryMigration` is the standalone read-only comparison command. With `FullHistory -IncludeReleases`, it applies the same release-selection parameters to the **current** source release state and compares the selected releases with the destination, including tag commit identity, supported release metadata/assets, and the Latest designation when selected. Because standalone verification does not receive the original immutable migration plan, it verifies current source-versus-destination equivalence rather than proving that the source release state has remained unchanged since the migration. Extra destination releases outside the selected current source set do not cause standalone verification failure.
+`Test-GitHubRepositoryMigration` is the standalone read-only comparison command. With `Snapshot -IncludeReleases`, it consumes the immutable approved plan and verifies the generated destination checkpoints, recreated tags/releases, final reviewed HEAD state, metadata/assets, and Latest designation without rerunning live release filtering. With `FullHistory -IncludeReleases`, it applies the same release-selection parameters to the **current** source release state and compares the selected releases with the destination, including original tag commit identity, supported release metadata/assets, and the Latest designation when selected. Because the FullHistory standalone path does not receive the original immutable migration plan, it verifies current source-versus-destination equivalence rather than proving that the source release state has remained unchanged since the migration. Extra destination releases outside the selected current source set do not cause FullHistory standalone verification failure.
 
 ## Public command contract
 
@@ -250,7 +258,7 @@ The exported commands are exactly:
 
 `Get-GitHubRepository` exposes `ByRepository` and `Search` parameter sets and returns immutable `Id`/`NodeId` when GitHub provides them.
 
-All public commands publish complete comment-based help. `Copy-GitHubRepository` preserves `ShouldProcess`, `-WhatIf`, `-Confirm`, `-PlanOnly`, `-NonInteractive`, `-Force`, structured execution output, Plain/Json plan rendering, and the release-selection parameters documented in its command reference. `Test-GitHubRepositoryMigration` exposes the supported release-selection surface for read-only release verification.
+All public commands publish complete comment-based help. `Copy-GitHubRepository` preserves `ShouldProcess`, `-WhatIf`, `-Confirm`, `-PlanOnly`, `-NonInteractive`, `-Force`, structured execution output, Plain/Json plan rendering, and the release-selection parameters documented in its command reference. `Test-GitHubRepositoryMigration` exposes Snapshot approved-plan release verification and the supported FullHistory live release-selection surface documented in its command reference.
 
 ## Host and release contract
 

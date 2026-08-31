@@ -7,7 +7,7 @@ BeforeAll {
 Describe 'Stable release publication state probes' {
     It 'treats GitHub release absence as an explicit HTTP 404 state instead of a native command failure' {
         $releaseProbeStart = $script:releaseWorkflow.IndexOf('- name: Reject duplicate GitHub release', [StringComparison]::Ordinal)
-        $tagProbeStart = $script:releaseWorkflow.IndexOf('- name: Ensure manual release tag', [StringComparison]::Ordinal)
+        $tagProbeStart = $script:releaseWorkflow.IndexOf('- name: Ensure release tag', [StringComparison]::Ordinal)
         $releaseProbe = $script:releaseWorkflow.Substring($releaseProbeStart, $tagProbeStart - $releaseProbeStart)
 
         $releaseProbe | Should -Match 'Invoke-WebRequest'
@@ -20,7 +20,7 @@ Describe 'Stable release publication state probes' {
     }
 
     It 'treats tag absence as an explicit HTTP 404 state and fails closed on unexpected lookup status' {
-        $tagProbeStart = $script:releaseWorkflow.IndexOf('- name: Ensure manual release tag', [StringComparison]::Ordinal)
+        $tagProbeStart = $script:releaseWorkflow.IndexOf('- name: Ensure release tag', [StringComparison]::Ordinal)
         $galleryPublishStart = $script:releaseWorkflow.IndexOf('- name: Publish PowerShell Gallery package', [StringComparison]::Ordinal)
         $tagProbe = $script:releaseWorkflow.Substring($tagProbeStart, $galleryPublishStart - $tagProbeStart)
 

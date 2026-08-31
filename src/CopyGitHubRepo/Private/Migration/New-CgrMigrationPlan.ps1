@@ -75,18 +75,6 @@ function New-CgrMigrationPlan {
         [switch] $PlanOnly
     )
 
-    if ($IncludeReleases -and $ContentMode -eq 'Snapshot' -and -not $PlanOnly) {
-        $message = 'Snapshot -IncludeReleases execution is not implemented yet. Use -PlanOnly to review the immutable release-checkpoint plan.'
-        $exception = [System.NotSupportedException]::new($message)
-        $errorRecord = [System.Management.Automation.ErrorRecord]::new(
-            $exception,
-            'SnapshotReleaseMigrationNotImplemented',
-            [System.Management.Automation.ErrorCategory]::NotImplemented,
-            'IncludeReleases'
-        )
-        $PSCmdlet.ThrowTerminatingError($errorRecord)
-    }
-
     $normalizedDestination = ConvertTo-CgrRepositoryName -Repository $DestinationRepository
     $sourceFullName = ConvertTo-CgrRepositoryName -Repository $SourceRepository.FullName
 

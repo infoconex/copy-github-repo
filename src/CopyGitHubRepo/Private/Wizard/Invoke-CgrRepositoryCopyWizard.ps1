@@ -17,6 +17,52 @@ function Invoke-CgrRepositoryCopyWizard {
         }
     }
 
+    $readOptionalReleaseValue = {
+        param(
+            [Parameter(Mandatory)]
+            [string] $Prompt,
+
+            [AllowEmptyString()]
+            [string] $CurrentValue,
+
+            [switch] $PositiveInteger
+        )
+
+        while ($true) {
+            Write-CgrWizardMessage
+            Write-CgrWizardMessage -Message 'Press Enter to keep the current value. Enter - to clear it.' -Style Hint
+            $inputText = Read-CgrWizardInput `
+                -Prompt $Prompt `
+                -DefaultValue $CurrentValue `
+                -AllowBack `
+                -AllowCancel
+            $navigation = Resolve-CgrWizardNavigationInput `
+                -InputText $inputText `
+                -AllowBack `
+                -AllowNext `
+                -AllowCancel
+
+            if ($null -ne $navigation) {
+                if ($navigation.Action -eq 'Next') { $navigation.Value = $CurrentValue }
+                return $navigation
+            }
+
+            $candidate = $inputText.Trim()
+            if ($candidate -eq '-') {
+                return ConvertTo-CgrWizardNavigationResult -Action Next -Value ''
+            }
+            if (-not $PositiveInteger) {
+                return ConvertTo-CgrWizardNavigationResult -Action Next -Value $candidate
+            }
+
+            $count = 0
+            if ([int]::TryParse($candidate, [ref] $count) -and $count -gt 0) {
+                return ConvertTo-CgrWizardNavigationResult -Action Next -Value $candidate
+            }
+            Write-CgrWizardMessage -Message 'Enter a positive whole number, -, Back, or Cancel.' -Status Warning
+        }
+    }
+
     Write-CgrWizardMessage -Message 'Copy GitHub Repository' -Style Heading
     Write-CgrWizardMessage -Message 'Discovering repositories and checking GitHub CLI access...' -Style Hint
 
@@ -31,6 +77,14 @@ function Invoke-CgrRepositoryCopyWizard {
     $sameNameConfirmation = $null
     $existingDestinationArchiveName = $null
     $existingDestinationConfirmation = $null
+    $snapshotReleaseOptions = [pscustomobject] @{
+        IncludeReleases = $false
+        ReleaseTag = ''
+        ReleaseExcludeTag = ''
+        IncludePrerelease = $false
+        IncludeDraftReleases = $false
+        ReleaseCount = ''
+    }
     $step = 0
 
     while ($true) {
@@ -231,6 +285,85 @@ function Invoke-CgrRepositoryCopyWizard {
                         continue
                     }
                     $commitMessage = [string] $commitMessageResult.Value
+
+                    $releaseScreen = -1
+                    $returnToCommitMessage = $false
+                    while ($releaseScreen -le 4) {
+                        switch ($releaseScreen) {
+                            -1 {
+                                Write-CgrWizardMessage
+                                Write-CgrWizardMessage -Message 'Snapshot release preservation creates new checkpoint commits from selected release states.' -Style Hint
+                                Write-CgrWizardMessage -Message 'It does not preserve original commit identities or ancestry; selected tags are recreated against the new Snapshot checkpoints.' -Style Hint
+                                $currentReleaseChoice = if ($snapshotReleaseOptions.IncludeReleases) { 'Preserve selected releases' } else { 'Skip' }
+                                $releaseResult = Read-CgrWizardChoice `
+                                    -Title 'Snapshot release preservation' `
+                                    -Choices @('Skip', 'Preserve selected releases') `
+                                    -DefaultValue Skip `
+                                    -CurrentValue $currentReleaseChoice `
+                                    -AllowBack `
+                                    -AllowCancel
+                                if ($releaseResult.Action -eq 'Cancel') { return & $cancelResult }
+                                if ($releaseResult.Action -eq 'Back') { $returnToCommitMessage = $true; break }
+                                $snapshotReleaseOptions.IncludeReleases = $releaseResult.Value -eq 'Preserve selected releases'
+                                if (-not $snapshotReleaseOptions.IncludeReleases) { break }
+                                $releaseScreen = 0
+                            }
+                            0 {
+                                Write-CgrWizardMessage -Message 'Optional include patterns use the same PowerShell wildcard tag filtering as Copy-GitHubRepository. Separate multiple patterns with commas.' -Style Hint
+                                $filterResult = & $readOptionalReleaseValue -Prompt 'Release tag include patterns' -CurrentValue $snapshotReleaseOptions.ReleaseTag
+                                if ($filterResult.Action -eq 'Cancel') { return & $cancelResult }
+                                if ($filterResult.Action -eq 'Back') { $releaseScreen = -1; continue }
+                                $snapshotReleaseOptions.ReleaseTag = [string] $filterResult.Value
+                                $releaseScreen = 1
+                            }
+                            1 {
+                                Write-CgrWizardMessage -Message 'Optional exclude patterns are applied after include filtering. Separate multiple patterns with commas.' -Style Hint
+                                $filterResult = & $readOptionalReleaseValue -Prompt 'Release tag exclude patterns' -CurrentValue $snapshotReleaseOptions.ReleaseExcludeTag
+                                if ($filterResult.Action -eq 'Cancel') { return & $cancelResult }
+                                if ($filterResult.Action -eq 'Back') { $releaseScreen = 0; continue }
+                                $snapshotReleaseOptions.ReleaseExcludeTag = [string] $filterResult.Value
+                                $releaseScreen = 2
+                            }
+                            2 {
+                                $prereleaseChoice = if ($snapshotReleaseOptions.IncludePrerelease) { 'Include prereleases' } else { 'Exclude prereleases' }
+                                $filterResult = Read-CgrWizardChoice `
+                                    -Title 'Prerelease filtering' `
+                                    -Choices @('Exclude prereleases', 'Include prereleases') `
+                                    -DefaultValue 'Exclude prereleases' `
+                                    -CurrentValue $prereleaseChoice `
+                                    -AllowBack `
+                                    -AllowCancel
+                                if ($filterResult.Action -eq 'Cancel') { return & $cancelResult }
+                                if ($filterResult.Action -eq 'Back') { $releaseScreen = 1; continue }
+                                $snapshotReleaseOptions.IncludePrerelease = $filterResult.Value -eq 'Include prereleases'
+                                $releaseScreen = 3
+                            }
+                            3 {
+                                $draftChoice = if ($snapshotReleaseOptions.IncludeDraftReleases) { 'Include draft releases' } else { 'Exclude draft releases' }
+                                $filterResult = Read-CgrWizardChoice `
+                                    -Title 'Draft release filtering' `
+                                    -Choices @('Exclude draft releases', 'Include draft releases') `
+                                    -DefaultValue 'Exclude draft releases' `
+                                    -CurrentValue $draftChoice `
+                                    -AllowBack `
+                                    -AllowCancel
+                                if ($filterResult.Action -eq 'Cancel') { return & $cancelResult }
+                                if ($filterResult.Action -eq 'Back') { $releaseScreen = 2; continue }
+                                $snapshotReleaseOptions.IncludeDraftReleases = $filterResult.Value -eq 'Include draft releases'
+                                $releaseScreen = 4
+                            }
+                            4 {
+                                Write-CgrWizardMessage -Message 'Optionally limit the reviewed selection to the newest N releases after the other filters are applied.' -Style Hint
+                                $filterResult = & $readOptionalReleaseValue -Prompt 'Release count limit' -CurrentValue $snapshotReleaseOptions.ReleaseCount -PositiveInteger
+                                if ($filterResult.Action -eq 'Cancel') { return & $cancelResult }
+                                if ($filterResult.Action -eq 'Back') { $releaseScreen = 3; continue }
+                                $snapshotReleaseOptions.ReleaseCount = [string] $filterResult.Value
+                                $releaseScreen = 5
+                            }
+                        }
+                        if ($returnToCommitMessage -or -not $snapshotReleaseOptions.IncludeReleases) { break }
+                    }
+                    if ($returnToCommitMessage) { continue }
                 }
 
                 $planParameters = @{
@@ -240,7 +373,21 @@ function Invoke-CgrRepositoryCopyWizard {
                     HostName = $HostName
                     PlanOnly = $true
                 }
-                if ($contentMode -eq 'Snapshot') { $planParameters.CommitMessage = $commitMessage }
+                if ($contentMode -eq 'Snapshot') {
+                    $planParameters.CommitMessage = $commitMessage
+                    if ($snapshotReleaseOptions.IncludeReleases) {
+                        $planParameters.IncludeReleases = $true
+                        $releaseTags = @($snapshotReleaseOptions.ReleaseTag -split ',' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                        $releaseExcludeTags = @($snapshotReleaseOptions.ReleaseExcludeTag -split ',' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                        if ($releaseTags.Count -gt 0) { $planParameters.ReleaseTag = $releaseTags }
+                        if ($releaseExcludeTags.Count -gt 0) { $planParameters.ReleaseExcludeTag = $releaseExcludeTags }
+                        if ($snapshotReleaseOptions.IncludePrerelease) { $planParameters.IncludePrerelease = $true }
+                        if ($snapshotReleaseOptions.IncludeDraftReleases) { $planParameters.IncludeDraftReleases = $true }
+                        if (-not [string]::IsNullOrWhiteSpace($snapshotReleaseOptions.ReleaseCount)) {
+                            $planParameters.ReleaseCount = [int] $snapshotReleaseOptions.ReleaseCount
+                        }
+                    }
+                }
                 if ($destinationVisibility -ne $sourceRepository.Visibility) { $planParameters.DestinationVisibility = $destinationVisibility }
                 if ($settingsBehavior -eq 'Skip') { $planParameters.SkipSettings = $true }
                 if ($destinationRepository -eq $sourceRepository.FullName) {
@@ -258,19 +405,53 @@ function Invoke-CgrRepositoryCopyWizard {
                 Write-CgrWizardMessage -Message ('  Destination: {0}' -f $plan.DestinationRepository) -Style Value
                 Write-CgrWizardMessage -Message ('  Content mode: {0}' -f $plan.ContentMode)
                 if ($plan.ContentMode -eq 'Snapshot') {
-                    Write-CgrWizardMessage -Message '  Snapshot publishes the approved default-branch content as one new root commit without prior Git history.' -Style Hint
-                    Write-CgrWizardMessage -Message ('  Approved source commit: {0}' -f $plan.SourceState.CommitSha) -Style Hint
-                    Write-CgrWizardMessage -Message ('  Commit message: {0}' -f $plan.CommitMessage) -Style Hint
+                    if ($plan.IncludeReleases) {
+                        Write-CgrWizardMessage -Message '  Snapshot release preservation does not preserve original commit identities or ancestry.' -Status Warning
+                        Write-CgrWizardMessage -Message '  Selected release states become newly constructed Snapshot checkpoint commits, and selected tags are recreated against those new commits.' -Style Hint
+                        Write-CgrWizardMessage -Message ('  Approved source commit: {0}' -f $plan.SourceState.CommitSha) -Style Hint
+                        Write-CgrWizardMessage -Message ('  Commit message: {0}' -f $plan.CommitMessage) -Style Hint
 
-                    $historicalRecords = Get-CgrObjectProperty -InputObject $plan.SourceState -Name 'HistoricalRecords'
-                    if ($historicalRecords) {
-                        $tagCount = [int] (Get-CgrObjectProperty -InputObject $historicalRecords -Name 'TagCount')
-                        $releaseCount = [int] (Get-CgrObjectProperty -InputObject $historicalRecords -Name 'ReleaseCount')
-                        Write-CgrWizardMessage -Message ('  Git tags: {0} (not copied)' -f $tagCount) -Style Hint
-                        Write-CgrWizardMessage -Message ('  GitHub Releases: {0} (not copied)' -f $releaseCount) -Style Hint
-                        if ($plan.Mode -eq 'SameNameReplacement' -and ($tagCount -gt 0 -or $releaseCount -gt 0)) {
-                            Write-CgrWizardMessage -Message 'Existing tags and GitHub Releases remain with the archived original repository; they are not recreated on the clean replacement.' -Status Warning
-                            Write-CgrWizardMessage -Message 'Create the new release tag and GitHub Release only after the clean replacement has completed and been verified.' -Style Hint
+                        $releaseSelection = $plan.ReleaseSelection
+                        $checkpointPlan = $plan.ReleaseCheckpointPlan
+                        Write-CgrWizardMessage -Message ('  Selected releases: {0} of {1}' -f $releaseSelection.SelectedReleaseCount, $releaseSelection.AvailableReleaseCount) -Style Hint
+                        Write-CgrWizardMessage -Message ('  Selected release assets: {0}' -f $releaseSelection.SelectedAssetCount) -Style Hint
+                        $includePatterns = if (@($releaseSelection.IncludePatterns).Count -gt 0) { @($releaseSelection.IncludePatterns) -join ', ' } else { '(all tags)' }
+                        $excludePatterns = if (@($releaseSelection.ExcludePatterns).Count -gt 0) { @($releaseSelection.ExcludePatterns) -join ', ' } else { '(none)' }
+                        $releaseLimit = if ($null -ne $releaseSelection.ReleaseCount) { [string] $releaseSelection.ReleaseCount } else { '(none)' }
+                        Write-CgrWizardMessage -Message ('  Include tag filters: {0}' -f $includePatterns) -Style Hint
+                        Write-CgrWizardMessage -Message ('  Exclude tag filters: {0}' -f $excludePatterns) -Style Hint
+                        Write-CgrWizardMessage -Message ('  Prereleases: {0}' -f $(if ($releaseSelection.IncludePrerelease) { 'included' } else { 'excluded' })) -Style Hint
+                        Write-CgrWizardMessage -Message ('  Draft releases: {0}' -f $(if ($releaseSelection.IncludeDraftReleases) { 'included' } else { 'excluded' })) -Style Hint
+                        Write-CgrWizardMessage -Message ('  Release count limit: {0}' -f $releaseLimit) -Style Hint
+                        Write-CgrWizardMessage -Message ('  Snapshot release checkpoints: {0}' -f $checkpointPlan.CheckpointCount) -Style Hint
+                        Write-CgrWizardMessage -Message ('  Planned Snapshot commits: {0}' -f $checkpointPlan.PlannedSnapshotCommitCount) -Style Hint
+                        Write-CgrWizardMessage -Message ('  Final current-state checkpoint required: {0}' -f $checkpointPlan.FinalHeadCheckpointRequired) -Style Hint
+                        Write-CgrWizardMessage -Message '  Reviewed Snapshot checkpoint plan:' -Style Heading
+                        if (@($checkpointPlan.Checkpoints).Count -eq 0) {
+                            Write-CgrWizardMessage -Message '    - No release checkpoint commits are selected; the reviewed plan contains only the current Snapshot state.' -Style Hint
+                        }
+                        else {
+                            foreach ($checkpoint in @($checkpointPlan.Checkpoints)) {
+                                $tagNames = @($checkpoint.TagNames) -join ', '
+                                Write-CgrWizardMessage -Message ('    - {0}. source commit {1}; tree {2}; recreated tags: {3}' -f $checkpoint.Order, $checkpoint.SourceCommitSha, $checkpoint.SourceTreeSha, $tagNames)
+                            }
+                        }
+                    }
+                    else {
+                        Write-CgrWizardMessage -Message '  Snapshot publishes the approved default-branch content as one new root commit without prior Git history.' -Style Hint
+                        Write-CgrWizardMessage -Message ('  Approved source commit: {0}' -f $plan.SourceState.CommitSha) -Style Hint
+                        Write-CgrWizardMessage -Message ('  Commit message: {0}' -f $plan.CommitMessage) -Style Hint
+
+                        $historicalRecords = Get-CgrObjectProperty -InputObject $plan.SourceState -Name 'HistoricalRecords'
+                        if ($historicalRecords) {
+                            $tagCount = [int] (Get-CgrObjectProperty -InputObject $historicalRecords -Name 'TagCount')
+                            $releaseCount = [int] (Get-CgrObjectProperty -InputObject $historicalRecords -Name 'ReleaseCount')
+                            Write-CgrWizardMessage -Message ('  Git tags: {0} (not copied)' -f $tagCount) -Style Hint
+                            Write-CgrWizardMessage -Message ('  GitHub Releases: {0} (not copied)' -f $releaseCount) -Style Hint
+                            if ($plan.Mode -eq 'SameNameReplacement' -and ($tagCount -gt 0 -or $releaseCount -gt 0)) {
+                                Write-CgrWizardMessage -Message 'Existing tags and GitHub Releases remain with the archived original repository; they are not recreated on the clean replacement.' -Status Warning
+                                Write-CgrWizardMessage -Message 'Create the new release tag and GitHub Release only after the clean replacement has completed and been verified.' -Style Hint
+                            }
                         }
                     }
                 }

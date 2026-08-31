@@ -73,10 +73,12 @@ Describe 'Snapshot release checkpoint planning evidence' {
 
     It 'coalesces multiple selected releases with the same peeled target into one checkpoint boundary' {
         InModuleScope CopyGitHubRepo {
-            $selection = [pscustomobject] @{ Releases = @(
+            $selection = [pscustomobject] @{
+                Releases = @(
                     [pscustomobject] @{ ReleaseId = 21; TagName = 'v2-a'; TargetCommitSha = 'c2' },
                     [pscustomobject] @{ ReleaseId = 22; TagName = 'v2-b'; TargetCommitSha = 'c2' }
-                ) }
+                )
+            }
             Mock Invoke-CgrGitHubApiReadRequest {
                 $joined = $ArgumentList -join ' '
                 if ($joined -match '/git/ref/tags/(v2-[ab])') { return [pscustomobject] @{ ExitCode = 0; Output = @('{"object":{"type":"commit","sha":"ref-c2"}}'); ErrorText = '' } }
@@ -104,10 +106,12 @@ Describe 'Snapshot release checkpoint planning evidence' {
 
     It 'fails closed with an actionable error when selected release targets diverge' {
         InModuleScope CopyGitHubRepo {
-            $selection = [pscustomobject] @{ Releases = @(
+            $selection = [pscustomobject] @{
+                Releases = @(
                     [pscustomobject] @{ ReleaseId = 1; TagName = 'left'; TargetCommitSha = 'left-sha' },
                     [pscustomobject] @{ ReleaseId = 2; TagName = 'right'; TargetCommitSha = 'right-sha' }
-                ) }
+                )
+            }
             Mock Invoke-CgrGitHubApiReadRequest {
                 $joined = $ArgumentList -join ' '
                 if ($joined -match '/git/ref/tags/(left|right)') { return [pscustomobject] @{ ExitCode = 0; Output = @('{"object":{"type":"commit","sha":"ref-sha"}}'); ErrorText = '' } }

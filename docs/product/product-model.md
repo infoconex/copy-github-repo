@@ -19,17 +19,18 @@ Later quality and release work can attach test and release evidence to the stabl
 
 ### Problem
 
-A repository owner may need to publish a developed GitHub repository as a clean repository whose visible Git history begins with the approved current state, or make a history-preserving copy, without manually reconstructing repository content, selected GitHub Releases, settings, safety checks, and verification steps.
+A repository owner may need to publish a developed GitHub repository as a clean repository whose visible Git history begins with approved repository states, or make a history-preserving copy, without manually reconstructing repository content, selected GitHub Releases, settings, safety checks, and verification steps.
 
 ### Intended outcome
 
-The operator can deliberately choose clean `Snapshot` publication or `FullHistory` copy, optionally preserve an approved subset of GitHub Releases in FullHistory, review the exact planned source state before mutation, preserve an existing repository when replacement is required, verify the resulting content/configuration, and retain usable provenance or recovery evidence.
+The operator can deliberately choose clean `Snapshot` publication or `FullHistory` copy, optionally preserve an approved subset of GitHub Releases using mode-appropriate semantics, review the exact planned source state before mutation, preserve an existing repository when replacement is required, verify the resulting content/configuration, and retain usable provenance or recovery evidence. Plain Snapshot remains a one-root current-state publication; Snapshot release preservation creates new checkpoint commits from selected release states, while FullHistory preserves original Git history and tag targets.
 
 ### Goals
 
 - Make clean current-state publication the safe, understandable default.
 - Provide an explicit history-preserving alternative.
 - Bind mutation to reviewed immutable source-state evidence and fail closed on drift.
+- Preserve selected GitHub Release states/assets in Snapshot as newly constructed checkpoints without claiming source commit identity or ancestry preservation.
 - Preserve selected GitHub Releases and assets in FullHistory without changing ordinary Git tag/commit identity.
 - Preserve existing repositories rather than silently overwrite or delete them.
 - Make planning, mutation, verification, and recovery behavior observable.
@@ -39,7 +40,7 @@ The operator can deliberately choose clean `Snapshot` publication or `FullHistor
 ### Non-goals
 
 - Repository deletion or silent destructive overwrite.
-- Snapshot GitHub Release preservation.
+- Reconstructing original commit identity, detailed ancestry, authorship, committer identity, or timestamps in Snapshot release-checkpoint history.
 - Copying GitHub historical/operational records such as pull requests, issues, workflow-run history, stars, watchers, forks, or traffic history.
 - Migrating secret values, webhooks, deploy keys, environments, collaborator/team access, packages, or deployments.
 - Restoring GitHub Pages or enabling GitHub Actions after migration.
@@ -77,9 +78,9 @@ Capability IDs are stable traceability handles. They organize the product; they 
 | --- | --- | --- |
 | `CAP-DISC` | Repository discovery and GitHub authentication boundary | Public command contract; host/release contract |
 | `CAP-PLAN` | Immutable source-state planning and preview | Immutable approved source state |
-| `CAP-SNAP` | Snapshot clean publication | Canonical content terminology; verification |
+| `CAP-SNAP` | Snapshot clean publication, including optional release-checkpoint history | Canonical content terminology; Snapshot release-checkpoint contract; verification |
 | `CAP-HIST` | FullHistory copy | Canonical content terminology; verification |
-| `CAP-GHREL` | FullHistory GitHub Release selection, restoration, asset transfer, and verification | GitHub Release preservation; immutable approved source state; verification |
+| `CAP-GHREL` | Mode-aware GitHub Release selection, restoration, asset transfer, and verification | GitHub Release preservation; Snapshot release-checkpoint contract; immutable approved source state; verification |
 | `CAP-DEST` | New-destination and existing-destination safety | Destination and replacement safety |
 | `CAP-SAME` | Same-name archive-and-replace | Destination and replacement safety |
 | `CAP-LFS` | Git LFS planning, transfer, and verification | Immutable approved source state; verification |
@@ -101,8 +102,9 @@ Use-case IDs represent user/program outcomes. A use case may rely on several cap
 | `UC-DISC-01` | Operator discovers/selects an accessible GitHub.com source repository | PowerShell/Git/`gh`; authenticated GitHub CLI | `CAP-DISC` | Read-only; repository identity/metadata returned |
 | `UC-PLAN-01` | Operator previews a Snapshot or FullHistory operation before mutation | Valid source/destination/options | `CAP-PLAN`, `CAP-AUTO` | No mutation; immutable approved source evidence and plan returned |
 | `UC-SNAP-NEW` | Operator publishes current approved source state to a new destination with one unrelated root commit | Fresh destination name; unchanged approved source | `CAP-PLAN`, `CAP-SNAP`, `CAP-DEST`, `CAP-LFS`, `CAP-VERIFY`, `CAP-EVID` | Destination created/published; verification/provenance returned |
+| `UC-SNAP-REL` | Operator preserves selected release states/assets while keeping Snapshot history unrelated to source history | Snapshot with `-IncludeReleases`; selected release topology is representable; approved source/release state unchanged | `CAP-PLAN`, `CAP-SNAP`, `CAP-GHREL`, `CAP-VERIFY`, `CAP-EVID` | New checkpoint commits/tags represent reviewed release states; releases/assets are recreated and verified without preserving source commit identities |
 | `UC-HIST-NEW` | Operator copies approved ordinary Git history to a new destination | Fresh destination; unchanged approved source | `CAP-PLAN`, `CAP-HIST`, `CAP-DEST`, `CAP-LFS`, `CAP-VERIFY`, `CAP-EVID` | Destination created; branch/tag/history/LFS verification returned |
-| `UC-HIST-REL` | Operator preserves selected GitHub Releases and assets during FullHistory migration | FullHistory; selected releases resolve to preserved tags; approved release state unchanged | `CAP-PLAN`, `CAP-HIST`, `CAP-GHREL`, `CAP-VERIFY`, `CAP-EVID` | Approved releases/assets are recreated only after FullHistory verification and independently read back |
+| `UC-HIST-REL` | Operator preserves selected GitHub Releases and assets during FullHistory migration | FullHistory; selected releases resolve to preserved tags; approved release state unchanged | `CAP-PLAN`, `CAP-HIST`, `CAP-GHREL`, `CAP-VERIFY`, `CAP-EVID` | Approved releases/assets are recreated against original preserved tag targets and independently read back |
 | `UC-DEST-REPLACE` | Operator archives an existing different destination and creates a replacement | Explicit archive-and-replace path and exact confirmation | `CAP-PLAN`, `CAP-DEST`, content-mode capability, `CAP-VERIFY`, `CAP-EVID` | Existing destination preserved under archive identity before replacement |
 | `UC-SAME-REPLACE` | Operator republishes under the source's current name while preserving the original as an archive | Same-name flow; unused archive; exact confirmation | `CAP-PLAN`, `CAP-SAME`, content-mode capability, `CAP-VERIFY`, `CAP-EVID` | Original source renamed/preserved; replacement receives distinct identity |
 | `UC-VIS-01` | Operator changes destination visibility deliberately | Valid visibility target; explicit force acknowledgement for mutation | `CAP-DEST`, `CAP-AUTO` | Visibility change is explicit, never implicit |
@@ -110,7 +112,7 @@ Use-case IDs represent user/program outcomes. A use case may rely on several cap
 | `UC-PROT-01` | Operator restores transferable protection without weakening semantics | Content/settings phase complete; protection transferable | `CAP-PROT`, `CAP-VERIFY` | Transferable protection restored/read back; unsupported policy reported as skipped |
 | `UC-WIZ-01` | Human operator completes the guided flow | Interactive PowerShell host; authenticated prerequisites | `CAP-WIZ`, `CAP-DISC`, `CAP-PLAN`, relevant execution capabilities | Real plan reviewed; explicit execute decision before mutation |
 | `UC-AUTO-01` | Automation performs a deterministic non-interactive copy | Complete explicit inputs; required force/confirmation semantics | `CAP-AUTO`, `CAP-PLAN`, relevant execution capabilities | Structured result/evidence; no hidden interactive dependency |
-| `UC-VERIFY-01` | Caller independently compares current source and destination state | Both repositories accessible | `CAP-VERIFY` | Read-only structured comparison result |
+| `UC-VERIFY-01` | Caller independently verifies a completed migration under the selected mode contract | Required repositories/evidence accessible | `CAP-VERIFY` | Read-only structured comparison/approved-evidence verification result |
 | `UC-RECOVER-01` | Operator understands what survived after a post-mutation failure | Mutation started and operation terminated | `CAP-EVID`, relevant mutation capability | Durable recovery evidence when possible; no automatic delete/rename-back |
 | `UC-DIST-01` | User installs, updates, or removes the module through a supported distribution path | Appropriate package/release exists for requested path | `CAP-DIST` | Local module state changes only; trust boundary documented |
 | `UC-REL-01` | Maintainer publishes an immutable stable release | Exact release candidate has required readiness evidence | `CAP-REL`, `CAP-DIST` | Tag/package/release publication follows version/integrity contract |
@@ -139,9 +141,9 @@ Scenario categories:
 
 #### `SCN-PLAN-HAPPY-01` — approved plan captures executable source state
 
-**Given** a supported GitHub.com source and valid options, **when** planning completes, **then** the plan records the content-mode-specific immutable approved source evidence required by the product contract, **and** no GitHub mutation occurs. When GitHub Releases are requested, the plan also records the exact filtered release inventory and tag/asset evidence.
+**Given** a supported GitHub.com source and valid options, **when** planning completes, **then** the plan records the content-mode-specific immutable approved source evidence required by the product contract, **and** no GitHub mutation occurs. When GitHub Releases are requested, the plan also records the exact filtered release inventory and tag/asset evidence; Snapshot additionally records immutable checkpoint topology/tree evidence.
 
-Use cases: `UC-PLAN-01`, `UC-SNAP-NEW`, `UC-HIST-NEW`, `UC-HIST-REL`, `UC-DEST-REPLACE`, `UC-SAME-REPLACE`.
+Use cases: `UC-PLAN-01`, `UC-SNAP-NEW`, `UC-SNAP-REL`, `UC-HIST-NEW`, `UC-HIST-REL`, `UC-DEST-REPLACE`, `UC-SAME-REPLACE`.
 
 #### `SCN-PLAN-SAFETY-01` — stale plan fails closed
 
@@ -155,17 +157,49 @@ Mutation expectation: none from the stale plan.
 
 ### Snapshot publication
 
-#### `SCN-SNAP-HAPPY-01` — new-destination Snapshot publication
+#### `SCN-SNAP-HAPPY-01` — new-destination plain Snapshot publication
 
-**Given** an approved unchanged Snapshot plan and unused destination, **when** execution succeeds, **then** the approved default-branch tree is published as exactly one unrelated root commit, required Snapshot LFS transfer succeeds, and destination content verification/provenance is returned.
+**Given** an approved unchanged plain Snapshot plan and unused destination, **when** execution succeeds, **then** the approved default-branch tree is published as exactly one unrelated root commit, required Snapshot LFS transfer succeeds, and destination content verification/provenance is returned.
 
 Use case: `UC-SNAP-NEW`.
 
-#### `SCN-SNAP-VERIFY-01` — Snapshot mismatch is not reported as success
+#### `SCN-SNAP-VERIFY-01` — plain Snapshot mismatch is not reported as success
 
-**Given** Snapshot publication has occurred but the destination tree/root-commit contract or required LFS verification does not match approved evidence, **when** verification runs, **then** the operation does not report successful migration, **and** recovery/evidence semantics reflect the stage reached.
+**Given** plain Snapshot publication has occurred but the destination tree/root-commit contract or required LFS verification does not match approved evidence, **when** verification runs, **then** the operation does not report successful migration, **and** recovery/evidence semantics reflect the stage reached.
 
 Mutation expectation: destination may already exist and contain published content.
+
+### Snapshot release preservation
+
+#### `SCN-SNAP-REL-HAPPY-01` — selected release states become new Snapshot checkpoints
+
+**Given** an approved unchanged Snapshot plan with `-IncludeReleases`, a selected release set whose distinct peeled tag targets form the deterministic topology required by the product contract, and an unused/safely prepared destination, **when** execution succeeds, **then** selected release states are represented by newly generated checkpoint commits ordered by source ancestry, selected tags point to those new checkpoints, supported release metadata/assets and selected Latest designation are recreated/verified, and source commit SHAs/detailed ancestry are not claimed to be preserved.
+
+Use case: `UC-SNAP-REL`.
+
+#### `SCN-SNAP-REL-EDGE-01` — final current-state commit follows state equivalence
+
+**Given** the latest selected release checkpoint exists, **when** reviewed source HEAD is state-equivalent to that release state, **then** no extra current-state commit is created; **when** reviewed HEAD differs and the topology permits progression to HEAD, **then** exactly one final current-state Snapshot commit is created.
+
+Use case: `UC-SNAP-REL`.
+
+#### `SCN-SNAP-REL-SAFETY-01` — divergent or stale release evidence fails closed
+
+**Given** selected distinct release targets cannot be totally ordered by ancestry, the latest selected line cannot safely progress to reviewed HEAD, or selected release/tag/tree evidence drifts after planning, **when** planning/execution reaches the applicable boundary, **then** Snapshot release preservation terminates instead of inventing an order or silently accepting live replacement evidence.
+
+Use case: `UC-SNAP-REL`.
+
+#### `SCN-SNAP-REL-VERIFY-01` — checkpoint and release verification uses reviewed evidence
+
+**Given** Snapshot release preservation completed, **when** execution-integrated or standalone approved-plan verification runs, **then** generated checkpoint sequence/parentage, checkpoint tree equivalence, selected tag targets, final reviewed HEAD state, supported release metadata/assets, and selected Latest designation must match immutable reviewed evidence or verification is unsuccessful.
+
+Use cases: `UC-SNAP-REL`, `UC-VERIFY-01`.
+
+#### `SCN-SNAP-REL-PARTIAL-01` — partial checkpoint/release mutation preserves recovery evidence
+
+**Given** Snapshot release execution has begun and a later checkpoint/tag/release/settings/protection stage terminates, **when** recovery handling runs, **then** already-created destination state is not automatically deleted and available checkpoint/tag/release evidence plus the failure stage are retained for diagnosis.
+
+Use cases: `UC-SNAP-REL`, `UC-RECOVER-01`.
 
 ### FullHistory copy
 
@@ -181,25 +215,25 @@ Use case: `UC-HIST-NEW`.
 
 ### GitHub Releases in FullHistory
 
-#### `SCN-GHREL-HAPPY-01` — approved releases are restored after FullHistory verification
+#### `SCN-GHREL-HAPPY-01` — approved releases are restored against preserved FullHistory tags
 
-**Given** an approved FullHistory plan with `-IncludeReleases`, unchanged selected release evidence, and destination tags resolving to the approved commit SHAs, **when** content verification succeeds, **then** the approved GitHub Releases and assets are recreated and read back before settings/protection restoration completes. If the selected set contains the source Latest full release, that designation is preserved and verified.
-
-Use case: `UC-HIST-REL`.
-
-#### `SCN-GHREL-SAFETY-01` — release restoration fails closed on unsafe state
-
-**Given** a selected source release changes or disappears after planning, a destination tag resolves to a different commit, or the destination already contains a GitHub Release for the approved tag, **when** release restoration reaches that boundary, **then** the operation terminates rather than substituting live metadata, attaching a release to the wrong commit, or overwriting the existing destination release.
+**Given** an approved FullHistory plan with `-IncludeReleases`, unchanged selected release evidence, and destination tags resolving to the approved original commit SHAs, **when** content verification succeeds, **then** the approved GitHub Releases and assets are recreated and read back before settings/protection restoration completes. If the selected set contains the source Latest full release, that designation is preserved and verified.
 
 Use case: `UC-HIST-REL`.
 
-#### `SCN-GHREL-VERIFY-01` — release metadata and assets are independently verifiable
+#### `SCN-GHREL-SAFETY-01` — FullHistory release restoration fails closed on unsafe state
 
-**Given** selected releases were restored, **when** execution-integrated or standalone release verification runs, **then** supported release metadata, tag commit identity, asset evidence, and the selected Latest designation must match the applicable approved/current source evidence or the verification result is unsuccessful.
+**Given** a selected source release changes or disappears after planning, a destination tag resolves to a different original commit, or the destination already contains a GitHub Release for the approved tag, **when** release restoration reaches that boundary, **then** the operation terminates rather than substituting live metadata, attaching a release to the wrong commit, or overwriting the existing destination release.
+
+Use case: `UC-HIST-REL`.
+
+#### `SCN-GHREL-VERIFY-01` — FullHistory release metadata and assets are independently verifiable
+
+**Given** selected FullHistory releases were restored, **when** execution-integrated or standalone release verification runs, **then** supported release metadata, original tag commit identity, asset evidence, and the selected Latest designation must match the applicable approved/current source evidence or the verification result is unsuccessful.
 
 Use cases: `UC-HIST-REL`, `UC-VERIFY-01`.
 
-#### `SCN-GHREL-PARTIAL-01` — partial release restoration preserves recovery evidence
+#### `SCN-GHREL-PARTIAL-01` — partial FullHistory release restoration preserves recovery evidence
 
 **Given** FullHistory verification succeeded and release restoration then terminates after mutation may have begun, **when** recovery handling runs, **then** already-restored releases are not automatically deleted and recovery evidence records the release failure stage, approved release selection, and available restoration state.
 
@@ -251,7 +285,7 @@ Use case: `UC-SAME-REPLACE`.
 
 ### Settings and protection
 
-#### `SCN-SET-HAPPY-01` — ordinary settings follow content verification
+#### `SCN-SET-HAPPY-01` — ordinary settings follow content and requested release verification
 
 **Given** destination content and any requested release restoration have verified successfully and settings restoration is enabled, **when** ordinary settings restoration runs, **then** supported settings are restored differentially and read back for verification.
 
@@ -259,7 +293,7 @@ Use case: `UC-SET-01`.
 
 #### `SCN-SET-PARTIAL-01` — settings failure preserves verified content
 
-**Given** content verification succeeded and a later settings restoration/readback step fails, **when** the operation terminates, **then** the verified destination content is not automatically deleted or rolled back, and recovery evidence identifies the failure stage.
+**Given** content/requested-release verification succeeded and a later settings restoration/readback step fails, **when** the operation terminates, **then** the verified destination state is not automatically deleted or rolled back, and recovery evidence identifies the failure stage.
 
 #### `SCN-PROT-HAPPY-01` — transferable protection is restored last
 
@@ -273,7 +307,7 @@ Use case: `UC-SET-01`.
 
 #### `SCN-WIZ-HAPPY-01` — wizard executes the reviewed plan
 
-**Given** the operator completes guided selections and reviews the real plan produced by `Copy-GitHubRepository -PlanOnly`, **when** the operator chooses Execute and source state remains valid, **then** the wizard applies that reviewed plan through the shared execution boundary rather than reconstructing an equivalent command from presentation state.
+**Given** the operator completes guided selections and reviews the real plan produced by `Copy-GitHubRepository -PlanOnly`, **when** the operator chooses Execute and source state remains valid, **then** the wizard applies that reviewed plan through the shared execution boundary rather than reconstructing an equivalent command from presentation state. Snapshot operators can opt into the same release-selection parameters that feed the deterministic checkpoint plan.
 
 Use case: `UC-WIZ-01`.
 
@@ -305,17 +339,17 @@ Use case: `UC-AUTO-01`.
 
 #### `SCN-VERIFY-HAPPY-01` — standalone verification is read-only
 
-**Given** accessible source and destination repositories, **when** `Test-GitHubRepositoryMigration` is invoked, **then** it compares the requested current repository states and returns structured verification results without mutation. FullHistory verification may include the same release-selection filters for current source-versus-destination release comparison.
+**Given** the required source/destination repositories and mode-specific evidence, **when** `Test-GitHubRepositoryMigration` is invoked, **then** it returns structured verification results without mutation. Snapshot release verification consumes the immutable approved migration plan rather than rerunning live release filters/topology discovery; FullHistory release verification may use the same release-selection filters for current source-versus-destination comparison.
 
 Use case: `UC-VERIFY-01`.
 
 #### `SCN-EVID-HAPPY-01` — successful Snapshot provides external provenance
 
-**Given** Snapshot intentionally severs Git ancestry, **when** execution succeeds, **then** the result exposes approved source state, actual copied evidence, destination root/tree identities, relevant repository identities, time, and verification outcome outside the clean destination Git graph.
+**Given** Snapshot intentionally severs Git ancestry, **when** execution succeeds, **then** the result exposes approved source state, actual copied evidence, generated destination commit/tree identities, relevant repository identities, time, and verification outcome outside the clean destination Git graph. When releases are requested, provenance also records reviewed/generated checkpoint, recreated tag, release, and asset evidence.
 
 #### `SCN-RECOVER-RECOVERY-01` — post-mutation failure retains recovery information
 
-**Given** a terminating failure occurs after mutation begins, **when** recovery handling runs, **then** it records the failure stage, completed steps, known original/archive/replacement identities, and available planned-versus-copied content/release evidence when possible, without automatically deleting or renaming repositories/releases back.
+**Given** a terminating failure occurs after mutation begins, **when** recovery handling runs, **then** it records the failure stage, completed steps, known original/archive/replacement identities, and available planned-versus-copied content/release/checkpoint evidence when possible, without automatically deleting or renaming repositories/releases/tags back.
 
 Use case: `UC-RECOVER-01`.
 

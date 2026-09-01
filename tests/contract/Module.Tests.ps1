@@ -173,6 +173,19 @@ InModuleScope CopyGitHubRepo {
                 }
                 else { $script:sourceState }
             }
+            Mock Get-CgrGitHubPagesPlanEvidence {
+                [pscustomobject] @{
+                    Status = 'NotConfigured'
+                    Configured = $false
+                    BuildType = $null
+                    Source = $null
+                    CustomDomain = $null
+                    HttpsEnforced = $null
+                    Representability = [pscustomobject] @{ Status = 'NotApplicable'; IsRepresentable = $true; Reason = 'Source Pages is not configured.' }
+                    ExternalReadiness = [pscustomobject] @{ DomainVerification = 'NotApplicable'; Certificate = 'NotApplicable'; Dns = 'ExternalNotQueried' }
+                    DriftEvidence = [pscustomobject] @{ Configured = $false; BuildType = $null; Branch = $null; Path = $null; CustomDomain = $null; HttpsEnforced = $null }
+                }
+            }
             Mock Assert-CgrApprovedSourceState { $SourceState }
             Mock Invoke-CgrApprovedMigrationPlan {
                 [pscustomobject] @{

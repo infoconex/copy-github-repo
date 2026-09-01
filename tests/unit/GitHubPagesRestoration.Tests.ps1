@@ -196,8 +196,8 @@ Describe 'GitHub Pages restoration' {
                 $result.DnsMigrated | Should -BeFalse
                 $result.ExternalReadiness.Dns | Should -Be 'ExternalNotQueried'
                 ($script:events -join ',') | Should -Be 'ReleaseArchive,CreatePages,ClaimReplacement,ReleaseGuard'
-                @($steps.Name) | Should -Contain 'ReleaseArchivedPagesCustomDomain'
-                @($steps.Name) | Should -Contain 'ClaimReplacementPagesCustomDomain'
+                @($steps | ForEach-Object { $_.Name }) | Should -Contain 'ReleaseArchivedPagesCustomDomain'
+                @($steps | ForEach-Object { $_.Name }) | Should -Contain 'ClaimReplacementPagesCustomDomain'
             }
         }
     }
@@ -259,8 +259,10 @@ Describe 'GitHub Pages restoration' {
                 Should -Throw '*simulated ownership conflict after release*'
 
             $failureStage | Should -Be 'ClaimReplacementPagesCustomDomain'
-            $releaseStep = @($steps | Where-Object Name -eq 'ReleaseArchivedPagesCustomDomain')[-1]
-            $claimStep = @($steps | Where-Object Name -eq 'ClaimReplacementPagesCustomDomain')[-1]
+            $releaseStep = $steps | Where-Object Name -eq 'ReleaseArchivedPagesCustomDomain' | Select-Object -Last 1
+            $claimStep = $steps | Where-Object Name -eq 'ClaimReplacementPagesCustomDomain' | Select-Object -Last 1
+            $releaseStep | Should -Not -BeNullOrEmpty
+            $claimStep | Should -Not -BeNullOrEmpty
             $releaseStep.Succeeded | Should -BeTrue
             $releaseStep.Verified | Should -BeTrue
             $claimStep.Attempted | Should -BeTrue

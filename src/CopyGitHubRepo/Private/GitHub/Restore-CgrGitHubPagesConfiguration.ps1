@@ -48,6 +48,15 @@ function Restore-CgrGitHubPagesConfiguration {
     $replacementMode = $mode -in @('SameNameReplacement', 'ExistingDestinationReplacement')
     $handoffRequired = $replacementMode -and -not [string]::IsNullOrWhiteSpace([string] $customDomain)
     $handoff = $null
+    trap {
+        if ($null -ne $handoff) {
+            $errorId = if ([string]::IsNullOrWhiteSpace([string] $_.FullyQualifiedErrorId)) { 'PagesCustomDomainHandoffFailed' } else { ([string] $_.FullyQualifiedErrorId -split ',')[0] }
+            $category = if ($null -ne $_.CategoryInfo) { $_.CategoryInfo.Category } else { [System.Management.Automation.ErrorCategory]::OperationStopped }
+            throw [System.Management.Automation.ErrorRecord]::new($_.Exception, $errorId, $category, $handoff)
+        }
+        throw
+    }
+
     if ($handoffRequired) {
         if ($FailureStage) { $FailureStage.Value = 'ValidatePagesCustomDomainHandoff' }
         $archiveName = [string] (Get-CgrObjectProperty -InputObject $Plan -Name 'ArchiveRepository')
@@ -130,7 +139,7 @@ function Restore-CgrGitHubPagesConfiguration {
             $archiveReadBackDomain = if ($archiveReadBack) { Get-CgrObjectProperty -InputObject $archiveReadBack -Name 'cname' } else { $null }
             if (-not [string]::IsNullOrWhiteSpace([string] $archiveReadBackDomain)) {
                 $exception = [System.InvalidOperationException]::new("Archive '$($archive.FullName)' still reports custom domain '$archiveReadBackDomain' after the reviewed release operation. Replacement claim was not attempted.")
-                throw [System.Management.Automation.ErrorRecord]::new($exception, 'PagesCustomDomainArchiveReleaseVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $archiveReadBack)
+                throw [System.Management.Automation.ErrorRecord]::new($exception, 'PagesCustomDomainArchiveReleaseVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $handoff)
             }
             $handoff.ArchiveReleaseSucceeded = $true
             $releaseStep.Succeeded = $true
@@ -180,7 +189,7 @@ function Restore-CgrGitHubPagesConfiguration {
         $archiveFinalDomain = if ($archiveFinal) { Get-CgrObjectProperty -InputObject $archiveFinal -Name 'cname' } else { $null }
         if ([string] $archiveFinalDomain -ceq [string] $customDomain) {
             $exception = [System.InvalidOperationException]::new("Archive '$archiveName' still owns the reviewed production custom domain after replacement verification.")
-            throw [System.Management.Automation.ErrorRecord]::new($exception, 'PagesCustomDomainHandoffVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $archiveFinal)
+            throw [System.Management.Automation.ErrorRecord]::new($exception, 'PagesCustomDomainHandoffVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $handoff)
         }
     }
 

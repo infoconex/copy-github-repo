@@ -13,7 +13,9 @@ function Copy-GitHubRepository {
     FullHistory can optionally preserve selected GitHub Releases and their assets.
     Release selection is stable/non-draft by default and can be narrowed with tag
     include/exclude patterns or a newest-N limit. Prereleases and draft releases
-    require explicit opt-in. Snapshot release preservation is not implemented yet.
+    require explicit opt-in. Snapshot -IncludeReleases preserves selected release
+    states as newly generated checkpoint commits and restores approved releases
+    against their recreated destination tags.
 
     Planning captures immutable source-state evidence. Execution uses that same
     plan and fails closed with SourceStateChangedSincePlanning if the source no
@@ -49,9 +51,9 @@ function Copy-GitHubRepository {
     Git LFS objects.
 
     .PARAMETER IncludeReleases
-    Requests GitHub Release preservation for FullHistory. By default, all stable,
-    non-draft releases are selected. Use the release filter parameters to narrow
-    or expand that selection. Snapshot does not support this option yet.
+    Requests GitHub Release preservation. FullHistory preserves original Git tag
+    targets. Snapshot preserves selected release states as new checkpoint commits
+    and restores approved releases against the recreated Snapshot tags.
 
     .PARAMETER ReleaseTag
     Includes only GitHub Releases whose tag names match one or more PowerShell
@@ -246,13 +248,6 @@ function Copy-GitHubRepository {
         $message = 'Release filter parameters require -IncludeReleases.'
         $exception = [System.InvalidOperationException]::new($message)
         $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'ReleaseFilterRequiresIncludeReleases', [System.Management.Automation.ErrorCategory]::InvalidArgument, 'IncludeReleases')
-        $PSCmdlet.ThrowTerminatingError($errorRecord)
-    }
-
-    if ($IncludeReleases -and $ContentMode -ne 'FullHistory') {
-        $message = 'GitHub Release preservation is currently supported only with -ContentMode FullHistory.'
-        $exception = [System.NotSupportedException]::new($message)
-        $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'SnapshotReleaseMigrationNotImplemented', [System.Management.Automation.ErrorCategory]::NotImplemented, 'IncludeReleases')
         $PSCmdlet.ThrowTerminatingError($errorRecord)
     }
 

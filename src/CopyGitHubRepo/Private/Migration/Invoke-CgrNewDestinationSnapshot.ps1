@@ -5,9 +5,9 @@ function Invoke-CgrNewDestinationSnapshot {
 
     .DESCRIPTION
     Publishes the approved clean Snapshot, reloads and verifies destination content,
-    restores supported settings and protection only after verification, records
-    provenance, and emits recovery evidence when a later stage fails. Configuration
-    restoration is deliberately blocked after content-verification failure.
+    optionally restores the exact GitHub Releases approved during planning against
+    generated Snapshot release tags, then restores supported settings and protection.
+    Configuration restoration is deliberately blocked after content-verification failure.
 
     .NOTES
     The destination repository exists before entry. Copy-GitHubRepository owns the
@@ -32,11 +32,29 @@ function Invoke-CgrNewDestinationSnapshot {
     $completedSteps.Add([pscustomobject] @{ Order = 1; Name = 'CreateDestinationRepository'; MutatedGitHub = $true; Verified = $true })
     $failureStage = 'CopySnapshot'
     $snapshot = $null
+    $snapshotRootCommitSha = $null
     $verifiedDestination = $null
+    $snapshotGeneratedCommitProgress = [System.Collections.Generic.List[object]]::new()
     $sourceState = Get-CgrObjectProperty -InputObject $Plan -Name 'SourceState'
+    $releaseCheckpointPlan = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseCheckpointPlan'
+    $includeReleases = [bool] (Get-CgrObjectProperty -InputObject $Plan -Name 'IncludeReleases')
+    $releaseSelection = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseSelection'
+    $releases = [pscustomobject] @{
+        PSTypeName = 'CopyGitHubRepo.ReleaseMigrationResult'
+        SourceRepository = $SourceRepository.FullName
+        DestinationRepository = $DestinationRepository.FullName
+        ApprovedReleaseCount = 0
+        DestinationReleaseCount = 0
+        Releases = @()
+        Unsupported = @()
+        IsSuccessful = $true
+        Status = 'NotRequested'
+    }
 
     try {
-        $snapshot = @(Copy-CgrRepositorySnapshot -SourceRepository $SourceRepository -DestinationRepository $DestinationRepository -BranchName $Plan.SourceDefaultBranch -CommitMessage $Plan.CommitMessage -ApprovedSourceState $sourceState)[-1]
+        $snapshot = @(Copy-CgrRepositorySnapshot -SourceRepository $SourceRepository -DestinationRepository $DestinationRepository -BranchName $Plan.SourceDefaultBranch -CommitMessage $Plan.CommitMessage -ApprovedSourceState $sourceState -ReleaseCheckpointPlan $releaseCheckpointPlan -RecoveryGeneratedCommits $snapshotGeneratedCommitProgress)[-1]
+        $snapshotRootCommitSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'RootCommitSha'
+        if ($null -eq $snapshotRootCommitSha) { $snapshotRootCommitSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'CommitSha' }
         $completedSteps.Add([pscustomobject] @{ Order = 2; Name = 'CopySnapshot'; MutatedGitHub = $true; Verified = $snapshot.Verified })
 
         $failureStage = 'ReloadDestination'
@@ -44,9 +62,54 @@ function Invoke-CgrNewDestinationSnapshot {
 
         $failureStage = 'VerifySnapshot'
         $verification = Invoke-CgrActivityStage -Name 'VerifyDestinationContent' -Message 'Verify destination content' -Action {
-            Invoke-CgrRepositorySnapshotVerification -SourceRepository $SourceRepository -DestinationRepository $verifiedDestination -ApprovedSourceState $sourceState
+            if ($releaseCheckpointPlan) {
+                Invoke-CgrApprovedSnapshotReleaseVerification `
+                    -SourceRepository $SourceRepository `
+                    -DestinationRepository $verifiedDestination `
+                    -ReleaseCheckpointPlan $releaseCheckpointPlan
+            }
+            else {
+                Invoke-CgrRepositorySnapshotVerification `
+                    -SourceRepository $SourceRepository `
+                    -DestinationRepository $verifiedDestination `
+                    -ApprovedSourceState $sourceState
+            }
         }
         $completedSteps.Add([pscustomobject] @{ Order = 3; Name = 'VerifySnapshot'; MutatedGitHub = $false; Verified = $verification.IsSuccessful })
+
+        if ($includeReleases) {
+            $failureStage = 'RestoreGitHubReleases'
+            if (-not $verification.IsSuccessful) {
+                $releases = [pscustomobject] @{
+                    PSTypeName = 'CopyGitHubRepo.ReleaseMigrationResult'
+                    SourceRepository = $SourceRepository.FullName
+                    DestinationRepository = $verifiedDestination.FullName
+                    ApprovedReleaseCount = @($releaseSelection.Releases).Count
+                    DestinationReleaseCount = 0
+                    Releases = @()
+                    Unsupported = @()
+                    IsSuccessful = $false
+                    Status = 'SnapshotVerificationFailed'
+                }
+            }
+            else {
+                $releases = Invoke-CgrActivityStage -Name 'RestoreGitHubReleases' -Message 'Restore approved GitHub Releases and assets' -Action {
+                    Copy-CgrApprovedGitHubRelease `
+                        -SourceRepository $SourceRepository `
+                        -DestinationRepository $verifiedDestination `
+                        -ApprovedSelection $releaseSelection `
+                        -DestinationTagTargets @($snapshot.ReleaseTags) `
+                        -HostName $HostName
+                }
+                $releases | Add-Member -NotePropertyName Status -NotePropertyValue 'Restored' -Force
+            }
+            $completedSteps.Add([pscustomobject] @{
+                    Order = $completedSteps.Count + 1
+                    Name = 'RestoreGitHubReleases'
+                    MutatedGitHub = [bool] $verification.IsSuccessful
+                    Verified = $releases.IsSuccessful
+                })
+        }
 
         $configuration = Invoke-CgrPostVerificationConfigurationRestore `
             -Plan $Plan `
@@ -64,7 +127,15 @@ function Invoke-CgrNewDestinationSnapshot {
         $snapshotTree = if ($sourceState) { Get-CgrObjectProperty -InputObject $sourceState -Name 'TreeSha' } else { Get-CgrObjectProperty -InputObject $snapshot -Name 'TreeSha' }
         if ($null -eq $snapshotTree) { $snapshotTree = Get-CgrObjectProperty -InputObject $verification -Name 'SourceTree' }
         $destinationTree = Get-CgrObjectProperty -InputObject $verification -Name 'DestinationTree'
+        if ($null -eq $destinationTree) { $destinationTree = Get-CgrObjectProperty -InputObject $verification -Name 'DestinationHeadTreeSha' }
         if ($null -eq $destinationTree) { $destinationTree = $snapshotTree }
+        $releasePreservation = Get-CgrSnapshotReleasePreservationEvidence `
+            -Plan $Plan `
+            -DestinationRepository $verifiedDestination `
+            -SnapshotCopyResult $snapshot `
+            -ReleaseRestoreResult $releases `
+            -GeneratedCommitProgress @($snapshotGeneratedCommitProgress) `
+            -HostName $HostName
 
         $provenance = [pscustomobject] @{
             PSTypeName = 'CopyGitHubRepo.SnapshotPublicationProvenance'
@@ -82,19 +153,22 @@ function Invoke-CgrNewDestinationSnapshot {
             DestinationRepository = $verifiedDestination.FullName
             DestinationRepositoryId = Get-CgrObjectProperty -InputObject $verifiedDestination -Name 'Id'
             DestinationRepositoryNodeId = Get-CgrObjectProperty -InputObject $verifiedDestination -Name 'NodeId'
-            DestinationRootCommitSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'CommitSha'
+            DestinationRootCommitSha = $snapshotRootCommitSha
             DestinationTreeSha = $destinationTree
             VerificationSuccessful = [bool] $verification.IsSuccessful
+            ReleasePreservation = $releasePreservation
         }
 
+        $releaseSuccessful = -not $includeReleases -or $releases.IsSuccessful
         $executionResult = [pscustomobject] @{
             PSTypeName = 'CopyGitHubRepo.MigrationExecutionResult'; SchemaVersion = 1
-            Status = if (-not $verification.IsSuccessful) { 'SnapshotVerificationFailed' } elseif ($Plan.SkipSettings) { 'SnapshotVerifiedSettingsSkipped' } elseif ($settings.IsSuccessful -and $protection.IsSuccessful) { 'CompletedWithSupportedSettings' } elseif (-not $settings.IsSuccessful) { 'SettingsRestoreFailed' } else { 'ProtectionRestoreFailed' }
+            Status = if (-not $verification.IsSuccessful) { 'SnapshotVerificationFailed' } elseif (-not $releaseSuccessful) { 'ReleaseRestoreFailed' } elseif ($Plan.SkipSettings) { 'SnapshotVerifiedSettingsSkipped' } elseif ($settings.IsSuccessful -and $protection.IsSuccessful) { 'CompletedWithSupportedSettings' } elseif (-not $settings.IsSuccessful) { 'SettingsRestoreFailed' } else { 'ProtectionRestoreFailed' }
             SourceRepository = $Plan.SourceRepository; ApprovedSourceState = $sourceState; DestinationRepository = $DestinationRepository.FullName
             SourceVisibility = $Plan.SourceVisibility; DestinationVisibility = $Plan.DestinationVisibility; DestinationHtmlUrl = $DestinationRepository.HtmlUrl
             DestinationBranch = Get-CgrObjectProperty -InputObject $snapshot -Name 'BranchName'; SnapshotCommitSha = Get-CgrObjectProperty -InputObject $snapshot -Name 'CommitSha'; SourceTreeSha = $snapshotTree
-            Provenance = $provenance; IsVerified = $verification.IsSuccessful; Verification = $verification; Settings = $settings; Protection = $protection; Plan = $Plan; CompletedSteps = @($completedSteps)
+            Provenance = $provenance; IsVerified = $verification.IsSuccessful -and $releaseSuccessful; Verification = $verification; Releases = $releases; Settings = $settings; Protection = $protection; Plan = $Plan; CompletedSteps = @($completedSteps)
             StoppedBeforeSettingsRestore = -not $verification.IsSuccessful
+            ReleasesRestored = [bool] ($includeReleases -and $releases.IsSuccessful)
             SettingsRestored = $configuration.SettingsRestored
             ProtectionRestored = $configuration.ProtectionRestored
         }
@@ -105,6 +179,14 @@ function Invoke-CgrNewDestinationSnapshot {
     catch {
         $recoveryReportPath = $null
         try {
+            $recoveryDestination = if ($verifiedDestination) { $verifiedDestination } else { $DestinationRepository }
+            $releasePreservation = Get-CgrSnapshotReleasePreservationEvidence `
+                -Plan $Plan `
+                -DestinationRepository $recoveryDestination `
+                -SnapshotCopyResult $snapshot `
+                -ReleaseRestoreResult $releases `
+                -GeneratedCommitProgress @($snapshotGeneratedCommitProgress) `
+                -HostName $HostName
             $recoveryProvenance = [pscustomobject] @{
                 ContentMode = 'Snapshot'; SourceRepository = $Plan.SourceRepository
                 SourceRepositoryId = if ($sourceState) { Get-CgrObjectProperty -InputObject $sourceState -Name 'RepositoryId' } else { Get-CgrObjectProperty -InputObject $SourceRepository -Name 'Id' }
@@ -116,8 +198,9 @@ function Invoke-CgrNewDestinationSnapshot {
                 DestinationRepository = $DestinationRepository.FullName
                 DestinationRepositoryId = if ($verifiedDestination) { Get-CgrObjectProperty -InputObject $verifiedDestination -Name 'Id' } else { Get-CgrObjectProperty -InputObject $DestinationRepository -Name 'Id' }
                 DestinationRepositoryNodeId = if ($verifiedDestination) { Get-CgrObjectProperty -InputObject $verifiedDestination -Name 'NodeId' } else { Get-CgrObjectProperty -InputObject $DestinationRepository -Name 'NodeId' }
-                DestinationRootCommitSha = if ($snapshot) { Get-CgrObjectProperty -InputObject $snapshot -Name 'CommitSha' } else { $null }
+                DestinationRootCommitSha = $snapshotRootCommitSha
                 DestinationTreeSha = if ($snapshot) { Get-CgrObjectProperty -InputObject $snapshot -Name 'TreeSha' } else { $null }
+                ReleasePreservation = $releasePreservation
             }
             $recoveryReportPath = Write-CgrMigrationRecoveryReport -Plan $Plan -DestinationRepository $DestinationRepository -FailureStage $failureStage -ErrorRecord $_ -CompletedSteps @($completedSteps) -Provenance $recoveryProvenance -PreferredReportPath $ReportPath
         }

@@ -67,8 +67,8 @@ function Format-CgrMigrationPlan {
                     $lines.Add('')
                     $lines.Add('| Record | Source | Snapshot behavior |')
                     $lines.Add('| --- | ---: | --- |')
-                    $tagBehavior = if ($Plan.Mode -eq 'SameNameReplacement') { 'Not copied; retained by the archived original repository.' } else { 'Not copied to the clean destination.' }
-                    $releaseBehavior = if ($Plan.Mode -eq 'SameNameReplacement') { 'Not copied; retained by the archived original repository.' } else { 'Not copied to the clean destination.' }
+                    $tagBehavior = if ($includeReleases) { 'Only approved selected release tags are planned as new checkpoint tags; other source tags are not published.' } elseif ($Plan.Mode -eq 'SameNameReplacement') { 'Not copied; retained by the archived original repository.' } else { 'Not copied to the clean destination.' }
+                    $releaseBehavior = if ($includeReleases) { 'Only the exact approved release selection is planned for later restoration against new Snapshot checkpoint commits.' } elseif ($Plan.Mode -eq 'SameNameReplacement') { 'Not copied; retained by the archived original repository.' } else { 'Not copied to the clean destination.' }
                     $lines.Add("| Git tags | $tagCount$tagCountSuffix | $tagBehavior |")
                     $lines.Add("| GitHub Releases | $releaseCount$releaseCountSuffix | $releaseBehavior |")
 
@@ -86,7 +86,13 @@ function Format-CgrMigrationPlan {
 
                     if ($Plan.Mode -eq 'SameNameReplacement' -and ($tagCount -gt 0 -or $releaseCount -gt 0)) {
                         $lines.Add('')
-                        $lines.Add('**Release safety:** create the new release tag and GitHub Release on the clean replacement only after Snapshot publication and verification complete successfully.')
+                        $releaseSafety = if ($includeReleases) {
+                            '**Release safety:** create any selected release tags and GitHub Releases on the clean replacement only after Snapshot publication and verification complete successfully.'
+                        }
+                        else {
+                            '**Release safety:** create the new release tag and GitHub Release on the clean replacement only after Snapshot publication and verification complete successfully.'
+                        }
+                        $lines.Add($releaseSafety)
                     }
                 }
             }
@@ -101,7 +107,57 @@ function Format-CgrMigrationPlan {
         }
 
         $releaseSelection = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseSelection'
-        if ($Plan.ContentMode -eq 'FullHistory' -and $includeReleases -and $releaseSelection) {
+        $releaseCheckpointPlan = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseCheckpointPlan'
+        if ($Plan.ContentMode -eq 'Snapshot' -and $includeReleases -and $releaseSelection -and $releaseCheckpointPlan) {
+            $lines.Add('')
+            $lines.Add('## Approved Snapshot Release Checkpoints')
+            $lines.Add('')
+            $lines.Add('Release filtering determines the approved release inventory; checkpoint order below is independently derived from peeled source commit ancestry. Execution must consume this reviewed evidence without rerunning live release selection or inventing a new order.')
+            $lines.Add('')
+            $lines.Add('| Field | Value |')
+            $lines.Add('| --- | --- |')
+            $lines.Add("| Available source releases | $(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'AvailableReleaseCount') |")
+            $lines.Add("| Selected releases | $(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'SelectedReleaseCount') |")
+            $lines.Add("| Distinct checkpoint boundaries | $(Get-CgrObjectProperty -InputObject $releaseCheckpointPlan -Name 'CheckpointCount') |")
+            $lines.Add("| Planned Snapshot commits | $(Get-CgrObjectProperty -InputObject $releaseCheckpointPlan -Name 'PlannedSnapshotCommitCount') |")
+            $lines.Add("| Final current-state checkpoint required | $(Get-CgrObjectProperty -InputObject $releaseCheckpointPlan -Name 'FinalHeadCheckpointRequired') |")
+            $sourceHead = Get-CgrObjectProperty -InputObject $releaseCheckpointPlan -Name 'SourceHead'
+            $lines.Add("| Reviewed default-branch HEAD | $($sourceHead.CommitSha) |")
+            $lines.Add("| Reviewed default-branch tree | $($sourceHead.TreeSha) |")
+            $includePatterns = @(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'IncludePatterns')
+            $excludePatterns = @(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'ExcludePatterns')
+            $lines.Add("| Include tag filters | $(if ($includePatterns.Count -gt 0) { $includePatterns -join ', ' } else { 'All' }) |")
+            $lines.Add("| Exclude tag filters | $(if ($excludePatterns.Count -gt 0) { $excludePatterns -join ', ' } else { 'None' }) |")
+            $lines.Add("| Include prereleases | $(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'IncludePrerelease') |")
+            $lines.Add("| Include drafts | $(Get-CgrObjectProperty -InputObject $releaseSelection -Name 'IncludeDraftReleases') |")
+            $releaseLimit = Get-CgrObjectProperty -InputObject $releaseSelection -Name 'ReleaseCount'
+            $lines.Add("| Newest release limit | $(if ($null -ne $releaseLimit) { $releaseLimit } else { 'None' }) |")
+
+            $releaseEvidence = @(Get-CgrObjectProperty -InputObject $releaseCheckpointPlan -Name 'ReleaseEvidence')
+            if ($releaseEvidence.Count -gt 0) {
+                $lines.Add('')
+                $lines.Add('### Selected release evidence')
+                $lines.Add('')
+                $lines.Add('| Selection order | Tag | Tag ref type | Tag ref SHA | Peeled commit SHA | Tree SHA |')
+                $lines.Add('| ---: | --- | --- | --- | --- | --- |')
+                foreach ($evidence in $releaseEvidence) {
+                    $lines.Add("| $($evidence.SelectionOrder) | $($evidence.TagName) | $($evidence.TagObjectType) | $($evidence.TagObjectSha) | $($evidence.PeeledCommitSha) | $($evidence.TreeSha) |")
+                }
+            }
+
+            $checkpoints = @(Get-CgrObjectProperty -InputObject $releaseCheckpointPlan -Name 'Checkpoints')
+            if ($checkpoints.Count -gt 0) {
+                $lines.Add('')
+                $lines.Add('### Checkpoint construction order')
+                $lines.Add('')
+                $lines.Add('| Checkpoint | Source commit SHA | Source tree SHA | Selected release tags |')
+                $lines.Add('| ---: | --- | --- | --- |')
+                foreach ($checkpoint in $checkpoints) {
+                    $lines.Add("| $($checkpoint.Order) | $($checkpoint.SourceCommitSha) | $($checkpoint.SourceTreeSha) | $(@($checkpoint.TagNames) -join ', ') |")
+                }
+            }
+        }
+        elseif ($Plan.ContentMode -eq 'FullHistory' -and $includeReleases -and $releaseSelection) {
             $lines.Add('')
             $lines.Add('## Approved GitHub Releases')
             $lines.Add('')

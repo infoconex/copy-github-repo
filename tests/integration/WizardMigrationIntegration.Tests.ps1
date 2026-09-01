@@ -22,7 +22,7 @@ Describe 'Wizard to migration integration' {
             $plan = [pscustomobject] @{
                 PSTypeName = 'CopyGitHubRepo.MigrationPlan'; SchemaVersion = 1
                 Mode = 'NewDestination'; SourceRepository = 'acme/source'; DestinationRepository = 'acme/destination'
-                ArchiveRepository = $null; ContentMode = 'Snapshot'; CommitMessage = 'Initial repository commit'
+                ArchiveRepository = $null; ContentMode = 'Snapshot'; IncludeReleases = $false; CommitMessage = 'Initial repository commit'
                 SourceVisibility = 'public'; DestinationVisibility = 'public'; SourceDefaultBranch = 'main'
                 SourceState = $sourceState; SkipSettings = $true; Protection = $null; Steps = @()
             }
@@ -35,6 +35,7 @@ Describe 'Wizard to migration integration' {
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Snapshot' } -ParameterFilter { $Title -eq 'Content mode' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'public' } -ParameterFilter { $Title -eq 'Destination visibility' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Skip' } -ParameterFilter { $Title -eq 'Supported repository settings' }
+            Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Skip' } -ParameterFilter { $Title -eq 'Snapshot release preservation' }
             Mock Read-CgrWizardTextValue { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Initial repository commit' } -ParameterFilter { $Title -eq 'Snapshot commit message' }
             Mock Read-CgrWizardChoice { ConvertTo-CgrWizardNavigationResult -Action Next -Value 'Execute' } -ParameterFilter { $Title -eq 'Repository copy plan' }
 

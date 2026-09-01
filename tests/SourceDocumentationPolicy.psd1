@@ -8,6 +8,7 @@
         'Invoke-CgrSameNameFullHistoryReplacement'
         'Invoke-CgrSameNameSnapshotReplacement'
         'New-CgrMigrationPlan'
+        'New-CgrSnapshotReleaseCheckpointPlan'
     )
 
     ModuleFiles = @(
@@ -42,5 +43,6 @@
         'tests/e2e/Invoke-SameNameEndToEndTests.ps1'
         'tests/e2e/Invoke-SameNameFullHistoryEndToEndTests.ps1'
         'tests/e2e/Invoke-SnapshotEndToEndTests.ps1'
+        'tests/e2e/Invoke-SnapshotReleaseEndToEndTests.ps1'
     )
 }

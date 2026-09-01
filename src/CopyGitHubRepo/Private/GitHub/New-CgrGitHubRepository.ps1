@@ -47,7 +47,26 @@ function New-CgrGitHubRepository {
         $createdRepository = Get-CgrRepository -Repository $normalizedRepository -HostName $HostName
         $guardRequested = Get-Variable -Name CgrPagesWorkflowActivationGuardRequested -Scope Script -ErrorAction SilentlyContinue
         if ($guardRequested -and [bool] $guardRequested.Value) {
-            Set-CgrPagesWorkflowActivationGuard -Repository $normalizedRepository -Guarded $true -HostName $HostName | Out-Null
+            $permissionsPath = "/repos/$normalizedRepository/actions/permissions"
+            Invoke-CgrGitHubApiMutation `
+                -Method PUT `
+                -Path $permissionsPath `
+                -Body @{ enabled = $false } `
+                -HostName $HostName | Out-Null
+
+            $permissions = Get-CgrGitHubApi -Path $permissionsPath -HostName $HostName
+            $actionsEnabled = [bool] (Get-CgrObjectProperty -InputObject $permissions -Name 'enabled')
+            if ($actionsEnabled) {
+                $message = "The GitHub Pages workflow activation guard could not be verified for '$normalizedRepository'. Migration cannot safely publish repository content."
+                $exception = [System.InvalidOperationException]::new($message)
+                $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                    $exception,
+                    'PagesWorkflowActivationGuardVerificationFailed',
+                    [System.Management.Automation.ErrorCategory]::InvalidResult,
+                    $normalizedRepository
+                )
+                $PSCmdlet.ThrowTerminatingError($errorRecord)
+            }
         }
     }
     catch {

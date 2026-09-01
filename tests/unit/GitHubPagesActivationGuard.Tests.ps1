@@ -28,7 +28,7 @@ Describe 'GitHub Pages workflow activation guard' {
             $result = New-CgrGitHubRepository -Repository 'acme/destination' -Visibility public
 
             $result.FullName | Should -Be 'acme/destination'
-            @($script:activationEvents) | Should -Be @('CreateRepository', 'GuardActions', 'VerifyGuard')
+            ($script:activationEvents -join ',') | Should -Be 'CreateRepository,GuardActions,VerifyGuard'
             Should -Invoke Invoke-CgrGitHubApiMutation -Times 1 -ParameterFilter {
                 $Method -eq 'PUT' -and
                 $Path -eq '/repos/acme/destination/actions/permissions' -and
@@ -74,7 +74,7 @@ Describe 'GitHub Pages workflow activation guard' {
         InModuleScope CopyGitHubRepo {
             $source = [pscustomobject] @{ FullName = 'acme/source' }
             $sourceState = [pscustomobject] @{ RepositoryId = 1 }
-            $observed = [System.Collections.Generic.List[string]]::new()
+            $script:observedPagesGuard = [System.Collections.Generic.List[string]]::new()
 
             Mock Assert-CgrApprovedSourceState {}
             Mock Assert-CgrLocalResourcePreflight {}
@@ -83,24 +83,24 @@ Describe 'GitHub Pages workflow activation guard' {
             Mock Get-CgrRepository { [pscustomobject] @{ FullName = 'acme/destination' } }
             Mock New-CgrGitHubRepository {
                 $value = Get-Variable -Name CgrPagesWorkflowActivationGuardRequested -Scope Script -ErrorAction SilentlyContinue
-                $observed.Add("New:$([bool] $value.Value)")
+                $script:observedPagesGuard.Add("New:$([bool] $value.Value)")
                 [pscustomobject] @{ FullName = 'acme/destination' }
             }
             Mock Invoke-CgrNewDestinationSnapshot { [pscustomobject] @{ Status = 'Snapshot' } }
             Mock Invoke-CgrNewDestinationFullHistory { [pscustomobject] @{ Status = 'FullHistory' } }
             Mock Invoke-CgrSameNameSnapshotReplacement {
                 $value = Get-Variable -Name CgrPagesWorkflowActivationGuardRequested -Scope Script -ErrorAction SilentlyContinue
-                $observed.Add("SameSnapshot:$([bool] $value.Value)")
+                $script:observedPagesGuard.Add("SameSnapshot:$([bool] $value.Value)")
                 [pscustomobject] @{ Status = 'SameSnapshot' }
             }
             Mock Invoke-CgrSameNameFullHistoryReplacement {
                 $value = Get-Variable -Name CgrPagesWorkflowActivationGuardRequested -Scope Script -ErrorAction SilentlyContinue
-                $observed.Add("SameFullHistory:$([bool] $value.Value)")
+                $script:observedPagesGuard.Add("SameFullHistory:$([bool] $value.Value)")
                 [pscustomobject] @{ Status = 'SameFullHistory' }
             }
             Mock Invoke-CgrExistingDestinationReplacement {
                 $value = Get-Variable -Name CgrPagesWorkflowActivationGuardRequested -Scope Script -ErrorAction SilentlyContinue
-                $observed.Add("Existing:$([bool] $value.Value)")
+                $script:observedPagesGuard.Add("Existing:$([bool] $value.Value)")
                 [pscustomobject] @{ Status = 'Existing' }
             }
 
@@ -109,7 +109,8 @@ Describe 'GitHub Pages workflow activation guard' {
                     @{ Mode = 'NewDestination'; ContentMode = 'FullHistory' },
                     @{ Mode = 'SameNameReplacement'; ContentMode = 'Snapshot' },
                     @{ Mode = 'SameNameReplacement'; ContentMode = 'FullHistory' },
-                    @{ Mode = 'ExistingDestinationReplacement'; ContentMode = 'Snapshot' }
+                    @{ Mode = 'ExistingDestinationReplacement'; ContentMode = 'Snapshot' },
+                    @{ Mode = 'ExistingDestinationReplacement'; ContentMode = 'FullHistory' }
                 )) {
                 $plan = [pscustomobject] @{
                     SourceState = $sourceState
@@ -123,7 +124,7 @@ Describe 'GitHub Pages workflow activation guard' {
                 Invoke-CgrApprovedMigrationPlan -Plan $plan -SourceRepository $source -SameNameConfirmation 'approved' -ExistingDestinationConfirmation 'approved' | Out-Null
             }
 
-            @($observed) | Should -Be @('New:True', 'New:True', 'SameSnapshot:True', 'SameFullHistory:True', 'Existing:True')
+            ($script:observedPagesGuard -join ',') | Should -Be 'New:True,New:True,SameSnapshot:True,SameFullHistory:True,Existing:True,Existing:True'
             Get-Variable -Name CgrPagesWorkflowActivationGuardRequested -Scope Script -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
         }
     }

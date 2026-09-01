@@ -79,7 +79,9 @@ Describe 'Public command help completeness' {
         $helpText | Should -Match 'Force does not bypass'
         $helpText | Should -Match 'Non-interactive mutation requires -Force'
         $helpText | Should -Match 'never silently overwritten'
-        $restorePagesHelp | Should -Match 'not yet implemented'
+        $restorePagesHelp | Should -Match 'immutable reviewed plan evidence'
+        $restorePagesHelp | Should -Match 'after destination content verification'
+        $restorePagesHelp | Should -Match 'revalidated immediately before mutation'
         $actionsHelp | Should -Match 'not yet implemented'
     }
 

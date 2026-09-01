@@ -185,11 +185,11 @@ function Test-GitHubRepositoryMigration {
 
     $snapshotReleaseVerification = $ContentMode -eq 'Snapshot' -and $IncludeReleases
     if ($ApprovedPlan -and -not ($snapshotReleaseVerification -or $VerifyPages)) {
-        $message = '-ApprovedPlan is supported with Snapshot -IncludeReleases and/or -VerifyPages.'
+        $message = '-ApprovedPlan is supported only with -ContentMode Snapshot -IncludeReleases unless -VerifyPages is requested.'
         $exception = [System.InvalidOperationException]::new($message)
         $errorRecord = [System.Management.Automation.ErrorRecord]::new(
             $exception,
-            'ApprovedPlanRequiresReviewedEvidenceVerification',
+            'ApprovedPlanRequiresSnapshotReleaseVerification',
             [System.Management.Automation.ErrorCategory]::InvalidArgument,
             'ApprovedPlan'
         )
@@ -216,7 +216,7 @@ function Test-GitHubRepositoryMigration {
         $approvedDestination = [string] (Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'DestinationRepository')
         $approvedHost = [string] (Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'HostName')
         if (-not $approvedRestorePages -or $null -eq $approvedPages -or
-            $approvedContentMode -cne $ContentMode -or
+            $approvedContentMode -ne $ContentMode -or
             -not [string]::Equals($approvedSource, $SourceRepository, [System.StringComparison]::OrdinalIgnoreCase) -or
             -not [string]::Equals($approvedDestination, $DestinationRepository, [System.StringComparison]::OrdinalIgnoreCase) -or
             (-not [string]::IsNullOrWhiteSpace($approvedHost) -and -not [string]::Equals($approvedHost, $HostName, [System.StringComparison]::OrdinalIgnoreCase))) {

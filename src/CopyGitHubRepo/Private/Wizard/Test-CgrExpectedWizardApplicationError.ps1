@@ -19,7 +19,6 @@ function Test-CgrExpectedWizardApplicationError {
         'GitHubCliNotFound'
         'GitNotFound'
         'NonInteractiveExecutionRequiresForce'
-        'RestorePagesExecutionNotImplemented'
         'SameNameReplacementConfirmationRequired'
         'SourceRepositoryEmpty'
         'UnsupportedGitHubHost'

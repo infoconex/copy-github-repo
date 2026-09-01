@@ -239,9 +239,10 @@ InModuleScope CopyGitHubRepo {
             Should -Invoke Invoke-CgrApprovedMigrationPlan -Times 1 -Exactly -ParameterFilter { $Plan.DestinationVisibility -eq 'private' }
         }
 
-        It 'rejects unimplemented Pages and Actions mutation switches' {
-            { Copy-GitHubRepository -SourceRepository infoconex/source -DestinationRepository infoconex/destination -RestorePages -Confirm:$false } |
-                Should -Throw -ErrorId 'RestorePagesExecutionNotImplemented,Copy-GitHubRepository'
+        It 'executes reviewed Pages restoration while continuing to reject generic Actions activation' {
+            Copy-GitHubRepository -SourceRepository infoconex/source -DestinationRepository infoconex/destination -RestorePages -Confirm:$false | Out-Null
+            Should -Invoke Invoke-CgrApprovedMigrationPlan -Times 1 -Exactly -ParameterFilter { $Plan.RestorePages }
+
             { Copy-GitHubRepository -SourceRepository infoconex/source -DestinationRepository infoconex/destination -EnableActionsAfterMigration -Confirm:$false } |
                 Should -Throw -ErrorId 'EnableActionsAfterMigrationExecutionNotImplemented,Copy-GitHubRepository'
         }

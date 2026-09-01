@@ -4,12 +4,13 @@ function Invoke-CgrPostVerificationConfigurationRestore {
     Restores supported repository configuration after content verification.
 
     .DESCRIPTION
-    Centralizes the shared execution contract for supported repository settings and
-    repository protection restoration. Content-mode orchestrators retain ownership of
-    copy, initial content verification, release restoration, final result, and recovery
-    sequencing. For Snapshot release preservation this boundary performs the required
-    independent post-release destination verification before any configuration mutation.
-    Planned repository-protection and release evidence remain authoritative.
+    Centralizes the shared execution contract for supported repository settings,
+    reviewed GitHub Pages configuration, and repository protection restoration.
+    Content-mode orchestrators retain ownership of copy, initial content verification,
+    release restoration, final result, and recovery sequencing. For Snapshot release
+    preservation this boundary performs the required independent post-release
+    destination verification before any configuration mutation. Planned Pages,
+    repository-protection, and release evidence remain authoritative.
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions',
@@ -36,6 +37,7 @@ function Invoke-CgrPostVerificationConfigurationRestore {
 
     $contentMode = [string] (Get-CgrObjectProperty -InputObject $Plan -Name 'ContentMode')
     $includeReleases = [bool] (Get-CgrObjectProperty -InputObject $Plan -Name 'IncludeReleases')
+    $restorePages = [bool] (Get-CgrObjectProperty -InputObject $Plan -Name 'RestorePages')
     if ($contentMode -eq 'Snapshot' -and $includeReleases -and $Verification.IsSuccessful) {
         $approvedSelection = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseSelection'
         $destinationTagTargets = @(Get-CgrObjectProperty -InputObject $Verification -Name 'ReleaseTags')
@@ -93,9 +95,75 @@ function Invoke-CgrPostVerificationConfigurationRestore {
     $CompletedSteps.Add([pscustomobject] @{
             Order = $CompletedSteps.Count + 1
             Name = 'RestoreSupportedSettings'
-            MutatedGitHub = -not $Plan.SkipSettings
+            MutatedGitHub = [bool] ($Verification.IsSuccessful -and -not $Plan.SkipSettings)
             Verified = $settings.IsSuccessful
         })
+
+    $pages = [pscustomobject] @{
+        PSTypeName = 'CopyGitHubRepo.PagesRestoreResult'
+        Repository = $destinationRepositoryForRestore.FullName
+        Status = 'NotRequested'
+        Configured = $false
+        Restored = $false
+        Verified = $false
+        GuardReleased = $false
+        IsSuccessful = $true
+        IsComplete = $true
+    }
+
+    if ($restorePages) {
+        $FailureStage.Value = 'RestoreGitHubPages'
+        $pages = Invoke-CgrActivityStage -Name 'RestoreGitHubPages' -Message 'Restore reviewed GitHub Pages configuration' -Action {
+            if (-not $Verification.IsSuccessful) {
+                return [pscustomobject] @{
+                    PSTypeName = 'CopyGitHubRepo.PagesRestoreResult'
+                    Repository = $destinationRepositoryForRestore.FullName
+                    Status = 'ContentVerificationFailed'
+                    Configured = $false
+                    Restored = $false
+                    Verified = $false
+                    GuardReleased = $false
+                    IsSuccessful = $false
+                    IsComplete = $false
+                }
+            }
+            if (-not $settings.IsSuccessful) {
+                return [pscustomobject] @{
+                    PSTypeName = 'CopyGitHubRepo.PagesRestoreResult'
+                    Repository = $destinationRepositoryForRestore.FullName
+                    Status = 'SettingsRestoreFailed'
+                    Configured = $false
+                    Restored = $false
+                    Verified = $false
+                    GuardReleased = $false
+                    IsSuccessful = $false
+                    IsComplete = $false
+                }
+            }
+
+            $pagesSourceRepository = $sourceRepositoryForRestore
+            $mode = [string] (Get-CgrObjectProperty -InputObject $Plan -Name 'Mode')
+            $archiveRepository = [string] (Get-CgrObjectProperty -InputObject $Plan -Name 'ArchiveRepository')
+            if ($mode -eq 'SameNameReplacement' -and
+                $sourceRepositoryForRestore.FullName -eq (Get-CgrObjectProperty -InputObject $Plan -Name 'SourceRepository') -and
+                -not [string]::IsNullOrWhiteSpace($archiveRepository)) {
+                $pagesSourceRepository = [pscustomobject] @{ FullName = $archiveRepository }
+            }
+
+            Restore-CgrGitHubPagesConfiguration `
+                -Plan $Plan `
+                -SourceRepository $pagesSourceRepository `
+                -DestinationRepository $destinationRepositoryForRestore `
+                -HostName $hostNameForRestore
+        }
+        $Verification | Add-Member -NotePropertyName Pages -NotePropertyValue $pages -Force
+        $CompletedSteps.Add([pscustomobject] @{
+                Order = $CompletedSteps.Count + 1
+                Name = 'RestoreGitHubPages'
+                MutatedGitHub = [bool] ($Verification.IsSuccessful -and $settings.IsSuccessful -and $pages.Restored)
+                Verified = [bool] $pages.Verified
+            })
+    }
 
     $FailureStage.Value = 'RestoreRepositoryProtection'
     $planProtectionProperty = $Plan.PSObject.Properties['Protection']
@@ -108,6 +176,17 @@ function Invoke-CgrPostVerificationConfigurationRestore {
                 Status = 'Failed'
                 Restored = @()
                 Skipped = @($verificationFailureReasonForRestore)
+                IsSuccessful = $false
+                IsComplete = $false
+            }
+        }
+        if ($restorePages -and -not $pages.IsSuccessful) {
+            return [pscustomobject] @{
+                PSTypeName = 'CopyGitHubRepo.RepositoryProtectionRestoreResult'
+                Repository = $destinationRepositoryForRestore.FullName
+                Status = 'Failed'
+                Restored = @()
+                Skipped = @('PagesRestoreFailed')
                 IsSuccessful = $false
                 IsComplete = $false
             }
@@ -154,20 +233,23 @@ function Invoke-CgrPostVerificationConfigurationRestore {
     $CompletedSteps.Add([pscustomobject] @{
             Order = $CompletedSteps.Count + 1
             Name = 'RestoreRepositoryProtection'
-            MutatedGitHub = [bool] ($Verification.IsSuccessful -and -not $Plan.SkipSettings)
+            MutatedGitHub = [bool] ($Verification.IsSuccessful -and (-not $restorePages -or $pages.IsSuccessful) -and -not $Plan.SkipSettings)
             Verified = $protection.IsSuccessful
         })
 
     $settingsRestored = [bool] ($Verification.IsSuccessful -and -not $Plan.SkipSettings -and $settings.IsSuccessful)
-    $protectionRestored = [bool] ($Verification.IsSuccessful -and -not $Plan.SkipSettings -and $protection.IsSuccessful -and $protection.IsComplete)
+    $pagesRestored = [bool] ($restorePages -and $Verification.IsSuccessful -and $pages.Restored -and $pages.Verified -and $pages.GuardReleased)
+    $protectionRestored = [bool] ($Verification.IsSuccessful -and (-not $restorePages -or $pages.IsSuccessful) -and -not $Plan.SkipSettings -and $protection.IsSuccessful -and $protection.IsComplete)
 
     [pscustomobject] @{
         PSTypeName = 'CopyGitHubRepo.PostVerificationConfigurationRestoreResult'
         Settings = $settings
+        Pages = $pages
         Protection = $protection
         SettingsRestored = $settingsRestored
+        PagesRestored = $pagesRestored
         ProtectionRestored = $protectionRestored
-        IsSuccessful = [bool] ($settings.IsSuccessful -and $protection.IsSuccessful)
-        IsComplete = [bool] ($settings.IsSuccessful -and $protection.IsSuccessful -and $protection.IsComplete)
+        IsSuccessful = [bool] ($settings.IsSuccessful -and $pages.IsSuccessful -and $protection.IsSuccessful)
+        IsComplete = [bool] ($settings.IsSuccessful -and $pages.IsComplete -and $protection.IsSuccessful -and $protection.IsComplete)
     }
 }

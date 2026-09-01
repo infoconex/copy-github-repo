@@ -54,6 +54,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Get-CgrGitHubApi` | Executes required GitHub API reads and converts failures into stable application errors. |
 | `Get-CgrGitHubApiOptional` | Performs optional GitHub API reads where unsupported or unavailable data is an expected condition. |
 | `Get-CgrGitHubAuthenticationStatus` | Reports GitHub CLI authentication readiness without mutating account state. |
+| `Get-CgrGitHubPagesPlanEvidence` | Captures immutable reviewed GitHub-side Pages configuration, representability, external readiness, and drift-driving evidence for opt-in planning without mutating Pages or querying external DNS. |
 | `Get-CgrGitHubReleaseSelection` | Enumerates GitHub Releases, applies the public release-filter policy, resolves selected tag commit identities, captures asset evidence and the source Latest designation, and returns the exact release inventory bound into a FullHistory plan or standalone verification. |
 | `Get-CgrObjectProperty` | Safely reads optional properties from heterogeneous GitHub/module result objects. |
 | `Get-CgrPrerequisiteStatus` | Aggregates Git, GitHub CLI, and authentication prerequisites for public workflows. |

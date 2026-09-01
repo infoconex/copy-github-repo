@@ -15,6 +15,11 @@ function New-CgrMigrationPlan {
     captures immutable checkpoint trees and derives checkpoint order from Git ancestry.
     Execution must use the approved selection rather than re-evaluating live filters.
 
+    When Pages restoration is requested, planning also captures the reviewed
+    GitHub-side Pages configuration, external readiness evidence, representability,
+    and drift-driving fields. Later Pages work must consume that immutable evidence
+    rather than rediscover mutable source configuration as execution authority.
+
     .NOTES
     Replacement modes deliberately require unused archive names. The plan is the
     safety contract between review and execution and must not be reconstructed from
@@ -194,6 +199,16 @@ function New-CgrMigrationPlan {
     }
 
     $sourceState = Get-CgrApprovedSourceState -Repository $SourceRepository -ContentMode $ContentMode
+    $pagesPlan = if ($RestorePages) {
+        Get-CgrGitHubPagesPlanEvidence `
+            -Repository $SourceRepository `
+            -ContentMode $ContentMode `
+            -SourceState $sourceState `
+            -HostName $HostName
+    }
+    else {
+        $null
+    }
 
     $releaseSelection = $null
     $releaseCheckpointPlan = $null
@@ -344,7 +359,7 @@ function New-CgrMigrationPlan {
         'NewDestination'
     }
 
-    [pscustomobject] @{
+    $plan = [pscustomobject] @{
         PSTypeName = 'CopyGitHubRepo.MigrationPlan'
         SchemaVersion = 1
         Mode = $mode
@@ -370,4 +385,10 @@ function New-CgrMigrationPlan {
         PlanOnly = [bool] $PlanOnly
         Steps = $steps.ToArray()
     }
+
+    if ($RestorePages) {
+        $plan | Add-Member -NotePropertyName Pages -NotePropertyValue $pagesPlan
+    }
+
+    $plan
 }

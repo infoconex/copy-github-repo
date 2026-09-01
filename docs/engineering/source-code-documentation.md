@@ -108,6 +108,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Test-CgrConsoleStylingAvailable` | Detects whether optional styling can be used without making color a correctness dependency. |
 | `Test-CgrExpectedWizardApplicationError` | Distinguishes expected application errors from unexpected implementation failures for user-facing presentation. |
 | `Test-CgrGitHubPagesDriftEvidenceMatch` | Compares only contract-relevant Pages drift fields between reviewed evidence and the immediate pre-mutation source read. |
+| `Test-CgrGitHubPagesMigration` | Independently reads destination GitHub Pages configuration and compares deterministic GitHub-side state with immutable reviewed plan evidence while reporting external readiness separately. |
 | `Test-CgrGitHubReleaseMigration` | Performs read-only current source-versus-destination verification for a selected FullHistory GitHub Release set, including tag commit identity, supported metadata/assets, and Latest designation when selected. |
 | `Test-CgrGitHubRepositoryExistence` | Checks repository existence while preserving the distinction between not-found and API failure. |
 | `Test-CgrInteractiveTerminal` | Detects whether interactive wizard operation is appropriate in the current host. |

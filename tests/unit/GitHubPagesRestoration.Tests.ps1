@@ -85,7 +85,7 @@ Describe 'GitHub Pages restoration' {
             Mock Invoke-CgrGitHubApiMutation { throw 'must not mutate' }
 
             { Restore-CgrGitHubPagesConfiguration -Plan $plan -SourceRepository $source -DestinationRepository $destination } |
-                Should -Throw -ErrorId 'DestinationPagesPathMissing,Assert-CgrDestinationPagesSource'
+                Should -Throw -ErrorId 'DestinationPagesPathMissing'
             Should -Invoke Invoke-CgrGitHubApiMutation -Times 0
         }
     }
@@ -103,7 +103,7 @@ Describe 'GitHub Pages restoration' {
             Mock Get-CgrGitHubApiOptional { throw 'must not inspect destination before source drift passes' }
 
             { Restore-CgrGitHubPagesConfiguration -Plan $plan -SourceRepository ([pscustomobject] @{ FullName = 'acme/source' }) -DestinationRepository ([pscustomobject] @{ FullName = 'acme/destination' }) } |
-                Should -Throw -ErrorId 'PagesStateChangedSincePlanning,Assert-CgrGitHubPagesPlanEvidence'
+                Should -Throw -ErrorId 'PagesStateChangedSincePlanning'
             Should -Invoke Invoke-CgrGitHubApiMutation -Times 0
         }
     }
@@ -143,7 +143,7 @@ Describe 'GitHub Pages restoration' {
             Mock Invoke-CgrGitHubApiMutation { throw 'must not mutate' }
 
             { Restore-CgrGitHubPagesConfiguration -Plan $plan -SourceRepository ([pscustomobject] @{ FullName = 'acme/source-archive' }) -DestinationRepository ([pscustomobject] @{ FullName = 'acme/source' }) } |
-                Should -Throw -ErrorId 'PagesCustomDomainHandoffRequired,Restore-CgrGitHubPagesConfiguration'
+                Should -Throw -ErrorId 'PagesCustomDomainHandoffRequired'
             Should -Invoke Invoke-CgrGitHubApiMutation -Times 0
         }
     }

@@ -6,11 +6,11 @@ function Test-CgrGitHubPagesDriftEvidenceMatch {
     )
 
     foreach ($name in @('Configured', 'BuildType', 'Branch', 'Path', 'CustomDomain', 'HttpsEnforced')) {
-        $reviewed = Get-CgrObjectProperty -InputObject $ReviewedEvidence -Name $name
-        $current = Get-CgrObjectProperty -InputObject $CurrentEvidence -Name $name
-        if ($reviewed -ne $current) { return $false }
+        if ((Get-CgrObjectProperty -InputObject $ReviewedEvidence -Name $name) -ne
+            (Get-CgrObjectProperty -InputObject $CurrentEvidence -Name $name)) {
+            return $false
+        }
     }
-
     return $true
 }
 
@@ -29,21 +29,21 @@ function Assert-CgrGitHubPagesPlanEvidence {
     }
 
     $representability = Get-CgrObjectProperty -InputObject $pages -Name 'Representability'
-    if ($representability -and -not [bool] (Get-CgrObjectProperty -InputObject $representability -Name 'Representable')) {
+    $isRepresentable = if ($representability) { Get-CgrObjectProperty -InputObject $representability -Name 'IsRepresentable' } else { $true }
+    if ($null -eq $isRepresentable -and $representability) {
+        $isRepresentable = Get-CgrObjectProperty -InputObject $representability -Name 'Representable'
+    }
+    if ($representability -and -not [bool] $isRepresentable) {
         $reason = Get-CgrObjectProperty -InputObject $representability -Name 'Reason'
         $exception = [System.InvalidOperationException]::new("The reviewed Pages configuration is not representable at the destination. $reason")
         throw [System.Management.Automation.ErrorRecord]::new($exception, 'ApprovedPagesConfigurationNotRepresentable', [System.Management.Automation.ErrorCategory]::InvalidData, $pages)
     }
 
-    $current = Get-CgrGitHubPagesPlanEvidence `
-        -Repository $SourceRepository `
-        -ContentMode $Plan.ContentMode `
-        -SourceState $Plan.SourceState `
-        -HostName $HostName
-
+    $current = Get-CgrGitHubPagesPlanEvidence -Repository $SourceRepository -ContentMode $Plan.ContentMode -SourceState $Plan.SourceState -HostName $HostName
     $reviewedDrift = Get-CgrObjectProperty -InputObject $pages -Name 'DriftEvidence'
     $currentDrift = Get-CgrObjectProperty -InputObject $current -Name 'DriftEvidence'
-    if ($null -eq $reviewedDrift -or $null -eq $currentDrift -or -not (Test-CgrGitHubPagesDriftEvidenceMatch -ReviewedEvidence $reviewedDrift -CurrentEvidence $currentDrift)) {
+    if ($null -eq $reviewedDrift -or $null -eq $currentDrift -or
+        -not (Test-CgrGitHubPagesDriftEvidenceMatch -ReviewedEvidence $reviewedDrift -CurrentEvidence $currentDrift)) {
         $exception = [System.InvalidOperationException]::new("GitHub Pages configuration for '$($SourceRepository.FullName)' changed after planning. No destination Pages mutation was performed.")
         throw [System.Management.Automation.ErrorRecord]::new($exception, 'PagesStateChangedSincePlanning', [System.Management.Automation.ErrorCategory]::InvalidData, $SourceRepository.FullName)
     }
@@ -60,7 +60,6 @@ function Assert-CgrDestinationPagesSource {
     )
 
     if ((Get-CgrObjectProperty -InputObject $Pages -Name 'BuildType') -ne 'legacy') { return }
-
     $source = Get-CgrObjectProperty -InputObject $Pages -Name 'Source'
     $branch = [string] (Get-CgrObjectProperty -InputObject $source -Name 'Branch')
     $path = [string] (Get-CgrObjectProperty -InputObject $source -Name 'Path')
@@ -70,18 +69,14 @@ function Assert-CgrDestinationPagesSource {
     }
 
     $encodedBranch = [Uri]::EscapeDataString($branch)
-    $destinationBranch = Get-CgrGitHubApiOptional -Path "repos/$($DestinationRepository.FullName)/branches/$encodedBranch" -HostName $HostName
-    if ($null -eq $destinationBranch) {
+    if ($null -eq (Get-CgrGitHubApiOptional -Path "repos/$($DestinationRepository.FullName)/branches/$encodedBranch" -HostName $HostName)) {
         $exception = [System.InvalidOperationException]::new("The exact reviewed Pages publishing branch '$branch' does not exist at destination '$($DestinationRepository.FullName)'.")
         throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesBranchMissing', [System.Management.Automation.ErrorCategory]::ObjectNotFound, $branch)
     }
-
-    if ($path -eq '/docs') {
-        $destinationDocs = Get-CgrGitHubApiOptional -Path "repos/$($DestinationRepository.FullName)/contents/docs?ref=$encodedBranch" -HostName $HostName
-        if ($null -eq $destinationDocs) {
-            $exception = [System.InvalidOperationException]::new("The exact reviewed Pages publishing path '/docs' does not exist on destination branch '$branch'.")
-            throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesPathMissing', [System.Management.Automation.ErrorCategory]::ObjectNotFound, '/docs')
-        }
+    if ($path -eq '/docs' -and
+        $null -eq (Get-CgrGitHubApiOptional -Path "repos/$($DestinationRepository.FullName)/contents/docs?ref=$encodedBranch" -HostName $HostName)) {
+        $exception = [System.InvalidOperationException]::new("The exact reviewed Pages publishing path '/docs' does not exist on destination branch '$branch'.")
+        throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesPathMissing', [System.Management.Automation.ErrorCategory]::ObjectNotFound, '/docs')
     }
 }
 
@@ -105,7 +100,6 @@ function Assert-CgrDestinationPagesReadBack {
         $exception = [System.InvalidOperationException]::new("Destination Pages build mode does not match the reviewed '$expectedBuildType' mode.")
         throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $actual)
     }
-
     if ($expectedBuildType -eq 'legacy') {
         $expectedSource = Get-CgrObjectProperty -InputObject $Pages -Name 'Source'
         $actualSource = Get-CgrObjectProperty -InputObject $actual -Name 'source'
@@ -115,18 +109,17 @@ function Assert-CgrDestinationPagesReadBack {
             throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $actualSource)
         }
     }
-
-    if ($VerifyCustomDomain -and (Get-CgrObjectProperty -InputObject $actual -Name 'cname') -ne (Get-CgrObjectProperty -InputObject $Pages -Name 'CustomDomain')) {
+    if ($VerifyCustomDomain -and
+        (Get-CgrObjectProperty -InputObject $actual -Name 'cname') -ne (Get-CgrObjectProperty -InputObject $Pages -Name 'CustomDomain')) {
         $exception = [System.InvalidOperationException]::new('Destination Pages custom domain does not match the exact reviewed value.')
         throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $actual)
     }
-
     $expectedHttps = Get-CgrObjectProperty -InputObject $Pages -Name 'HttpsEnforced'
-    if ($null -ne $expectedHttps -and [bool] (Get-CgrObjectProperty -InputObject $actual -Name 'https_enforced') -ne [bool] $expectedHttps) {
+    if ($null -ne $expectedHttps -and
+        [bool] (Get-CgrObjectProperty -InputObject $actual -Name 'https_enforced') -ne [bool] $expectedHttps) {
         $exception = [System.InvalidOperationException]::new('Destination Pages HTTPS-enforcement state does not match the reviewed intent.')
         throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $actual)
     }
-
     return $actual
 }
 
@@ -159,38 +152,27 @@ function Restore-CgrGitHubPagesConfiguration {
     $pages = Assert-CgrGitHubPagesPlanEvidence -Plan $Plan -SourceRepository $SourceRepository -HostName $HostName
     $configured = [bool] (Get-CgrObjectProperty -InputObject $pages -Name 'Configured')
     $existing = Get-CgrGitHubApiOptional -Path "repos/$($DestinationRepository.FullName)/pages" -HostName $HostName
-
     if (-not $configured) {
         if ($null -ne $existing) {
             $exception = [System.InvalidOperationException]::new("Destination '$($DestinationRepository.FullName)' unexpectedly has GitHub Pages configured even though the reviewed source did not. The destination was left unchanged.")
             throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesUnexpectedlyConfigured', [System.Management.Automation.ErrorCategory]::InvalidResult, $DestinationRepository.FullName)
         }
-
         Enable-CgrPagesWorkflowActivationAfterRestore -DestinationRepository $DestinationRepository -HostName $HostName
         return [pscustomobject] @{
-            PSTypeName = 'CopyGitHubRepo.PagesRestoreResult'
-            Repository = $DestinationRepository.FullName
-            Status = 'ReviewedNotConfigured'
-            Configured = $false
-            Restored = $false
-            Verified = $true
-            GuardReleased = $true
-            CustomDomainStatus = 'NotApplicable'
-            IsSuccessful = $true
-            IsComplete = $true
+            PSTypeName = 'CopyGitHubRepo.PagesRestoreResult'; Repository = $DestinationRepository.FullName
+            Status = 'ReviewedNotConfigured'; Configured = $false; Restored = $false; Verified = $true
+            GuardReleased = $true; CustomDomainStatus = 'NotApplicable'; IsSuccessful = $true; IsComplete = $true
         }
     }
-
     if ($null -ne $existing) {
         $exception = [System.InvalidOperationException]::new("Destination '$($DestinationRepository.FullName)' already has GitHub Pages configured before the reviewed restoration stage. Refusing to overwrite unreviewed Pages state.")
         throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesAlreadyConfigured', [System.Management.Automation.ErrorCategory]::ResourceExists, $DestinationRepository.FullName)
     }
 
     Assert-CgrDestinationPagesSource -DestinationRepository $DestinationRepository -Pages $pages -HostName $HostName
-
     $customDomain = Get-CgrObjectProperty -InputObject $pages -Name 'CustomDomain'
-    $replacementMode = (Get-CgrObjectProperty -InputObject $Plan -Name 'Mode') -in @('SameNameReplacement', 'ExistingDestinationReplacement')
-    if ($replacementMode -and -not [string]::IsNullOrWhiteSpace([string] $customDomain)) {
+    if ((Get-CgrObjectProperty -InputObject $Plan -Name 'Mode') -in @('SameNameReplacement', 'ExistingDestinationReplacement') -and
+        -not [string]::IsNullOrWhiteSpace([string] $customDomain)) {
         $exception = [System.InvalidOperationException]::new('The reviewed Pages configuration uses a custom domain whose archive/replacement ownership handoff is owned by issue #96. No destination Pages mutation was performed.')
         throw [System.Management.Automation.ErrorRecord]::new($exception, 'PagesCustomDomainHandoffRequired', [System.Management.Automation.ErrorCategory]::NotImplemented, $customDomain)
     }
@@ -199,16 +181,12 @@ function Restore-CgrGitHubPagesConfiguration {
     $createBody = @{ build_type = $buildType }
     if ($buildType -eq 'legacy') {
         $source = Get-CgrObjectProperty -InputObject $pages -Name 'Source'
-        $createBody.source = @{
-            branch = Get-CgrObjectProperty -InputObject $source -Name 'Branch'
-            path = Get-CgrObjectProperty -InputObject $source -Name 'Path'
-        }
+        $createBody.source = @{ branch = Get-CgrObjectProperty -InputObject $source -Name 'Branch'; path = Get-CgrObjectProperty -InputObject $source -Name 'Path' }
     }
     elseif ($buildType -ne 'workflow') {
         $exception = [System.InvalidOperationException]::new("Reviewed Pages build type '$buildType' is unsupported for restoration.")
         throw [System.Management.Automation.ErrorRecord]::new($exception, 'ApprovedPagesBuildTypeUnsupported', [System.Management.Automation.ErrorCategory]::NotImplemented, $buildType)
     }
-
     Invoke-CgrGitHubApiMutation -Method POST -Path "/repos/$($DestinationRepository.FullName)/pages" -Body $createBody -HostName $HostName | Out-Null
 
     $updateBody = @{}
@@ -222,22 +200,10 @@ function Restore-CgrGitHubPagesConfiguration {
     $verifyDomain = -not [string]::IsNullOrWhiteSpace([string] $customDomain)
     $readBack = Assert-CgrDestinationPagesReadBack -DestinationRepository $DestinationRepository -Pages $pages -VerifyCustomDomain:$verifyDomain -HostName $HostName
     Enable-CgrPagesWorkflowActivationAfterRestore -DestinationRepository $DestinationRepository -HostName $HostName
-
     return [pscustomobject] @{
-        PSTypeName = 'CopyGitHubRepo.PagesRestoreResult'
-        Repository = $DestinationRepository.FullName
-        Status = 'Restored'
-        Configured = $true
-        BuildType = $buildType
-        Source = Get-CgrObjectProperty -InputObject $pages -Name 'Source'
-        CustomDomain = $customDomain
-        HttpsEnforced = $httpsEnforced
-        Restored = $true
-        Verified = $true
-        GuardReleased = $true
-        CustomDomainStatus = if ($verifyDomain) { 'Restored' } else { 'NotConfigured' }
-        ReadBack = $readBack
-        IsSuccessful = $true
-        IsComplete = $true
+        PSTypeName = 'CopyGitHubRepo.PagesRestoreResult'; Repository = $DestinationRepository.FullName
+        Status = 'Restored'; Configured = $true; BuildType = $buildType; Source = Get-CgrObjectProperty -InputObject $pages -Name 'Source'
+        CustomDomain = $customDomain; HttpsEnforced = $httpsEnforced; Restored = $true; Verified = $true; GuardReleased = $true
+        CustomDomainStatus = if ($verifyDomain) { 'Restored' } else { 'NotConfigured' }; ReadBack = $readBack; IsSuccessful = $true; IsComplete = $true
     }
 }

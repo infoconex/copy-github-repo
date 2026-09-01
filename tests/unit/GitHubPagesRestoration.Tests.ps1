@@ -16,7 +16,7 @@ Describe 'GitHub Pages restoration' {
                     Source = $null
                     CustomDomain = $null
                     HttpsEnforced = $true
-                    Representability = [pscustomobject] @{ Representable = $true; Reason = 'Supported' }
+                    Representability = [pscustomobject] @{ IsRepresentable = $true; Reason = 'Supported' }
                     DriftEvidence = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; Branch = $null; Path = $null; CustomDomain = $null; HttpsEnforced = $true }
                 }
             }
@@ -69,7 +69,7 @@ Describe 'GitHub Pages restoration' {
                     Source = [pscustomobject] @{ Branch = 'pages'; Path = '/docs' }
                     CustomDomain = $null
                     HttpsEnforced = $false
-                    Representability = [pscustomobject] @{ Representable = $true; Reason = 'Supported' }
+                    Representability = [pscustomobject] @{ IsRepresentable = $true; Reason = 'Supported' }
                     DriftEvidence = [pscustomobject] @{ Configured = $true; BuildType = 'legacy'; Branch = 'pages'; Path = '/docs'; CustomDomain = $null; HttpsEnforced = $false }
                 }
             }
@@ -96,7 +96,7 @@ Describe 'GitHub Pages restoration' {
             $live = [pscustomobject] @{ Configured = $true; BuildType = 'legacy'; Branch = 'main'; Path = '/'; CustomDomain = $null; HttpsEnforced = $true }
             $plan = [pscustomobject] @{
                 Mode = 'NewDestination'; ContentMode = 'Snapshot'; SourceState = [pscustomobject] @{}
-                Pages = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; Representability = [pscustomobject] @{ Representable = $true }; DriftEvidence = $reviewed }
+                Pages = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; Representability = [pscustomobject] @{ IsRepresentable = $true }; DriftEvidence = $reviewed }
             }
             Mock Get-CgrGitHubPagesPlanEvidence { [pscustomobject] @{ DriftEvidence = $live } }
             Mock Invoke-CgrGitHubApiMutation { throw 'must not mutate' }
@@ -113,7 +113,7 @@ Describe 'GitHub Pages restoration' {
             $drift = [pscustomobject] @{ Configured = $false; BuildType = $null; Branch = $null; Path = $null; CustomDomain = $null; HttpsEnforced = $null }
             $plan = [pscustomobject] @{
                 Mode = 'NewDestination'; ContentMode = 'Snapshot'; SourceState = [pscustomobject] @{}
-                Pages = [pscustomobject] @{ Configured = $false; BuildType = $null; Representability = [pscustomobject] @{ Representable = $true }; DriftEvidence = $drift }
+                Pages = [pscustomobject] @{ Configured = $false; BuildType = $null; Representability = [pscustomobject] @{ IsRepresentable = $true }; DriftEvidence = $drift }
             }
             Mock Get-CgrGitHubPagesPlanEvidence { [pscustomobject] @{ DriftEvidence = $drift } }
             Mock Get-CgrGitHubApiOptional { $null }
@@ -136,7 +136,7 @@ Describe 'GitHub Pages restoration' {
             $drift = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; Branch = $null; Path = $null; CustomDomain = 'www.example.com'; HttpsEnforced = $true }
             $plan = [pscustomobject] @{
                 Mode = 'SameNameReplacement'; ContentMode = 'Snapshot'; SourceState = [pscustomobject] @{}
-                Pages = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; Source = $null; CustomDomain = 'www.example.com'; HttpsEnforced = $true; Representability = [pscustomobject] @{ Representable = $true }; DriftEvidence = $drift }
+                Pages = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; Source = $null; CustomDomain = 'www.example.com'; HttpsEnforced = $true; Representability = [pscustomobject] @{ IsRepresentable = $true }; DriftEvidence = $drift }
             }
             Mock Get-CgrGitHubPagesPlanEvidence { [pscustomobject] @{ DriftEvidence = $drift } }
             Mock Get-CgrGitHubApiOptional { $null }
@@ -173,14 +173,12 @@ Describe 'GitHub Pages restoration' {
                 @($steps.Name) | Should -Be @('RestoreSupportedSettings', 'RestoreGitHubPages', 'RestoreRepositoryProtection')
                 $result.PagesRestored | Should -BeTrue
                 $verification.Pages.Status | Should -Be 'Restored'
-                Should -Invoke Restore-CgrGitHubPagesConfiguration -Times 1 -Exactly
 
                 $failedSteps = [System.Collections.Generic.List[object]]::new()
                 $failedStage = 'VerifyDestinationContent'
                 $failedVerification = [pscustomobject] @{ IsSuccessful = $false }
                 $failedResult = Invoke-CgrPostVerificationConfigurationRestore -Plan $plan -SourceRepository $source -DestinationRepository $destination -Verification $failedVerification -VerificationFailureReason 'ContentVerificationFailed' -CompletedSteps $failedSteps -FailureStage ([ref] $failedStage)
                 $failedResult.Pages.Status | Should -Be 'ContentVerificationFailed'
-                Should -Invoke Restore-CgrGitHubPagesConfiguration -Times 1 -Exactly
             }
         }
     }

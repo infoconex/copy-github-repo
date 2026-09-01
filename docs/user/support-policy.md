@@ -19,7 +19,7 @@ Version `0.1.0` is the initial stable release. The latest published stable modul
 | Long-term-support branches | None currently defined |
 | Security fixes | Applied to the currently supported stable version; older versions may require upgrading to receive a fix |
 | Prerelease/unreleased builds | Development and release-candidate evaluation only; not a separately supported production line |
-| GitHub host | GitHub.com only for the current `0.2.x` release line |
+| GitHub host | GitHub.com only for the current `0.3.x` release line |
 | PowerShell | PowerShell 7.4+ / Core edition |
 | Operating systems | Windows, Ubuntu/Linux, and macOS families represented by the cross-platform release Quality Gate; exact historical OS versions are not separately guaranteed |
 
@@ -80,7 +80,7 @@ A platform family may be removed from support only through an announced compatib
 
 ## GitHub host compatibility
 
-The current `0.2.x` release line supports **GitHub.com only**. GitHub Enterprise Server and other hosts are unsupported/deferred and fail closed through the public host guard.
+The current `0.3.x` release line supports **GitHub.com only**. GitHub Enterprise Server and other hosts are unsupported/deferred and fail closed through the public host guard.
 
 The detailed host contract is in [GitHub host support](host-support.md). Adding another host is a product capability change that requires explicit design, verification, and documentation; it is not inferred from the presence of the `-HostName` parameter.
 

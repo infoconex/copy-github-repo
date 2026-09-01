@@ -102,7 +102,7 @@ function Restore-CgrGitHubPagesConfiguration {
                 DnsMutationAttempted = $false
                 AutomaticRollbackAttempted = $false
             }
-            if ($CompletedSteps) {
+            if ($null -ne $CompletedSteps) {
                 $CompletedSteps.Add([pscustomobject] @{
                         Order = $CompletedSteps.Count + 1
                         Name = 'ValidatePagesCustomDomainHandoff'
@@ -115,7 +115,7 @@ function Restore-CgrGitHubPagesConfiguration {
             if ($archiveReleaseRequired) {
                 if ($FailureStage) { $FailureStage.Value = 'ReleaseArchivedPagesCustomDomain' }
                 $releaseStep = [pscustomobject] @{
-                    Order = if ($CompletedSteps) { $CompletedSteps.Count + 1 } else { 0 }
+                    Order = if ($null -ne $CompletedSteps) { $CompletedSteps.Count + 1 } else { 0 }
                     Name = 'ReleaseArchivedPagesCustomDomain'
                     MutatedGitHub = $true
                     Verified = $false
@@ -125,7 +125,7 @@ function Restore-CgrGitHubPagesConfiguration {
                     Attempted = $true
                     Succeeded = $false
                 }
-                if ($CompletedSteps) { $CompletedSteps.Add($releaseStep) }
+                if ($null -ne $CompletedSteps) { $CompletedSteps.Add($releaseStep) }
                 $handoff.ArchiveReleaseAttempted = $true
                 Invoke-CgrGitHubApiMutation -Method PUT -Path "/repos/$($archive.FullName)/pages" -Body @{ cname = $null } -HostName $HostName | Out-Null
                 $archiveReadBack = Get-CgrGitHubApiOptional -Path "repos/$($archive.FullName)/pages" -HostName $HostName
@@ -153,7 +153,7 @@ function Restore-CgrGitHubPagesConfiguration {
                 if ($FailureStage) { $FailureStage.Value = 'ClaimReplacementPagesCustomDomain' }
                 $handoff.ReplacementClaimAttempted = $true
                 $claimStep = [pscustomobject] @{
-                    Order = if ($CompletedSteps) { $CompletedSteps.Count + 1 } else { 0 }
+                    Order = if ($null -ne $CompletedSteps) { $CompletedSteps.Count + 1 } else { 0 }
                     Name = 'ClaimReplacementPagesCustomDomain'
                     MutatedGitHub = $true
                     Verified = $false
@@ -163,7 +163,7 @@ function Restore-CgrGitHubPagesConfiguration {
                     Succeeded = $false
                     AutomaticRollbackAttempted = $false
                 }
-                if ($CompletedSteps) { $CompletedSteps.Add($claimStep) }
+                if ($null -ne $CompletedSteps) { $CompletedSteps.Add($claimStep) }
             }
             Invoke-CgrGitHubApiMutation -Method PUT -Path "/repos/$($DestinationRepository.FullName)/pages" -Body $updateBody -HostName $HostName | Out-Null
             if ($handoffRequired) {

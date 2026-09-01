@@ -192,7 +192,7 @@ Describe 'GitHub Pages migration-plan integration' {
 
             $plan = New-CgrMigrationPlan -SourceRepository $script:sourceRepository -DestinationRepository acme/destination -ContentMode Snapshot -DestinationVisibility private -CommitMessage 'Initial repository commit' -RestorePages -SkipSettings -PlanOnly
 
-            $plan.Pages | Should -BeSame $pagesEvidence
+            [object]::ReferenceEquals($plan.Pages, $pagesEvidence) | Should -BeTrue
             Should -Invoke Get-CgrGitHubPagesPlanEvidence -Times 1 -Exactly -ParameterFilter {
                 $Repository -eq $script:sourceRepository -and
                 $ContentMode -eq 'Snapshot' -and

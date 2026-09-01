@@ -131,20 +131,185 @@ Describe 'GitHub Pages restoration' {
         }
     }
 
-    It 'keeps replacement custom-domain ownership handoff out of ordinary Pages restoration' {
+    It 'safely hands off the exact reviewed domain for same-name Snapshot and FullHistory replacements' {
+        InModuleScope CopyGitHubRepo {
+            foreach ($contentMode in @('Snapshot', 'FullHistory')) {
+                $drift = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; Branch = $null; Path = $null; CustomDomain = 'www.example.com'; HttpsEnforced = $true }
+                $plan = [pscustomobject] @{
+                    Mode = 'SameNameReplacement'; ContentMode = $contentMode; ArchiveRepository = 'acme/source-archive'
+                    SourceState = [pscustomobject] @{ RepositoryId = 10 }
+                    Pages = [pscustomobject] @{
+                        Configured = $true; BuildType = 'workflow'; Source = $null; CustomDomain = 'www.example.com'; HttpsEnforced = $true
+                        Representability = [pscustomobject] @{ IsRepresentable = $true }; DriftEvidence = $drift
+                        ExternalReadiness = [pscustomobject] @{ DomainVerification = 'verified'; Certificate = 'approved'; Dns = 'ExternalNotQueried' }
+                    }
+                }
+                $source = [pscustomobject] @{ FullName = 'acme/source-archive' }
+                $destination = [pscustomobject] @{ FullName = 'acme/source'; Id = 20 }
+                $steps = [System.Collections.Generic.List[object]]::new()
+                $failureStage = 'RestoreGitHubPages'
+                $script:released = $false
+                $script:created = $false
+                $script:claimed = $false
+                $script:events = [System.Collections.Generic.List[string]]::new()
+
+                Mock Get-CgrGitHubPagesPlanEvidence { [pscustomobject] @{ DriftEvidence = $drift } }
+                Mock Get-CgrRepository {
+                    if ($Repository -eq 'acme/source-archive') { return [pscustomobject] @{ FullName = 'acme/source-archive'; Id = 10 } }
+                    if ($Repository -eq 'acme/source') { return [pscustomobject] @{ FullName = 'acme/source'; Id = 20 } }
+                    throw "Unexpected repository: $Repository"
+                }
+                Mock Get-CgrGitHubApiOptional {
+                    if ($Path -eq 'repos/acme/source/pages') {
+                        if (-not $script:created) { return $null }
+                        return [pscustomobject] @{ build_type = 'workflow'; source = $null; cname = $(if ($script:claimed) { 'www.example.com' } else { $null }); https_enforced = $true }
+                    }
+                    if ($Path -eq 'repos/acme/source-archive/pages') {
+                        return [pscustomobject] @{ build_type = 'workflow'; cname = $(if ($script:released) { $null } else { 'www.example.com' }); https_enforced = $true }
+                    }
+                    throw "Unexpected optional read: $Path"
+                }
+                Mock Invoke-CgrGitHubApiMutation {
+                    if ($Path -eq '/repos/acme/source-archive/pages' -and $Method -eq 'PUT') {
+                        $Body.ContainsKey('cname') | Should -BeTrue
+                        $Body.cname | Should -BeNullOrEmpty
+                        $script:released = $true; $script:events.Add('ReleaseArchive'); return
+                    }
+                    if ($Path -eq '/repos/acme/source/pages' -and $Method -eq 'POST') { $script:created = $true; $script:events.Add('CreatePages'); return }
+                    if ($Path -eq '/repos/acme/source/pages' -and $Method -eq 'PUT') {
+                        $Body.cname | Should -BeExactly 'www.example.com'
+                        $script:claimed = $true; $script:events.Add('ClaimReplacement'); return
+                    }
+                    if ($Path -eq '/repos/acme/source/actions/permissions') { $script:events.Add('ReleaseGuard'); return }
+                    throw "Unexpected mutation: $Method $Path"
+                }
+                Mock Get-CgrGitHubApi { [pscustomobject] @{ enabled = $true } }
+
+                $result = Restore-CgrGitHubPagesConfiguration -Plan $plan -SourceRepository $source -DestinationRepository $destination -CompletedSteps $steps -FailureStage ([ref] $failureStage)
+
+                $result.CustomDomainStatus | Should -Be 'HandedOff'
+                $result.CustomDomain | Should -BeExactly 'www.example.com'
+                $result.CustomDomainHandoff.ArchiveReleaseSucceeded | Should -BeTrue
+                $result.CustomDomainHandoff.ReplacementClaimSucceeded | Should -BeTrue
+                $result.CustomDomainHandoff.ReplacementReadBackSucceeded | Should -BeTrue
+                $result.CustomDomainHandoff.AutomaticRollbackAttempted | Should -BeFalse
+                $result.DnsMigrated | Should -BeFalse
+                $result.ExternalReadiness.Dns | Should -Be 'ExternalNotQueried'
+                ($script:events -join ',') | Should -Be 'ReleaseArchive,CreatePages,ClaimReplacement,ReleaseGuard'
+                @($steps | ForEach-Object { $_.Name }) | Should -Contain 'ReleaseArchivedPagesCustomDomain'
+                @($steps | ForEach-Object { $_.Name }) | Should -Contain 'ClaimReplacementPagesCustomDomain'
+            }
+        }
+    }
+
+    It 'fails before archive release when same-name archive ownership no longer matches the reviewed domain' {
         InModuleScope CopyGitHubRepo {
             $drift = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; Branch = $null; Path = $null; CustomDomain = 'www.example.com'; HttpsEnforced = $true }
             $plan = [pscustomobject] @{
-                Mode = 'SameNameReplacement'; ContentMode = 'Snapshot'; SourceState = [pscustomobject] @{}
-                Pages = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; Source = $null; CustomDomain = 'www.example.com'; HttpsEnforced = $true; Representability = [pscustomobject] @{ IsRepresentable = $true }; DriftEvidence = $drift }
+                Mode = 'SameNameReplacement'; ContentMode = 'Snapshot'; ArchiveRepository = 'acme/source-archive'
+                SourceState = [pscustomobject] @{ RepositoryId = 10 }
+                Pages = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; CustomDomain = 'www.example.com'; HttpsEnforced = $true; Representability = [pscustomobject] @{ IsRepresentable = $true }; DriftEvidence = $drift }
             }
             Mock Get-CgrGitHubPagesPlanEvidence { [pscustomobject] @{ DriftEvidence = $drift } }
-            Mock Get-CgrGitHubApiOptional { $null }
+            Mock Get-CgrRepository {
+                if ($Repository -eq 'acme/source-archive') { [pscustomobject] @{ FullName = 'acme/source-archive'; Id = 10 } }
+                else { [pscustomobject] @{ FullName = 'acme/source'; Id = 20 } }
+            }
+            Mock Get-CgrGitHubApiOptional {
+                if ($Path -eq 'repos/acme/source/pages') { return $null }
+                if ($Path -eq 'repos/acme/source-archive/pages') { return [pscustomobject] @{ cname = 'other.example.com' } }
+            }
             Mock Invoke-CgrGitHubApiMutation { throw 'must not mutate' }
 
-            { Restore-CgrGitHubPagesConfiguration -Plan $plan -SourceRepository ([pscustomobject] @{ FullName = 'acme/source-archive' }) -DestinationRepository ([pscustomobject] @{ FullName = 'acme/source' }) } |
-                Should -Throw -ErrorId 'PagesCustomDomainHandoffRequired'
+            { Restore-CgrGitHubPagesConfiguration -Plan $plan -SourceRepository ([pscustomobject] @{ FullName = 'acme/source-archive' }) -DestinationRepository ([pscustomobject] @{ FullName = 'acme/source'; Id = 20 }) } |
+                Should -Throw -ErrorId 'PagesCustomDomainArchiveBindingMismatch'
             Should -Invoke Invoke-CgrGitHubApiMutation -Times 0
+        }
+    }
+
+    It 'records a durable partial-handoff state and does not roll back when replacement claim fails after archive release' {
+        InModuleScope CopyGitHubRepo {
+            $drift = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; Branch = $null; Path = $null; CustomDomain = 'www.example.com'; HttpsEnforced = $true }
+            $plan = [pscustomobject] @{
+                Mode = 'SameNameReplacement'; ContentMode = 'Snapshot'; ArchiveRepository = 'acme/source-archive'
+                SourceState = [pscustomobject] @{ RepositoryId = 10 }
+                Pages = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; CustomDomain = 'www.example.com'; HttpsEnforced = $true; Representability = [pscustomobject] @{ IsRepresentable = $true }; DriftEvidence = $drift; ExternalReadiness = [pscustomobject] @{ Dns = 'ExternalNotQueried' } }
+            }
+            $steps = [System.Collections.Generic.List[object]]::new()
+            $failureStage = 'RestoreGitHubPages'
+            $script:released = $false
+            Mock Get-CgrGitHubPagesPlanEvidence { [pscustomobject] @{ DriftEvidence = $drift } }
+            Mock Get-CgrRepository {
+                if ($Repository -eq 'acme/source-archive') { [pscustomobject] @{ FullName = 'acme/source-archive'; Id = 10 } }
+                else { [pscustomobject] @{ FullName = 'acme/source'; Id = 20 } }
+            }
+            Mock Get-CgrGitHubApiOptional {
+                if ($Path -eq 'repos/acme/source/pages') { return $null }
+                if ($Path -eq 'repos/acme/source-archive/pages') { return [pscustomobject] @{ cname = $(if ($script:released) { $null } else { 'www.example.com' }) } }
+            }
+            Mock Invoke-CgrGitHubApiMutation {
+                if ($Path -eq '/repos/acme/source-archive/pages') { $script:released = $true; return }
+                if ($Path -eq '/repos/acme/source/pages' -and $Method -eq 'POST') { return }
+                if ($Path -eq '/repos/acme/source/pages' -and $Method -eq 'PUT') { throw 'simulated ownership conflict after release' }
+                throw "Unexpected mutation: $Method $Path"
+            }
+            Mock Get-CgrGitHubApi { throw 'guard must remain active' }
+
+            { Restore-CgrGitHubPagesConfiguration -Plan $plan -SourceRepository ([pscustomobject] @{ FullName = 'acme/source-archive' }) -DestinationRepository ([pscustomobject] @{ FullName = 'acme/source'; Id = 20 }) -CompletedSteps $steps -FailureStage ([ref] $failureStage) } |
+                Should -Throw '*simulated ownership conflict after release*'
+
+            $failureStage | Should -Be 'ClaimReplacementPagesCustomDomain'
+            $releaseStep = $steps | Where-Object Name -eq 'ReleaseArchivedPagesCustomDomain' | Select-Object -Last 1
+            $claimStep = $steps | Where-Object Name -eq 'ClaimReplacementPagesCustomDomain' | Select-Object -Last 1
+            $releaseStep | Should -Not -BeNullOrEmpty
+            $claimStep | Should -Not -BeNullOrEmpty
+            $releaseStep.Succeeded | Should -BeTrue
+            $releaseStep.Verified | Should -BeTrue
+            $claimStep.Attempted | Should -BeTrue
+            $claimStep.Succeeded | Should -BeFalse
+            $claimStep.AutomaticRollbackAttempted | Should -BeFalse
+            Should -Invoke Invoke-CgrGitHubApiMutation -Times 0 -ParameterFilter { $Path -eq '/repos/acme/source/actions/permissions' }
+        }
+    }
+
+    It 'preserves an unrelated archived destination domain while claiming only reviewed source evidence in delegated replacement modes' {
+        InModuleScope CopyGitHubRepo {
+            foreach ($contentMode in @('Snapshot', 'FullHistory')) {
+                $drift = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; Branch = $null; Path = $null; CustomDomain = 'source.example.com'; HttpsEnforced = $false }
+                $plan = [pscustomobject] @{
+                    Mode = 'ExistingDestinationReplacement'; ContentMode = $contentMode; ArchiveRepository = 'acme/destination-archive'
+                    SourceState = [pscustomobject] @{}
+                    Pages = [pscustomobject] @{ Configured = $true; BuildType = 'workflow'; CustomDomain = 'source.example.com'; HttpsEnforced = $false; Representability = [pscustomobject] @{ IsRepresentable = $true }; DriftEvidence = $drift; ExternalReadiness = [pscustomobject] @{ Dns = 'ExternalNotQueried' } }
+                }
+                $script:created = $false
+                $script:claimed = $false
+                Mock Get-CgrGitHubPagesPlanEvidence { [pscustomobject] @{ DriftEvidence = $drift } }
+                Mock Get-CgrRepository {
+                    if ($Repository -eq 'acme/destination-archive') { [pscustomobject] @{ FullName = 'acme/destination-archive'; Id = 30 } }
+                    else { [pscustomobject] @{ FullName = 'acme/destination'; Id = 40 } }
+                }
+                Mock Get-CgrGitHubApiOptional {
+                    if ($Path -eq 'repos/acme/destination/pages') {
+                        if (-not $script:created) { return $null }
+                        return [pscustomobject] @{ build_type = 'workflow'; cname = $(if ($script:claimed) { 'source.example.com' } else { $null }); https_enforced = $false }
+                    }
+                    if ($Path -eq 'repos/acme/destination-archive/pages') { return [pscustomobject] @{ cname = 'destination.example.com' } }
+                }
+                Mock Invoke-CgrGitHubApiMutation {
+                    if ($Path -eq '/repos/acme/destination-archive/pages') { throw 'must not release unrelated archived domain' }
+                    if ($Path -eq '/repos/acme/destination/pages' -and $Method -eq 'POST') { $script:created = $true; return }
+                    if ($Path -eq '/repos/acme/destination/pages' -and $Method -eq 'PUT') { $Body.cname | Should -BeExactly 'source.example.com'; $script:claimed = $true; return }
+                    if ($Path -eq '/repos/acme/destination/actions/permissions') { return }
+                }
+                Mock Get-CgrGitHubApi { [pscustomobject] @{ enabled = $true } }
+
+                $result = Restore-CgrGitHubPagesConfiguration -Plan $plan -SourceRepository ([pscustomobject] @{ FullName = 'acme/source' }) -DestinationRepository ([pscustomobject] @{ FullName = 'acme/destination'; Id = 40 })
+
+                $result.CustomDomainStatus | Should -Be 'HandedOff'
+                $result.CustomDomainHandoff.ArchiveReleaseRequired | Should -BeFalse
+                $result.CustomDomainHandoff.ArchiveObservedCustomDomain | Should -BeExactly 'destination.example.com'
+                Should -Invoke Invoke-CgrGitHubApiMutation -Times 0 -ParameterFilter { $Path -eq '/repos/acme/destination-archive/pages' }
+            }
         }
     }
 

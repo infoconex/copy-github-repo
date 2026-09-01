@@ -154,6 +154,8 @@ function Invoke-CgrPostVerificationConfigurationRestore {
                 -Plan $Plan `
                 -SourceRepository $pagesSourceRepository `
                 -DestinationRepository $destinationRepositoryForRestore `
+                -CompletedSteps $CompletedSteps `
+                -FailureStage $FailureStage `
                 -HostName $hostNameForRestore
         }
         $Verification | Add-Member -NotePropertyName Pages -NotePropertyValue $pages -Force

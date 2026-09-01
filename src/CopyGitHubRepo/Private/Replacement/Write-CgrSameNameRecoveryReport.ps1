@@ -65,6 +65,13 @@ function Write-CgrSameNameRecoveryReport {
     }
     $lastCompletedStep = @($CompletedSteps | Sort-Object Order | Select-Object -Last 1)
     if ($lastCompletedStep.Count -eq 0) { $lastCompletedStep = $null } else { $lastCompletedStep = $lastCompletedStep[0] }
+    $customDomainHandoff = if ($ErrorRecord.TargetObject -and -not [string]::IsNullOrWhiteSpace([string] (Get-CgrObjectProperty -InputObject $ErrorRecord.TargetObject -Name 'ReviewedCustomDomain'))) {
+        $ErrorRecord.TargetObject
+    }
+    else {
+        $handoffStep = @($CompletedSteps | Where-Object { $_.PSObject.Properties['CustomDomainHandoff'] } | Select-Object -Last 1)
+        if ($handoffStep.Count -gt 0) { $handoffStep[0].CustomDomainHandoff } else { $null }
+    }
 
     $provenance = if ($Plan.ContentMode -eq 'Snapshot') {
         [pscustomobject] @{
@@ -80,6 +87,7 @@ function Write-CgrSameNameRecoveryReport {
             DestinationRootCommitSha = $DestinationRootCommitSha
             DestinationTreeSha = $DestinationTreeSha
             ReleasePreservation = $ReleasePreservation
+            CustomDomainHandoff = $customDomainHandoff
         }
     }
     else {
@@ -110,6 +118,7 @@ function Write-CgrSameNameRecoveryReport {
         SourceFullHistoryRefCount = $SourceFullHistoryRefCount
         SourceReachableCommitCount = $SourceReachableCommitCount
         Provenance = $provenance
+        CustomDomainHandoff = $customDomainHandoff
         FailureStage = $FailureStage
         LastCompletedStep = $lastCompletedStep
         ErrorId = $ErrorRecord.FullyQualifiedErrorId
@@ -124,6 +133,7 @@ function Write-CgrSameNameRecoveryReport {
             RecommendedActions = @(
                 'Do not delete or rename the archive until the failure is understood.'
                 'Inspect the archive and replacement repositories named in this report before taking corrective action.'
+                'If custom-domain handoff began, inspect CustomDomainHandoff before attempting any manual ownership change.'
                 'If the replacement exists, run Test-GitHubRepositoryMigration with the recorded content mode before deciding whether another migration attempt is necessary.'
                 'Do not rely on the original repository URL to reach the archive after the replacement name is reused.'
                 'Perform any rollback, rename, or deletion manually only after verifying the current repository state.'

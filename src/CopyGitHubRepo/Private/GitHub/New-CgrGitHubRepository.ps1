@@ -43,7 +43,18 @@ function New-CgrGitHubRepository {
         $PSCmdlet.ThrowTerminatingError($errorRecord)
     }
 
-    $createdRepository = Get-CgrRepository -Repository $normalizedRepository -HostName $HostName
+    try {
+        $createdRepository = Get-CgrRepository -Repository $normalizedRepository -HostName $HostName
+        $guardRequested = Get-Variable -Name CgrPagesWorkflowActivationGuardRequested -Scope Script -ErrorAction SilentlyContinue
+        if ($guardRequested -and [bool] $guardRequested.Value) {
+            Set-CgrPagesWorkflowActivationGuard -Repository $normalizedRepository -Guarded $true -HostName $HostName | Out-Null
+        }
+    }
+    catch {
+        Send-CgrActivityEvent -Name 'CreateRepository' -State Failed -Message "Create repository '$normalizedRepository'"
+        throw
+    }
+
     Send-CgrActivityEvent -Name 'CreateRepository' -State Completed -Message "Create repository '$normalizedRepository'"
     return $createdRepository
 }

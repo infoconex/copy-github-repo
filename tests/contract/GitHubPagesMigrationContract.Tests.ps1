@@ -1,5 +1,5 @@
 BeforeAll {
-    $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+    $repoRoot = Split-Path -Parent $PSScriptRoot
     $contractPath = Join-Path $repoRoot 'docs/product/github-pages-migration-contract.md'
     $script:contract = Get-Content -LiteralPath $contractPath -Raw
 }
@@ -55,7 +55,7 @@ Describe 'GitHub Pages migration product contract' {
         $script:contract | Should -Match 'implicit-activation risk, not successful Pages migration'
     }
 
-    It 'keeps issue 93 contract-only and retains the existing public switch' {
+    It 'keeps contract-only scope and retains the existing public switch' {
         $script:contract | Should -Match 'does not implement Pages restoration'
         $script:contract | Should -Match 'existing `-RestorePages` switch remains intentional and opt-in'
         $script:contract | Should -Match 'does not implement Pages restoration, general GitHub Actions restoration, external DNS changes'

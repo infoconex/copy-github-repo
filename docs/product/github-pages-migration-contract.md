@@ -9,7 +9,7 @@ description: "Normative contract and architecture for GitHub Pages migration, im
 
 This document is the authoritative 0.4.0 product contract and architecture for GitHub Pages migration. Later Pages planning, execution, verification, recovery, wizard, E2E, and user-documentation work must consume this definition rather than redefine it.
 
-Issue #93 is contract/investigation only. It does not implement Pages restoration. The existing `-RestorePages` switch remains intentional and opt-in; mutating execution continues to reject it until the later implementation issues provide the behavior defined here.
+This contract/investigation change does not implement Pages restoration. The existing `-RestorePages` switch remains intentional and opt-in; mutating execution continues to reject it until the later implementation work provides the behavior defined here.
 
 ## Core distinction: Git content is not GitHub Pages state
 

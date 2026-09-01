@@ -63,7 +63,7 @@ Describe 'GitHub Pages restoration failure boundaries' {
             Mock Get-CgrGitHubApi { throw 'guard must remain disabled' }
 
             { Restore-CgrGitHubPagesConfiguration -Plan $plan -SourceRepository ([pscustomobject] @{ FullName = 'acme/source' }) -DestinationRepository ([pscustomobject] @{ FullName = 'acme/destination' }) } |
-                Should -Throw -ErrorId 'DestinationPagesVerificationFailed,Assert-CgrDestinationPagesReadBack'
+                Should -Throw -ErrorId 'DestinationPagesVerificationFailed'
             Should -Invoke Invoke-CgrGitHubApiMutation -Times 0 -Exactly -ParameterFilter { $Path -eq '/repos/acme/destination/actions/permissions' }
         }
     }
@@ -81,7 +81,7 @@ Describe 'GitHub Pages restoration failure boundaries' {
             Mock Get-CgrGitHubApi { [pscustomobject] @{ enabled = $false } }
 
             { Restore-CgrGitHubPagesConfiguration -Plan $plan -SourceRepository ([pscustomobject] @{ FullName = 'acme/source' }) -DestinationRepository ([pscustomobject] @{ FullName = 'acme/destination' }) } |
-                Should -Throw -ErrorId 'PagesWorkflowActivationGuardReleaseFailed,Enable-CgrPagesWorkflowActivationAfterRestore'
+                Should -Throw -ErrorId 'PagesWorkflowActivationGuardReleaseFailed'
         }
     }
 

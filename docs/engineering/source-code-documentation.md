@@ -29,8 +29,11 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | Function | Responsibility |
 | --- | --- |
 | `Assert-CgrApprovedSourceState` | Fails closed when current source identity or Git state no longer matches the reviewed plan evidence. |
+| `Assert-CgrDestinationPagesReadBack` | Independently reads destination Pages after mutation and fails closed when the reviewed build mode, exact legacy source, custom domain, or HTTPS intent disagrees. |
+| `Assert-CgrDestinationPagesSource` | Validates that the exact reviewed legacy Pages branch/path exists at the destination before mutation and refuses substitute branches or paths. |
 | `Assert-CgrExistingDestinationReplacementConfirmation` | Enforces exact confirmation before an existing destination is archived and replaced. |
 | `Assert-CgrFullHistoryWorkspaceState` | Verifies a local FullHistory workspace against immutable approved refs and commit evidence. |
+| `Assert-CgrGitHubPagesPlanEvidence` | Requires immutable reviewed `Plan.Pages` evidence and revalidates only its drift-driving source state immediately before destination Pages mutation. |
 | `Assert-CgrLocalResourcePreflight` | Checks current free space on the temporary-storage volume against the observed planning-workspace lower bound before GitHub mutation; insufficient known capacity fails closed while uncertain/headroom cases remain advisory. |
 | `Assert-CgrReplacementRepositoryIdentity` | Verifies archive identity is preserved and the fresh replacement has a distinct repository identity. |
 | `Assert-CgrSameNameReplacementConfirmation` | Enforces exact confirmation for the highest-risk same-name publication path. |
@@ -42,6 +45,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Copy-CgrGitLfsObject` | Transfers Snapshot Git LFS content while preserving explicit failure evidence. |
 | `Copy-CgrRepositoryFullHistory` | **Inline tier.** Copies branches, tags, reachable commits, and Git LFS objects after approved-state validation. |
 | `Copy-CgrRepositorySnapshot` | **Inline tier.** Publishes an approved branch tree as one unrelated root commit and verifies the pushed ref. |
+| `Enable-CgrPagesWorkflowActivationAfterRestore` | Releases the temporary Pages-specific activation guard only after reviewed Pages or no-Pages verification succeeds, then verifies Actions is enabled. |
 | `Format-CgrConsoleStatus` | Produces accessible textual status presentation independent of migration behavior. |
 | `Format-CgrMigrationExecutionResult` | Converts structured execution evidence into the human-readable execution report. |
 | `Format-CgrMigrationPlan` | Converts an immutable migration plan into its reviewable console representation. |
@@ -75,7 +79,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Invoke-CgrNativeCommand` | Captures native-process stdout, stderr, and exit status without leaking stream implementation details. |
 | `Invoke-CgrNewDestinationFullHistory` | **Inline tier.** Orchestrates FullHistory copy, verification, optional approved-release restoration, settings/protection restoration, and recovery reporting for a new destination. |
 | `Invoke-CgrNewDestinationSnapshot` | **Inline tier.** Orchestrates Snapshot publication, verification, settings/protection restoration, and recovery reporting for a new destination. |
-| `Invoke-CgrPostVerificationConfigurationRestore` | Centralizes post-verification supported-settings and planned-protection restoration, including `SkipSettings`, structured completeness results, and precise recovery-stage evidence. |
+| `Invoke-CgrPostVerificationConfigurationRestore` | Centralizes post-verification supported-settings, reviewed Pages restoration and activation-guard release, and planned-protection restoration, including `SkipSettings`, structured completeness results, and precise recovery-stage evidence. |
 | `Invoke-CgrRepositoryCopyWizard` | Implements the testable wizard state machine while keeping prompts separate from migration execution. |
 | `Invoke-CgrRepositoryFullHistoryVerification` | Compares live source and destination history when immutable approved evidence is not supplied. |
 | `Invoke-CgrRepositorySnapshotVerification` | Verifies destination tree/root-history semantics against approved Snapshot evidence. |
@@ -95,6 +99,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Resolve-CgrNativeCommand` | Resolves required native executables consistently across supported platforms. |
 | `Resolve-CgrWizardDestinationRepository` | Resolves wizard destination identity and replacement implications. |
 | `Resolve-CgrWizardNavigationInput` | Interprets navigation/help tokens without mixing them with business values. |
+| `Restore-CgrGitHubPagesConfiguration` | Restores supported GitHub-side Pages state from immutable reviewed plan evidence, verifies destination readback, keeps replacement custom-domain handoff separate, and coordinates activation-guard release. |
 | `Select-CgrWizardRepository` | Presents and resolves repository selection using the injectable wizard interaction contract. |
 | `Send-CgrActivityEvent` | Emits structured activity events only when an activity sink is active. |
 | `Set-CgrGitHubRepositorySetting` | Restores supported repository settings after content verification and reports unsupported state explicitly. |
@@ -102,6 +107,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `Show-CgrWizardHelp` | Displays contextual help and returns control to the originating prompt. |
 | `Test-CgrConsoleStylingAvailable` | Detects whether optional styling can be used without making color a correctness dependency. |
 | `Test-CgrExpectedWizardApplicationError` | Distinguishes expected application errors from unexpected implementation failures for user-facing presentation. |
+| `Test-CgrGitHubPagesDriftEvidenceMatch` | Compares only contract-relevant Pages drift fields between reviewed evidence and the immediate pre-mutation source read. |
 | `Test-CgrGitHubReleaseMigration` | Performs read-only current source-versus-destination verification for a selected FullHistory GitHub Release set, including tag commit identity, supported metadata/assets, and Latest designation when selected. |
 | `Test-CgrGitHubRepositoryExistence` | Checks repository existence while preserving the distinction between not-found and API failure. |
 | `Test-CgrInteractiveTerminal` | Detects whether interactive wizard operation is appropriate in the current host. |

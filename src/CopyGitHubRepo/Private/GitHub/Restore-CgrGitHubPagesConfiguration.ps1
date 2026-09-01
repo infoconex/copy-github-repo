@@ -11,12 +11,35 @@ function Restore-CgrGitHubPagesConfiguration {
     )
 
     $pages = Assert-CgrGitHubPagesPlanEvidence -Plan $Plan -SourceRepository $SourceRepository -HostName $HostName
-    $configured = [bool] (Get-CgrObjectProperty -InputObject $pages -Name 'Configured')
+    $reviewedConfiguration = [pscustomobject] @{
+        Configured = [bool] (Get-CgrObjectProperty -InputObject $pages -Name 'Configured')
+        BuildType = Get-CgrObjectProperty -InputObject $pages -Name 'BuildType'
+        Source = Get-CgrObjectProperty -InputObject $pages -Name 'Source'
+        CustomDomain = Get-CgrObjectProperty -InputObject $pages -Name 'CustomDomain'
+        HttpsEnforced = Get-CgrObjectProperty -InputObject $pages -Name 'HttpsEnforced'
+        Representability = Get-CgrObjectProperty -InputObject $pages -Name 'Representability'
+    }
+    $externalState = [pscustomobject] @{
+        Ownership = 'ExternalNotMigrated'
+        Readiness = Get-CgrObjectProperty -InputObject $pages -Name 'ExternalReadiness'
+        Migrated = $false
+    }
+    $configured = [bool] $reviewedConfiguration.Configured
     $existing = Get-CgrGitHubApiOptional -Path "repos/$($DestinationRepository.FullName)/pages" -HostName $HostName
     if (-not $configured) {
         if ($null -ne $existing) {
             $exception = [System.InvalidOperationException]::new("Destination '$($DestinationRepository.FullName)' unexpectedly has GitHub Pages configured even though the reviewed source did not. The destination was left unchanged.")
             throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesUnexpectedlyConfigured', [System.Management.Automation.ErrorCategory]::InvalidResult, $DestinationRepository.FullName)
+        }
+        if ($null -ne $CompletedSteps) {
+            $CompletedSteps.Add([pscustomobject] @{
+                    Order = $CompletedSteps.Count + 1
+                    Name = 'VerifyReviewedNoPagesState'
+                    MutatedGitHub = $false
+                    Verified = $true
+                    Succeeded = $true
+                    ReviewedConfiguration = $reviewedConfiguration
+                })
         }
         if ($FailureStage) { $FailureStage.Value = 'ReleasePagesActivationGuard' }
         Enable-CgrPagesWorkflowActivationAfterRestore -DestinationRepository $DestinationRepository -HostName $HostName
@@ -24,6 +47,15 @@ function Restore-CgrGitHubPagesConfiguration {
             PSTypeName = 'CopyGitHubRepo.PagesRestoreResult'; Repository = $DestinationRepository.FullName
             Status = 'ReviewedNotConfigured'; Configured = $false; Restored = $false; Verified = $true
             GuardReleased = $true; CustomDomainStatus = 'NotApplicable'; IsSuccessful = $true; IsComplete = $true
+            ReviewedConfiguration = $reviewedConfiguration
+            DestinationMutationAttempted = $false
+            DestinationCreationAttempted = $false
+            DestinationCreationSucceeded = $false
+            AppliedConfiguration = $null
+            LastSuccessfulPagesStage = 'ReleasePagesActivationGuard'
+            ExternalState = $externalState
+            DnsMutationAttempted = $false
+            AutomaticRollbackAttempted = $false
         }
     }
     if ($null -ne $existing) {
@@ -32,11 +64,11 @@ function Restore-CgrGitHubPagesConfiguration {
     }
 
     Assert-CgrDestinationPagesSource -DestinationRepository $DestinationRepository -Pages $pages -HostName $HostName
-    $customDomain = Get-CgrObjectProperty -InputObject $pages -Name 'CustomDomain'
-    $buildType = Get-CgrObjectProperty -InputObject $pages -Name 'BuildType'
+    $customDomain = $reviewedConfiguration.CustomDomain
+    $buildType = $reviewedConfiguration.BuildType
     $createBody = @{ build_type = $buildType }
     if ($buildType -eq 'legacy') {
-        $source = Get-CgrObjectProperty -InputObject $pages -Name 'Source'
+        $source = $reviewedConfiguration.Source
         $createBody.source = @{ branch = Get-CgrObjectProperty -InputObject $source -Name 'Branch'; path = Get-CgrObjectProperty -InputObject $source -Name 'Path' }
     }
     elseif ($buildType -ne 'workflow') {
@@ -48,6 +80,9 @@ function Restore-CgrGitHubPagesConfiguration {
     $replacementMode = $mode -in @('SameNameReplacement', 'ExistingDestinationReplacement')
     $handoffRequired = $replacementMode -and -not [string]::IsNullOrWhiteSpace([string] $customDomain)
     $handoff = $null
+    $createStep = $null
+    $configurationStep = $null
+    $claimStep = $null
 
     try {
         if ($handoffRequired) {
@@ -97,7 +132,7 @@ function Restore-CgrGitHubPagesConfiguration {
                 ReplacementClaimAttempted = $false
                 ReplacementClaimSucceeded = $false
                 ReplacementReadBackSucceeded = $false
-                HttpsIntent = Get-CgrObjectProperty -InputObject $pages -Name 'HttpsEnforced'
+                HttpsIntent = $reviewedConfiguration.HttpsEnforced
                 ExternalReadiness = Get-CgrObjectProperty -InputObject $pages -Name 'ExternalReadiness'
                 DnsMutationAttempted = $false
                 AutomaticRollbackAttempted = $false
@@ -108,7 +143,9 @@ function Restore-CgrGitHubPagesConfiguration {
                         Name = 'ValidatePagesCustomDomainHandoff'
                         MutatedGitHub = $false
                         Verified = $true
+                        Succeeded = $true
                         CustomDomainHandoff = $handoff
+                        ReviewedConfiguration = $reviewedConfiguration
                     })
             }
 
@@ -124,6 +161,7 @@ function Restore-CgrGitHubPagesConfiguration {
                     ArchiveRepositoryId = [long] $archiveId
                     Attempted = $true
                     Succeeded = $false
+                    CustomDomainHandoff = $handoff
                 }
                 if ($null -ne $CompletedSteps) { $CompletedSteps.Add($releaseStep) }
                 $handoff.ArchiveReleaseAttempted = $true
@@ -141,16 +179,42 @@ function Restore-CgrGitHubPagesConfiguration {
         }
 
         if ($FailureStage) { $FailureStage.Value = 'CreateReplacementGitHubPages' }
+        $createStep = [pscustomobject] @{
+            Order = if ($null -ne $CompletedSteps) { $CompletedSteps.Count + 1 } else { 0 }
+            Name = 'CreateReplacementGitHubPages'
+            MutatedGitHub = $true
+            Verified = $false
+            Attempted = $true
+            Succeeded = $false
+            ReviewedConfiguration = $reviewedConfiguration
+            AppliedConfiguration = $null
+        }
+        if ($null -ne $CompletedSteps) { $CompletedSteps.Add($createStep) }
         Invoke-CgrGitHubApiMutation -Method POST -Path "/repos/$($DestinationRepository.FullName)/pages" -Body $createBody -HostName $HostName | Out-Null
+        $createStep.Succeeded = $true
+        $createStep.AppliedConfiguration = [pscustomobject] @{
+            BuildType = $buildType
+            Source = if ($buildType -eq 'legacy') { $reviewedConfiguration.Source } else { $null }
+        }
 
         $updateBody = @{}
         if (-not [string]::IsNullOrWhiteSpace([string] $customDomain)) { $updateBody.cname = [string] $customDomain }
-        $httpsEnforced = Get-CgrObjectProperty -InputObject $pages -Name 'HttpsEnforced'
+        $httpsEnforced = $reviewedConfiguration.HttpsEnforced
         if ($null -ne $httpsEnforced) { $updateBody.https_enforced = [bool] $httpsEnforced }
         if ($updateBody.Count -gt 0) {
-            $claimStep = $null
+            if ($FailureStage) { $FailureStage.Value = if ($handoffRequired) { 'ClaimReplacementPagesCustomDomain' } else { 'ConfigureReplacementGitHubPages' } }
+            $configurationStep = [pscustomobject] @{
+                Order = if ($null -ne $CompletedSteps) { $CompletedSteps.Count + 1 } else { 0 }
+                Name = 'ConfigureReplacementGitHubPages'
+                MutatedGitHub = $true
+                Verified = $false
+                Attempted = $true
+                Succeeded = $false
+                ReviewedConfiguration = $reviewedConfiguration
+                AppliedConfiguration = $null
+            }
+            if ($null -ne $CompletedSteps) { $CompletedSteps.Add($configurationStep) }
             if ($handoffRequired) {
-                if ($FailureStage) { $FailureStage.Value = 'ClaimReplacementPagesCustomDomain' }
                 $handoff.ReplacementClaimAttempted = $true
                 $claimStep = [pscustomobject] @{
                     Order = if ($null -ne $CompletedSteps) { $CompletedSteps.Count + 1 } else { 0 }
@@ -162,10 +226,16 @@ function Restore-CgrGitHubPagesConfiguration {
                     Attempted = $true
                     Succeeded = $false
                     AutomaticRollbackAttempted = $false
+                    CustomDomainHandoff = $handoff
                 }
                 if ($null -ne $CompletedSteps) { $CompletedSteps.Add($claimStep) }
             }
             Invoke-CgrGitHubApiMutation -Method PUT -Path "/repos/$($DestinationRepository.FullName)/pages" -Body $updateBody -HostName $HostName | Out-Null
+            $configurationStep.Succeeded = $true
+            $configurationStep.AppliedConfiguration = [pscustomobject] @{
+                CustomDomain = if (-not [string]::IsNullOrWhiteSpace([string] $customDomain)) { [string] $customDomain } else { $null }
+                HttpsEnforced = if ($null -ne $httpsEnforced) { [bool] $httpsEnforced } else { $null }
+            }
             if ($handoffRequired) {
                 $handoff.ReplacementClaimSucceeded = $true
                 $claimStep.Succeeded = $true
@@ -175,6 +245,8 @@ function Restore-CgrGitHubPagesConfiguration {
         if ($FailureStage) { $FailureStage.Value = if ($handoffRequired) { 'VerifyReplacementPagesCustomDomain' } else { 'VerifyReplacementGitHubPages' } }
         $verifyDomain = -not [string]::IsNullOrWhiteSpace([string] $customDomain)
         $readBack = Assert-CgrDestinationPagesReadBack -DestinationRepository $DestinationRepository -Pages $pages -VerifyCustomDomain:$verifyDomain -HostName $HostName
+        $createStep.Verified = $true
+        if ($configurationStep) { $configurationStep.Verified = $true }
         if ($handoffRequired) {
             $handoff.ReplacementReadBackSucceeded = $true
             if ($claimStep) { $claimStep.Verified = $true }
@@ -190,13 +262,27 @@ function Restore-CgrGitHubPagesConfiguration {
         Enable-CgrPagesWorkflowActivationAfterRestore -DestinationRepository $DestinationRepository -HostName $HostName
         return [pscustomobject] @{
             PSTypeName = 'CopyGitHubRepo.PagesRestoreResult'; Repository = $DestinationRepository.FullName
-            Status = 'Restored'; Configured = $true; BuildType = $buildType; Source = Get-CgrObjectProperty -InputObject $pages -Name 'Source'
+            Status = 'Restored'; Configured = $true; BuildType = $buildType; Source = $reviewedConfiguration.Source
             CustomDomain = $customDomain; HttpsEnforced = $httpsEnforced; Restored = $true; Verified = $true; GuardReleased = $true
             CustomDomainStatus = if ($verifyDomain) { if ($handoffRequired) { 'HandedOff' } else { 'Restored' } } else { 'NotConfigured' }
             CustomDomainHandoff = $handoff
             ExternalReadiness = Get-CgrObjectProperty -InputObject $pages -Name 'ExternalReadiness'
             DnsMigrated = $false
             ReadBack = $readBack; IsSuccessful = $true; IsComplete = $true
+            ReviewedConfiguration = $reviewedConfiguration
+            DestinationMutationAttempted = $true
+            DestinationCreationAttempted = $true
+            DestinationCreationSucceeded = $true
+            AppliedConfiguration = [pscustomobject] @{
+                BuildType = $buildType
+                Source = if ($buildType -eq 'legacy') { $reviewedConfiguration.Source } else { $null }
+                CustomDomain = if (-not [string]::IsNullOrWhiteSpace([string] $customDomain)) { [string] $customDomain } else { $null }
+                HttpsEnforced = if ($null -ne $httpsEnforced) { [bool] $httpsEnforced } else { $null }
+            }
+            LastSuccessfulPagesStage = 'ReleasePagesActivationGuard'
+            ExternalState = $externalState
+            DnsMutationAttempted = $false
+            AutomaticRollbackAttempted = $false
         }
     }
     catch {

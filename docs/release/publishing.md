@@ -68,10 +68,10 @@ Where practical, configure the `powershell-gallery` environment with required re
 Before requesting a stable release, run:
 
 ```powershell
-./build/Test-ReleaseReadiness.ps1 -Tag v0.2.0 -RequireEmptyUnreleased
+./build/Test-ReleaseReadiness.ps1 -Tag v0.3.0 -RequireEmptyUnreleased
 ```
 
-Replace `v0.2.0` with the intended release tag. The command must succeed on the exact `main` SHA being qualified before publication.
+Replace `v0.3.0` with the intended release tag. The command must succeed on the exact `main` SHA being qualified before publication.
 
 This check intentionally does not create, move, or publish a tag. **Publish Release** remains the deliberate publication boundary.
 
@@ -85,7 +85,7 @@ A maintainer can publish a stable release without a local Git checkout by using 
 4. Select **Publish Release**.
 5. Choose **Run workflow**.
 6. Ensure the branch selector is **main**.
-7. Enter the intended stable tag, for example `v0.2.0`.
+7. Enter the intended stable tag, for example `v0.3.0`.
 8. Select `confirm_publish`.
 9. Run the workflow.
 
@@ -123,10 +123,10 @@ First validate without publishing:
 
 ```powershell
 ./build/Test-Project.ps1
-./build/Test-ReleaseReadiness.ps1 -Tag v0.2.0 -RequireEmptyUnreleased
+./build/Test-ReleaseReadiness.ps1 -Tag v0.3.0 -RequireEmptyUnreleased
 ./build/New-PowerShellGalleryPackage.ps1
 Test-ModuleManifest ./dist/PSGallery/CopyGitHubRepo/CopyGitHubRepo.psd1
-Find-PSResource CopyGitHubRepo -Version 0.2.0 -Repository PSGallery
+Find-PSResource CopyGitHubRepo -Version 0.3.0 -Repository PSGallery
 Publish-PSResource `
     -Path ./dist/PSGallery/CopyGitHubRepo `
     -Repository PSGallery `
@@ -134,7 +134,7 @@ Publish-PSResource `
     -WhatIf
 ```
 
-Replace `0.2.0` and `v0.2.0` with the manifest version and tag being released. If `Find-PSResource` returns that exact version, stop; released versions are treated as immutable and must not be overwritten. If it reports that the exact package/version cannot be found, that is the expected pre-publication state. Other lookup errors should be investigated rather than treated as proof that the version is absent.
+Replace `0.3.0` and `v0.3.0` with the manifest version and tag being released. If `Find-PSResource` returns that exact version, stop; released versions are treated as immutable and must not be overwritten. If it reports that the exact package/version cannot be found, that is the expected pre-publication state. Other lookup errors should be investigated rather than treated as proof that the version is absent.
 
 When the dry run and all validation are satisfactory, rerun `Publish-PSResource` without `-WhatIf`. Keep the API key in memory or a secure secret store and do not echo it.
 

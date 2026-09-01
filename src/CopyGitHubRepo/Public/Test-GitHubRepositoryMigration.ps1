@@ -16,18 +16,27 @@ function Test-GitHubRepositoryMigration {
     counts, branch-tip trees, the default branch, and reachable Git LFS object availability.
     FullHistory release verification retains its existing live source-selection behavior.
 
+    -VerifyPages extends the independent verification boundary using immutable Pages evidence
+    from -ApprovedPlan. It reads GitHub-side Pages configuration from the destination and
+    compares configured state, build type, exact legacy branch/path, custom domain, and
+    deterministic HTTPS-enforcement intent. Replacement verification also proves the reviewed
+    production domain is absent from the archive and present on the replacement. External DNS,
+    domain-verification, and certificate readiness are reported separately and never treated
+    as migrated configuration.
+
     Snapshot -IncludeReleases requires -ApprovedPlan so verification cannot rerun live release
     selection, filtering, or topology discovery and silently redefine the expected state.
-    The approved plan can be taken from the Plan property returned by Copy-GitHubRepository.
-    Verification never repairs or mutates either repository.
+    -VerifyPages likewise requires -ApprovedPlan so mutable live source Pages discovery never
+    becomes verification authority. The approved plan can be taken from the Plan property
+    returned by Copy-GitHubRepository. Verification never repairs or mutates either repository.
 
     .PARAMETER SourceRepository
-    Specifies the source repository as owner/name. For Snapshot -IncludeReleases this name is
-    retained for result identity while immutable approved evidence defines expected state.
+    Specifies the source repository as owner/name. For approved-plan verification this name is
+    checked against the reviewed plan while immutable evidence defines the expected state.
 
     .PARAMETER DestinationRepository
     Specifies the destination repository as owner/name. This is the repository whose migrated
-    content and releases are independently read and verified.
+    state is independently read and verified.
 
     .PARAMETER ContentMode
     Selects the verification contract. Snapshot is the default. FullHistory preserves the
@@ -37,6 +46,10 @@ function Test-GitHubRepositoryMigration {
     Adds GitHub Release verification. FullHistory uses the existing live source-selection
     contract. Snapshot requires -ApprovedPlan and verifies exactly its reviewed selection.
 
+    .PARAMETER VerifyPages
+    Adds read-only GitHub Pages verification from immutable Pages evidence in -ApprovedPlan.
+    This does not query, copy, or mutate DNS, domain-verification, or certificate state.
+
     .PARAMETER ReleaseTag
     Includes only source GitHub Releases whose tag names match one or more PowerShell wildcard
     patterns for FullHistory verification. Snapshot approved-plan verification does not accept
@@ -44,7 +57,7 @@ function Test-GitHubRepositoryMigration {
 
     .PARAMETER ReleaseExcludeTag
     Excludes source GitHub Releases whose tag names match one or more PowerShell wildcard
-    patterns for FullHistory verification.
+    patterns for FullHistory release verification.
 
     .PARAMETER IncludePrerelease
     Includes source prereleases in FullHistory release verification.
@@ -56,9 +69,9 @@ function Test-GitHubRepositoryMigration {
     Limits FullHistory release verification to the newest N selected source releases.
 
     .PARAMETER ApprovedPlan
-    Supplies the immutable reviewed CopyGitHubRepo migration plan for Snapshot -IncludeReleases
-    verification. ReleaseCheckpointPlan and ReleaseSelection from this object are consumed as
-    expected evidence; verification does not rerun live source release selection or ordering.
+    Supplies the immutable reviewed CopyGitHubRepo migration plan for Snapshot release and/or
+    GitHub Pages verification. Pages verification consumes Plan.Pages as expected evidence and
+    never reruns live source Pages discovery as authority.
 
     .PARAMETER HostName
     Specifies the GitHub host used for discovery and authentication. The default is github.com.
@@ -91,13 +104,24 @@ function Test-GitHubRepositoryMigration {
     Independently verifies Snapshot release checkpoints and recreated releases from the exact
     immutable evidence that was reviewed before migration execution.
 
+    .EXAMPLE
+    Test-GitHubRepositoryMigration `
+        -SourceRepository infoconex/source `
+        -DestinationRepository infoconex/destination `
+        -ContentMode Snapshot `
+        -VerifyPages `
+        -ApprovedPlan $migration.Plan
+
+    Independently verifies supported destination GitHub Pages state from reviewed plan evidence.
+
     .INPUTS
     None. This command does not accept pipeline input.
 
     .OUTPUTS
-    CopyGitHubRepo.MigrationVerificationResult. When release verification is requested, the
-    result includes ReleaseVerification and ReleasesVerified and IsSuccessful reflects both
-    Git content and GitHub Release verification.
+    CopyGitHubRepo.MigrationVerificationResult. When Pages verification is requested, the
+    result includes PagesVerification and PagesVerified and IsSuccessful reflects both Git
+    content and Pages verification. External readiness is evidence only and is not migration
+    success criteria.
 
     .LINK
     https://github.com/infoconex/copy-github-repo
@@ -119,6 +143,8 @@ function Test-GitHubRepositoryMigration {
         [string] $ContentMode = 'Snapshot',
 
         [switch] $IncludeReleases,
+
+        [switch] $VerifyPages,
 
         [string[]] $ReleaseTag,
 
@@ -157,19 +183,56 @@ function Test-GitHubRepositoryMigration {
         $PSCmdlet.ThrowTerminatingError($errorRecord)
     }
 
-    if ($ApprovedPlan -and -not ($ContentMode -eq 'Snapshot' -and $IncludeReleases)) {
-        $message = '-ApprovedPlan is supported only with -ContentMode Snapshot -IncludeReleases.'
+    $snapshotReleaseVerification = $ContentMode -eq 'Snapshot' -and $IncludeReleases
+    if ($ApprovedPlan -and -not ($snapshotReleaseVerification -or $VerifyPages)) {
+        $message = '-ApprovedPlan is supported with Snapshot -IncludeReleases and/or -VerifyPages.'
         $exception = [System.InvalidOperationException]::new($message)
         $errorRecord = [System.Management.Automation.ErrorRecord]::new(
             $exception,
-            'ApprovedPlanRequiresSnapshotReleaseVerification',
+            'ApprovedPlanRequiresReviewedEvidenceVerification',
             [System.Management.Automation.ErrorCategory]::InvalidArgument,
             'ApprovedPlan'
         )
         $PSCmdlet.ThrowTerminatingError($errorRecord)
     }
 
-    if ($ContentMode -eq 'Snapshot' -and $IncludeReleases) {
+    if ($VerifyPages) {
+        if (-not $ApprovedPlan) {
+            $message = 'GitHub Pages verification requires -ApprovedPlan so expected Pages state comes from immutable reviewed evidence.'
+            $exception = [System.InvalidOperationException]::new($message)
+            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                $exception,
+                'PagesVerificationPlanRequired',
+                [System.Management.Automation.ErrorCategory]::InvalidArgument,
+                'ApprovedPlan'
+            )
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
+
+        $approvedPages = Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'Pages'
+        $approvedRestorePages = [bool] (Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'RestorePages')
+        $approvedContentMode = [string] (Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'ContentMode')
+        $approvedSource = [string] (Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'SourceRepository')
+        $approvedDestination = [string] (Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'DestinationRepository')
+        $approvedHost = [string] (Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'HostName')
+        if (-not $approvedRestorePages -or $null -eq $approvedPages -or
+            $approvedContentMode -cne $ContentMode -or
+            -not [string]::Equals($approvedSource, $SourceRepository, [System.StringComparison]::OrdinalIgnoreCase) -or
+            -not [string]::Equals($approvedDestination, $DestinationRepository, [System.StringComparison]::OrdinalIgnoreCase) -or
+            (-not [string]::IsNullOrWhiteSpace($approvedHost) -and -not [string]::Equals($approvedHost, $HostName, [System.StringComparison]::OrdinalIgnoreCase))) {
+            $message = 'The supplied approved plan does not contain Pages restoration evidence bound to the requested source, destination, content mode, and GitHub host.'
+            $exception = [System.InvalidOperationException]::new($message)
+            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                $exception,
+                'PagesVerificationPlanInvalid',
+                [System.Management.Automation.ErrorCategory]::InvalidData,
+                'ApprovedPlan'
+            )
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
+    }
+
+    if ($snapshotReleaseVerification) {
         if (-not $ApprovedPlan) {
             $message = 'Snapshot release verification requires -ApprovedPlan so expected checkpoints and releases come from immutable reviewed evidence.'
             $exception = [System.InvalidOperationException]::new($message)
@@ -248,7 +311,7 @@ function Test-GitHubRepositoryMigration {
         $PSCmdlet.ThrowTerminatingError($errorRecord)
     }
 
-    if ($ContentMode -eq 'Snapshot' -and $IncludeReleases) {
+    if ($snapshotReleaseVerification) {
         $destination = Get-CgrRepository -Repository $DestinationRepository -HostName $HostName
         $approvedSourceName = [string] (Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'SourceRepository')
         $source = [pscustomobject] @{
@@ -280,6 +343,14 @@ function Test-GitHubRepositoryMigration {
         $result | Add-Member -NotePropertyName ReleaseVerification -NotePropertyValue $releaseVerification -Force
         $result | Add-Member -NotePropertyName ReleasesVerified -NotePropertyValue $releasesVerified -Force
         $result | Add-Member -NotePropertyName IsSuccessful -NotePropertyValue ([bool] ($gitContentSuccessful -and $releasesVerified)) -Force
+
+        if ($VerifyPages) {
+            $beforePagesSuccessful = [bool] $result.IsSuccessful
+            $pagesVerification = Test-CgrGitHubPagesMigration -Plan $ApprovedPlan -DestinationRepository $destination -HostName $HostName
+            $result | Add-Member -NotePropertyName PagesVerification -NotePropertyValue $pagesVerification -Force
+            $result | Add-Member -NotePropertyName PagesVerified -NotePropertyValue ([bool] $pagesVerification.IsSuccessful) -Force
+            $result | Add-Member -NotePropertyName IsSuccessful -NotePropertyValue ([bool] ($beforePagesSuccessful -and $pagesVerification.IsSuccessful)) -Force
+        }
         return $result
     }
 
@@ -313,10 +384,31 @@ function Test-GitHubRepositoryMigration {
             $result | Add-Member -NotePropertyName IsSuccessful -NotePropertyValue ([bool] ($gitContentSuccessful -and $releaseVerification.IsSuccessful)) -Force
         }
 
+        if ($VerifyPages) {
+            $beforePagesSuccessful = [bool] $result.IsSuccessful
+            $pagesVerification = Test-CgrGitHubPagesMigration -Plan $ApprovedPlan -DestinationRepository $destination -HostName $HostName
+            $result | Add-Member -NotePropertyName PagesVerification -NotePropertyValue $pagesVerification -Force
+            $result | Add-Member -NotePropertyName PagesVerified -NotePropertyValue ([bool] $pagesVerification.IsSuccessful) -Force
+            $result | Add-Member -NotePropertyName IsSuccessful -NotePropertyValue ([bool] ($beforePagesSuccessful -and $pagesVerification.IsSuccessful)) -Force
+        }
+
         return $result
     }
 
-    Invoke-CgrRepositorySnapshotVerification `
+    $approvedSourceState = if ($VerifyPages) { Get-CgrObjectProperty -InputObject $ApprovedPlan -Name 'SourceState' } else { $null }
+    $result = Invoke-CgrRepositorySnapshotVerification `
         -SourceRepository $source `
-        -DestinationRepository $destination
+        -DestinationRepository $destination `
+        -ApprovedSourceState $approvedSourceState
+
+    if ($VerifyPages) {
+        $gitContentSuccessful = [bool] $result.IsSuccessful
+        $pagesVerification = Test-CgrGitHubPagesMigration -Plan $ApprovedPlan -DestinationRepository $destination -HostName $HostName
+        $result | Add-Member -NotePropertyName GitContentSuccessful -NotePropertyValue $gitContentSuccessful -Force
+        $result | Add-Member -NotePropertyName PagesVerification -NotePropertyValue $pagesVerification -Force
+        $result | Add-Member -NotePropertyName PagesVerified -NotePropertyValue ([bool] $pagesVerification.IsSuccessful) -Force
+        $result | Add-Member -NotePropertyName IsSuccessful -NotePropertyValue ([bool] ($gitContentSuccessful -and $pagesVerification.IsSuccessful)) -Force
+    }
+
+    return $result
 }

@@ -38,30 +38,43 @@ function Invoke-CgrApprovedMigrationPlan {
     Assert-CgrApprovedSourceState -Repository $SourceRepository -SourceState $sourceState | Out-Null
     Assert-CgrLocalResourcePreflight -Plan $Plan | Out-Null
 
-    if ($Plan.Mode -eq 'SameNameReplacement') {
-        Assert-CgrSameNameReplacementConfirmation -Plan $Plan -Confirmation $SameNameConfirmation | Out-Null
-        if ($Plan.ContentMode -eq 'FullHistory') {
-            return Invoke-CgrSameNameFullHistoryReplacement -Plan $Plan -SourceRepository $SourceRepository -HostName $HostName -ReportPath $ReportPath
+    $previousGuardVariable = Get-Variable -Name CgrPagesWorkflowActivationGuardRequested -Scope Script -ErrorAction SilentlyContinue
+    $script:CgrPagesWorkflowActivationGuardRequested = [bool] (Get-CgrObjectProperty -InputObject $Plan -Name 'RestorePages')
+
+    try {
+        if ($Plan.Mode -eq 'SameNameReplacement') {
+            Assert-CgrSameNameReplacementConfirmation -Plan $Plan -Confirmation $SameNameConfirmation | Out-Null
+            if ($Plan.ContentMode -eq 'FullHistory') {
+                return Invoke-CgrSameNameFullHistoryReplacement -Plan $Plan -SourceRepository $SourceRepository -HostName $HostName -ReportPath $ReportPath
+            }
+
+            return Invoke-CgrSameNameSnapshotReplacement -Plan $Plan -SourceRepository $SourceRepository -HostName $HostName -ReportPath $ReportPath
         }
 
-        return Invoke-CgrSameNameSnapshotReplacement -Plan $Plan -SourceRepository $SourceRepository -HostName $HostName -ReportPath $ReportPath
-    }
+        if ($Plan.Mode -eq 'ExistingDestinationReplacement') {
+            Assert-CgrExistingDestinationReplacementConfirmation -Plan $Plan -Confirmation $ExistingDestinationConfirmation | Out-Null
+            $existingDestination = Get-CgrRepository -Repository $Plan.DestinationRepository -HostName $HostName
+            return Invoke-CgrExistingDestinationReplacement `
+                -Plan $Plan `
+                -SourceRepository $SourceRepository `
+                -ExistingDestinationRepository $existingDestination `
+                -HostName $HostName `
+                -ReportPath $ReportPath
+        }
 
-    if ($Plan.Mode -eq 'ExistingDestinationReplacement') {
-        Assert-CgrExistingDestinationReplacementConfirmation -Plan $Plan -Confirmation $ExistingDestinationConfirmation | Out-Null
-        $existingDestination = Get-CgrRepository -Repository $Plan.DestinationRepository -HostName $HostName
-        return Invoke-CgrExistingDestinationReplacement `
-            -Plan $Plan `
-            -SourceRepository $SourceRepository `
-            -ExistingDestinationRepository $existingDestination `
-            -HostName $HostName `
-            -ReportPath $ReportPath
-    }
+        $destination = New-CgrGitHubRepository -Repository $Plan.DestinationRepository -Visibility $Plan.DestinationVisibility -HostName $HostName
+        if ($Plan.ContentMode -eq 'FullHistory') {
+            return Invoke-CgrNewDestinationFullHistory -Plan $Plan -SourceRepository $SourceRepository -DestinationRepository $destination -HostName $HostName -ReportPath $ReportPath
+        }
 
-    $destination = New-CgrGitHubRepository -Repository $Plan.DestinationRepository -Visibility $Plan.DestinationVisibility -HostName $HostName
-    if ($Plan.ContentMode -eq 'FullHistory') {
-        return Invoke-CgrNewDestinationFullHistory -Plan $Plan -SourceRepository $SourceRepository -DestinationRepository $destination -HostName $HostName -ReportPath $ReportPath
+        return Invoke-CgrNewDestinationSnapshot -Plan $Plan -SourceRepository $SourceRepository -DestinationRepository $destination -HostName $HostName -ReportPath $ReportPath
     }
-
-    return Invoke-CgrNewDestinationSnapshot -Plan $Plan -SourceRepository $SourceRepository -DestinationRepository $destination -HostName $HostName -ReportPath $ReportPath
+    finally {
+        if ($previousGuardVariable) {
+            $script:CgrPagesWorkflowActivationGuardRequested = $previousGuardVariable.Value
+        }
+        else {
+            Remove-Variable -Name CgrPagesWorkflowActivationGuardRequested -Scope Script -ErrorAction SilentlyContinue
+        }
+    }
 }

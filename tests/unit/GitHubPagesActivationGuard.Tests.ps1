@@ -48,7 +48,7 @@ Describe 'GitHub Pages workflow activation guard' {
             Mock Get-CgrGitHubApi { [pscustomobject] @{ enabled = $true } }
 
             { New-CgrGitHubRepository -Repository 'acme/destination' -Visibility public } |
-                Should -Throw -ErrorId 'PagesWorkflowActivationGuardVerificationFailed'
+                Should -Throw -ErrorId 'PagesWorkflowActivationGuardVerificationFailed,New-CgrGitHubRepository'
 
             Remove-Variable -Name CgrPagesWorkflowActivationGuardRequested -Scope Script -ErrorAction SilentlyContinue
         }

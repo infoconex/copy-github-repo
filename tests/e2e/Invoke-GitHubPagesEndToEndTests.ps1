@@ -126,12 +126,13 @@ function Get-E2eRepositoryId {
 }
 
 function Set-E2eActionsEnabled {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Repository,
         [Parameter(Mandatory)] [bool] $Enabled
     )
 
+    if (-not $PSCmdlet.ShouldProcess($Repository, "Set GitHub Actions enabled=$Enabled")) { return }
     Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @(
         'api', '--hostname', 'github.com', '--method', 'PUT',
         "repos/$Repository/actions/permissions", '-F', "enabled=$($Enabled.ToString().ToLowerInvariant())"
@@ -139,14 +140,17 @@ function Set-E2eActionsEnabled {
 }
 
 function New-E2eSourceFixture {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Name,
         [ValidateSet('None', 'Workflow', 'LegacyDocs')] [string] $PagesMode = 'None'
     )
 
+    $fullName = "$Owner/$Name"
+    if (-not $PSCmdlet.ShouldProcess($fullName, "Create and configure temporary GitHub Pages E2E source fixture ($PagesMode)")) { return $null }
+
     $repository = New-E2eRepository -Name $Name -Confirm:$false
-    Set-E2eActionsEnabled -Repository $repository -Enabled $false
+    Set-E2eActionsEnabled -Repository $repository -Enabled $false -Confirm:$false
 
     $localPath = Join-Path $tempRoot $Name
     New-Item -Path $localPath -ItemType Directory -Force | Out-Null
@@ -208,7 +212,7 @@ jobs:
         }
     }
 
-    Set-E2eActionsEnabled -Repository $repository -Enabled $true
+    Set-E2eActionsEnabled -Repository $repository -Enabled $true -Confirm:$false
     return [pscustomobject] @{ Repository = $repository; LocalPath = $localPath; PagesMode = $PagesMode }
 }
 
@@ -261,7 +265,7 @@ function Invoke-E2eActionsSnapshotScenario {
     $verification = Test-GitHubRepositoryMigration -SourceRepository $fixture.Repository -DestinationRepository $destination -ContentMode Snapshot -VerifyPages -ApprovedPlan $result.Plan
     if (-not $verification.IsSuccessful -or -not $verification.PagesVerified) { throw 'Independent Actions-based Pages verification failed.' }
 
-    $scenarioResults.Add([pscustomobject] @{
+    $summary = [pscustomobject] @{
         Scenario = 'Snapshot Actions-based Pages'
         ReviewedSourceBuildType = $sourcePages.build_type
         MigrationReportedVerified = $result.IsVerified
@@ -271,7 +275,8 @@ function Invoke-E2eActionsSnapshotScenario {
         DestinationActionsEnabledAfterRestore = [bool] $actions.enabled
         PreRestorationWorkflowRunsObserved = [int] $runs.total_count
         ImplicitActivationControlled = [int] $runs.total_count -eq 0
-    })
+    }
+    $scenarioResults.Add($summary)
 }
 
 function Invoke-E2eLegacyFullHistoryScenario {
@@ -293,7 +298,7 @@ function Invoke-E2eLegacyFullHistoryScenario {
     $verification = Test-GitHubRepositoryMigration -SourceRepository $fixture.Repository -DestinationRepository $destination -ContentMode FullHistory -VerifyPages -ApprovedPlan $result.Plan
     if (-not $verification.IsSuccessful -or -not $verification.PagesVerified) { throw 'Independent legacy FullHistory Pages verification failed.' }
 
-    $scenarioResults.Add([pscustomobject] @{
+    $summary = [pscustomobject] @{
         Scenario = 'FullHistory branch/path Pages'
         ReviewedSourceBuildType = $sourcePages.build_type
         ReviewedSource = "$($sourcePages.source.branch):$($sourcePages.source.path)"
@@ -302,7 +307,8 @@ function Invoke-E2eLegacyFullHistoryScenario {
         DestinationSource = "$($destinationPages.source.branch):$($destinationPages.source.path)"
         IndependentVerificationSucceeded = $verification.IsSuccessful
         PagesVerified = $verification.PagesVerified
-    })
+    }
+    $scenarioResults.Add($summary)
 }
 
 function Invoke-E2eNoPagesScenario {
@@ -324,14 +330,15 @@ function Invoke-E2eNoPagesScenario {
     $verification = Test-GitHubRepositoryMigration -SourceRepository $fixture.Repository -DestinationRepository $destination -ContentMode Snapshot -VerifyPages -ApprovedPlan $result.Plan
     if (-not $verification.IsSuccessful -or -not $verification.PagesVerified) { throw 'Independent no-Pages verification failed.' }
 
-    $scenarioResults.Add([pscustomobject] @{
+    $summary = [pscustomobject] @{
         Scenario = 'No Pages configured'
         ReviewedSourcePagesStatus = $result.Plan.Pages.Status
         MigrationReportedVerified = $result.IsVerified
         DestinationPagesConfigured = $false
         IndependentVerificationSucceeded = $verification.IsSuccessful
         PagesVerified = $verification.PagesVerified
-    })
+    }
+    $scenarioResults.Add($summary)
 }
 
 function Invoke-E2eRestorePagesOmittedScenario {
@@ -352,7 +359,7 @@ function Invoke-E2eRestorePagesOmittedScenario {
     $destinationPages = Get-E2eApiOptionalJson -Path "repos/$destination/pages"
     $runs = Get-E2eApiJson -Path "repos/$destination/actions/runs?per_page=100"
 
-    $scenarioResults.Add([pscustomobject] @{
+    $summary = [pscustomobject] @{
         Scenario = '-RestorePages omitted'
         MigrationReportedVerified = $result.IsVerified
         RestorePagesRequested = $false
@@ -361,7 +368,8 @@ function Invoke-E2eRestorePagesOmittedScenario {
         DestinationWorkflowRunsObserved = [int] $runs.total_count
         ActivationGuardClaimed = $false
         Contract = 'Without -RestorePages, copied workflow side effects remain outside the Pages restoration guarantee.'
-    })
+    }
+    $scenarioResults.Add($summary)
 }
 
 function Invoke-E2ePagesDriftScenario {
@@ -401,7 +409,7 @@ function Invoke-E2ePagesDriftScenario {
     Write-E2eMessage -Message 'Independent verification: destination may contain copied Git state, but GitHub-side Pages must remain unconfigured after the drift failure.'
     Assert-E2ePagesState -Repository $destination -BuildType NotConfigured | Out-Null
 
-    $scenarioResults.Add([pscustomobject] @{
+    $summary = [pscustomobject] @{
         Scenario = 'Pages drift before Pages mutation'
         ReviewedSource = 'main:/docs'
         ObservedDriftedSource = 'main:/'
@@ -409,7 +417,8 @@ function Invoke-E2ePagesDriftScenario {
         ErrorId = $errorId
         DestinationPagesConfigured = $false
         MutableRediscoveryBecameAuthority = $false
-    })
+    }
+    $scenarioResults.Add($summary)
 }
 
 function Invoke-E2eSameNameScenario {
@@ -438,7 +447,7 @@ function Invoke-E2eSameNameScenario {
     $verification = Test-GitHubRepositoryMigration -SourceRepository $source -DestinationRepository $source -ContentMode Snapshot -VerifyPages -ApprovedPlan $result.Plan
     if (-not $verification.IsSuccessful -or -not $verification.PagesVerified) { throw 'Independent same-name Pages verification failed.' }
 
-    $scenarioResults.Add([pscustomobject] @{
+    $summary = [pscustomobject] @{
         Scenario = 'Same-name Snapshot replacement with Pages'
         MigrationReportedVerified = $result.IsVerified
         ArchiveRepository = $archive
@@ -450,7 +459,8 @@ function Invoke-E2eSameNameScenario {
         ExactDestructiveConfirmationUsed = $true
         IndependentVerificationSucceeded = $verification.IsSuccessful
         PagesVerified = $verification.PagesVerified
-    })
+    }
+    $scenarioResults.Add($summary)
 }
 
 function Invoke-E2eCustomDomainSafetyBoundary {
@@ -470,7 +480,7 @@ function Invoke-E2eCustomDomainSafetyBoundary {
         throw "Custom-domain lower-boundary tests failed: $($pesterResult.FailedCount) failing test(s)."
     }
 
-    $scenarioResults.Add([pscustomobject] @{
+    $summary = [pscustomobject] @{
         Scenario = 'Custom-domain handoff safe lower boundary'
         LiveCustomDomainMutationAttempted = $false
         ExternalDnsMutationAttempted = $false
@@ -480,7 +490,8 @@ function Invoke-E2eCustomDomainSafetyBoundary {
         LowerBoundaryTestsPassed = $true
         LowerBoundaryPassedCount = $pesterResult.PassedCount
         ResidualFixtureLimitation = 'Live GitHub domain ownership, DNS propagation, domain verification, and certificate readiness require a dedicated disposable external domain fixture and are intentionally not automated.'
-    })
+    }
+    $scenarioResults.Add($summary)
 }
 
 if ($Owner -notmatch '^[A-Za-z0-9_.-]+$') { throw "Owner '$Owner' is not valid." }

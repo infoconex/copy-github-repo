@@ -54,6 +54,7 @@ function Test-CgrGitHubPagesMigration {
         }
     }
 
+    $httpsEnforcementStatus = 'NotReviewed'
     if ($expectedConfigured -and $actualConfigured) {
         $expectedBuildType = [string] (Get-CgrObjectProperty -InputObject $pages -Name 'BuildType')
         $actualBuildType = [string] (Get-CgrObjectProperty -InputObject $actual -Name 'build_type')
@@ -99,11 +100,18 @@ function Test-CgrGitHubPagesMigration {
         $expectedHttps = Get-CgrObjectProperty -InputObject $pages -Name 'HttpsEnforced'
         if ($null -ne $expectedHttps) {
             $actualHttps = Get-CgrObjectProperty -InputObject $actual -Name 'https_enforced'
+            $httpsCertificate = Get-CgrObjectProperty -InputObject $actual -Name 'https_certificate'
+            $httpsPendingCertificate = [bool] $expectedHttps -and
+                ($null -eq $actualHttps -or -not [bool] $actualHttps) -and
+                $null -eq $httpsCertificate
+            $httpsMatches = $null -ne $actualHttps -and [bool] $actualHttps -eq [bool] $expectedHttps
+            $httpsEnforcementStatus = if ($httpsMatches) { 'Verified' } elseif ($httpsPendingCertificate) { 'PendingCertificate' } else { 'Mismatch' }
             $checks.Add([pscustomobject] @{
                     Name = 'PagesHttpsEnforcementMatches'
-                    Passed = $null -ne $actualHttps -and [bool] $actualHttps -eq [bool] $expectedHttps
+                    Passed = $httpsMatches -or $httpsPendingCertificate
                     Expected = [bool] $expectedHttps
                     Actual = if ($null -eq $actualHttps) { $null } else { [bool] $actualHttps }
+                    Status = $httpsEnforcementStatus
                 })
         }
 
@@ -148,6 +156,7 @@ function Test-CgrGitHubPagesMigration {
         ActualConfigured = $actualConfigured
         Status = if ($failedChecks.Count -eq 0) { if ($expectedConfigured) { 'Verified' } else { 'VerifiedNotConfigured' } } else { 'Mismatch' }
         Checks = @($checks)
+        HttpsEnforcementStatus = $httpsEnforcementStatus
         ExternalReadiness = $externalReadiness
         DnsMigrated = $false
         IsSuccessful = $failedChecks.Count -eq 0

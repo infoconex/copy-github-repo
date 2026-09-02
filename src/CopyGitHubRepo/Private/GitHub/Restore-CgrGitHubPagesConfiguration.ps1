@@ -237,9 +237,10 @@ function Restore-CgrGitHubPagesConfiguration {
                 $configurationStep.Succeeded = $true
             }
             catch {
-                $certificatePending = $updateBody.ContainsKey('https_enforced') -and [bool] $updateBody.https_enforced -and
-                    -not $updateBody.ContainsKey('cname') -and
-                    $_.Exception.Message -match '(?i)certificate does not exist yet'
+                $httpsUpdateRequested = $updateBody.ContainsKey('https_enforced') -and [bool] $updateBody.https_enforced
+                $customDomainUpdateRequested = $updateBody.ContainsKey('cname')
+                $certificateNotReady = $_.Exception.Message -match '(?i)certificate does not exist yet'
+                $certificatePending = $httpsUpdateRequested -and -not $customDomainUpdateRequested -and $certificateNotReady
                 if (-not $certificatePending) { throw }
                 $httpsEnforcementStatus = 'PendingCertificate'
                 $configurationStep.Succeeded = $true

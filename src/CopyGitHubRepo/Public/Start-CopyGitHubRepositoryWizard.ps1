@@ -50,10 +50,10 @@ function Start-CopyGitHubRepositoryWizard {
 
     Planning captures immutable source-state evidence. The Execute action runs the
     exact reviewed plan rather than rebuilding an equivalent request. The final
-    Execute/Cancel prompt is headed "Confirm repository copy". If plan-driving
-    source state changes after review, execution fails closed before the affected
-    mutation and the wizard returns to plan generation so the new state can be
-    reviewed explicitly.
+    Execute/Cancel prompt is headed "Confirm repository copy". If the source changes
+    after plan review, including plan-driving Pages state at its applicable boundary,
+    execution fails closed before the affected mutation and the wizard returns to
+    plan generation so the new state can be reviewed explicitly.
 
     Known application, validation, prerequisite, and safety conditions are shown
     as concise wizard messages rather than raw PowerShell exception formatting.

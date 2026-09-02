@@ -470,17 +470,30 @@ function Invoke-E2eCustomDomainSafetyBoundary {
 
     Write-E2eMessage -Message 'Scenario: custom-domain handoff and external HTTPS/DNS state at the safest practical lower test boundary'
     Write-E2eMessage -Message 'Migration evidence: no live custom-domain or DNS mutation is attempted because the project has no dedicated disposable domain fixture.'
-    Write-E2eMessage -Message 'Independent verification: run established handoff/recovery tests in an isolated PowerShell/Pester process, proving exact reviewed-domain sequencing, repository identity checks, external-readiness separation, no DNS mutation, and durable partial-handoff evidence.'
+    Write-E2eMessage -Message 'Independent verification: stage the established handoff/recovery tests using the project test-runner layout, then run them in an isolated PowerShell/Pester process to prove exact reviewed-domain sequencing, repository identity checks, external-readiness separation, no DNS mutation, and durable partial-handoff evidence.'
 
-    $restorationPath = Join-Path $repositoryRoot 'tests/unit/GitHubPagesRestoration.Tests.ps1'
-    $recoveryPath = Join-Path $repositoryRoot 'tests/unit/GitHubPagesCustomDomainRecovery.Tests.ps1'
-    $pesterCommand = @"
+    $pesterStage = Join-Path $repositoryRoot ".pages-e2e-pester-$runId"
+    try {
+        Remove-Item -LiteralPath $pesterStage -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -Path $pesterStage -ItemType Directory -Force | Out-Null
+
+        foreach ($testName in @('GitHubPagesRestoration.Tests.ps1', 'GitHubPagesCustomDomainRecovery.Tests.ps1')) {
+            Copy-Item -LiteralPath (Join-Path $repositoryRoot "tests/unit/$testName") -Destination (Join-Path $pesterStage $testName) -Force
+        }
+
+        $restorationPath = Join-Path $pesterStage 'GitHubPagesRestoration.Tests.ps1'
+        $recoveryPath = Join-Path $pesterStage 'GitHubPagesCustomDomainRecovery.Tests.ps1'
+        $pesterCommand = @"
 Import-Module Pester -MinimumVersion 5.0 -DisableNameChecking -ErrorAction Stop
 `$result = Invoke-Pester -Path @('$restorationPath', '$recoveryPath') -PassThru -Output Detailed
 if (`$result.FailedCount -ne 0) { exit 1 }
 "@
-    $pesterOutput = @(Invoke-E2eNativeCommand -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', $pesterCommand))
-    $pesterOutput | ForEach-Object { Write-E2eMessage -Message $_.ToString() }
+        $pesterOutput = @(Invoke-E2eNativeCommand -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', $pesterCommand))
+        $pesterOutput | ForEach-Object { Write-E2eMessage -Message $_.ToString() }
+    }
+    finally {
+        Remove-Item -LiteralPath $pesterStage -Recurse -Force -ErrorAction SilentlyContinue
+    }
 
     $summary = [pscustomobject] @{
         Scenario = 'Custom-domain handoff safe lower boundary'
@@ -490,7 +503,7 @@ if (`$result.FailedCount -ne 0) { exit 1 }
         GitHubSideHandoffContractProvenBelowE2E = $true
         ExternalHttpsReadinessTreatedAsMigrated = $false
         LowerBoundaryTestsPassed = $true
-        LowerBoundaryExecution = 'Isolated PowerShell/Pester process'
+        LowerBoundaryExecution = 'Project-layout staged isolated PowerShell/Pester process'
         ResidualFixtureLimitation = 'Live GitHub domain ownership, DNS propagation, domain verification, and certificate readiness require a dedicated disposable external domain fixture and are intentionally not automated.'
     }
     $scenarioResults.Add($summary)

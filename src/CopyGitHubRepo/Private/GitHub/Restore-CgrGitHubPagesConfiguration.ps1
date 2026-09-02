@@ -177,7 +177,6 @@ function Restore-CgrGitHubPagesConfiguration {
                 $releaseStep.Verified = $true
             }
         }
-
         if ($FailureStage) { $FailureStage.Value = 'CreateReplacementGitHubPages' }
         $createStep = [pscustomobject] @{
             Order = if ($null -ne $CompletedSteps) { $CompletedSteps.Count + 1 } else { 0 }
@@ -200,7 +199,10 @@ function Restore-CgrGitHubPagesConfiguration {
         $updateBody = @{}
         if (-not [string]::IsNullOrWhiteSpace([string] $customDomain)) { $updateBody.cname = [string] $customDomain }
         $httpsEnforced = $reviewedConfiguration.HttpsEnforced
-        if ($null -ne $httpsEnforced) { $updateBody.https_enforced = [bool] $httpsEnforced }
+        $httpsEnforcementStatus = if ($null -eq $httpsEnforced) { 'NotReviewed' } else { 'PendingVerification' }
+        if ($null -ne $httpsEnforced -and (-not [bool] $httpsEnforced -or [string]::IsNullOrWhiteSpace([string] $customDomain))) {
+            $updateBody.https_enforced = [bool] $httpsEnforced
+        }
         if ($updateBody.Count -gt 0) {
             if ($FailureStage) { $FailureStage.Value = if ($handoffRequired) { 'ClaimReplacementPagesCustomDomain' } else { 'ConfigureReplacementGitHubPages' } }
             $configurationStep = [pscustomobject] @{
@@ -230,11 +232,22 @@ function Restore-CgrGitHubPagesConfiguration {
                 }
                 if ($null -ne $CompletedSteps) { $CompletedSteps.Add($claimStep) }
             }
-            Invoke-CgrGitHubApiMutation -Method PUT -Path "/repos/$($DestinationRepository.FullName)/pages" -Body $updateBody -HostName $HostName | Out-Null
-            $configurationStep.Succeeded = $true
+            try {
+                Invoke-CgrGitHubApiMutation -Method PUT -Path "/repos/$($DestinationRepository.FullName)/pages" -Body $updateBody -HostName $HostName | Out-Null
+                $configurationStep.Succeeded = $true
+            }
+            catch {
+                $httpsUpdateRequested = $updateBody.ContainsKey('https_enforced') -and [bool] $updateBody.https_enforced
+                $customDomainUpdateRequested = $updateBody.ContainsKey('cname')
+                $certificateNotReady = $_.Exception.Message -match '(?i)certificate does not exist yet'
+                $certificatePending = $httpsUpdateRequested -and -not $customDomainUpdateRequested -and $certificateNotReady
+                if (-not $certificatePending) { throw }
+                $httpsEnforcementStatus = 'PendingCertificate'
+                $configurationStep.Succeeded = $true
+            }
             $configurationStep.AppliedConfiguration = [pscustomobject] @{
                 CustomDomain = if (-not [string]::IsNullOrWhiteSpace([string] $customDomain)) { [string] $customDomain } else { $null }
-                HttpsEnforced = if ($null -ne $httpsEnforced) { [bool] $httpsEnforced } else { $null }
+                HttpsEnforced = if ($updateBody.ContainsKey('https_enforced') -and $httpsEnforcementStatus -ne 'PendingCertificate') { [bool] $httpsEnforced } else { $null }
             }
             if ($handoffRequired) {
                 $handoff.ReplacementClaimSucceeded = $true
@@ -245,6 +258,16 @@ function Restore-CgrGitHubPagesConfiguration {
         if ($FailureStage) { $FailureStage.Value = if ($handoffRequired) { 'VerifyReplacementPagesCustomDomain' } else { 'VerifyReplacementGitHubPages' } }
         $verifyDomain = -not [string]::IsNullOrWhiteSpace([string] $customDomain)
         $readBack = Assert-CgrDestinationPagesReadBack -DestinationRepository $DestinationRepository -Pages $pages -VerifyCustomDomain:$verifyDomain -HostName $HostName
+        $actualHttps = Get-CgrObjectProperty -InputObject $readBack -Name 'https_enforced'
+        $actualCertificate = Get-CgrObjectProperty -InputObject $readBack -Name 'https_certificate'
+        if ($null -ne $httpsEnforced) {
+            if ($null -ne $actualHttps -and [bool] $actualHttps -eq [bool] $httpsEnforced) {
+                $httpsEnforcementStatus = 'Restored'
+            }
+            elseif ([bool] $httpsEnforced -and $null -eq $actualCertificate) {
+                $httpsEnforcementStatus = 'PendingCertificate'
+            }
+        }
         $createStep.Verified = $true
         if ($configurationStep) { $configurationStep.Verified = $true }
         if ($handoffRequired) {
@@ -263,7 +286,8 @@ function Restore-CgrGitHubPagesConfiguration {
         return [pscustomobject] @{
             PSTypeName = 'CopyGitHubRepo.PagesRestoreResult'; Repository = $DestinationRepository.FullName
             Status = 'Restored'; Configured = $true; BuildType = $buildType; Source = $reviewedConfiguration.Source
-            CustomDomain = $customDomain; HttpsEnforced = $httpsEnforced; Restored = $true; Verified = $true; GuardReleased = $true
+            CustomDomain = $customDomain; HttpsEnforced = $httpsEnforced; HttpsEnforcementStatus = $httpsEnforcementStatus
+            Restored = $true; Verified = $true; GuardReleased = $true
             CustomDomainStatus = if ($verifyDomain) { if ($handoffRequired) { 'HandedOff' } else { 'Restored' } } else { 'NotConfigured' }
             CustomDomainHandoff = $handoff
             ExternalReadiness = Get-CgrObjectProperty -InputObject $pages -Name 'ExternalReadiness'
@@ -277,7 +301,7 @@ function Restore-CgrGitHubPagesConfiguration {
                 BuildType = $buildType
                 Source = if ($buildType -eq 'legacy') { $reviewedConfiguration.Source } else { $null }
                 CustomDomain = if (-not [string]::IsNullOrWhiteSpace([string] $customDomain)) { [string] $customDomain } else { $null }
-                HttpsEnforced = if ($null -ne $httpsEnforced) { [bool] $httpsEnforced } else { $null }
+                HttpsEnforced = if ($httpsEnforcementStatus -eq 'Restored') { [bool] $httpsEnforced } else { $null }
             }
             LastSuccessfulPagesStage = 'ReleasePagesActivationGuard'
             ExternalState = $externalState

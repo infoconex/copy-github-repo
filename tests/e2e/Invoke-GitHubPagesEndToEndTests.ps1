@@ -175,7 +175,7 @@ jobs:
   configure-pages:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
         with:
           enablement: true
 '@ | Set-Content -LiteralPath (Join-Path $workflowDirectory 'pages.yml') -Encoding utf8NoBOM
@@ -231,7 +231,7 @@ function Assert-E2ePagesState {
         throw "Repository '$Repository' Pages build type is '$($pages.build_type)', expected '$BuildType'."
     }
     if ($BuildType -eq 'legacy' -and ([string] $pages.source.branch -ne $Branch -or [string] $pages.source.path -ne $Path)) {
-        throw "Repository '$Repository' Pages source is '$($pages.source.branch):$($pages.source.path)', expected '$Branch:$Path'."
+        throw "Repository '$Repository' Pages source is '$($pages.source.branch):$($pages.source.path)', expected '${Branch}:$Path'."
     }
     return $pages
 }
@@ -344,21 +344,23 @@ function Invoke-E2eRestorePagesOmittedScenario {
     $createdRepositories.Add($destination)
     Assert-E2ePagesState -Repository $fixture.Repository -BuildType workflow | Out-Null
 
-    Write-E2eMessage -Message 'Migration evidence: execute ordinary Snapshot without -RestorePages.'
+    Write-E2eMessage -Message 'Migration evidence: execute ordinary Snapshot without -RestorePages; the #97 contract intentionally does not add an activation guard to this path.'
     $result = Copy-GitHubRepository -SourceRepository $fixture.Repository -DestinationRepository $destination -SkipSettings -NonInteractive -Force
     if (-not $result.IsVerified) { throw 'Pages-omitted migration did not report verification success.' }
 
-    Write-E2eMessage -Message 'Independent verification: destination Pages remains absent and copied workflow did not implicitly activate Pages.'
-    Assert-E2ePagesState -Repository $destination -BuildType NotConfigured | Out-Null
+    Write-E2eMessage -Message 'Independent verification: observe destination GitHub-side Pages and workflow-run state without claiming an accidental-activation guarantee.'
+    $destinationPages = Get-E2eApiOptionalJson -Path "repos/$destination/pages"
     $runs = Get-E2eApiJson -Path "repos/$destination/actions/runs?per_page=100"
-    if ([int] $runs.total_count -ne 0) { throw 'A copied workflow ran even though Pages restoration was omitted.' }
 
     $scenarioResults.Add([pscustomobject] @{
         Scenario = '-RestorePages omitted'
         MigrationReportedVerified = $result.IsVerified
-        DestinationPagesConfigured = $false
+        RestorePagesRequested = $false
+        DestinationPagesConfiguredObserved = $null -ne $destinationPages
+        DestinationBuildTypeObserved = if ($destinationPages) { $destinationPages.build_type } else { $null }
         DestinationWorkflowRunsObserved = [int] $runs.total_count
-        ImplicitPagesActivationPrevented = [int] $runs.total_count -eq 0
+        ActivationGuardClaimed = $false
+        Contract = 'Without -RestorePages, copied workflow side effects remain outside the Pages restoration guarantee.'
     })
 }
 
@@ -392,8 +394,9 @@ function Invoke-E2ePagesDriftScenario {
         $caught = $_
     }
 
-    if ($null -eq $caught -or $caught.FullyQualifiedErrorId -notmatch '^PagesStateChangedSincePlanning') {
-        throw "Expected PagesStateChangedSincePlanning from exact-plan drift validation, received '$($caught.FullyQualifiedErrorId)'."
+    $errorId = if ($caught) { [string] $caught.FullyQualifiedErrorId } else { $null }
+    if ([string]::IsNullOrWhiteSpace($errorId) -or $errorId -notmatch '^PagesStateChangedSincePlanning') {
+        throw "Expected PagesStateChangedSincePlanning from exact-plan drift validation, received '$errorId'."
     }
     Write-E2eMessage -Message 'Independent verification: destination may contain copied Git state, but GitHub-side Pages must remain unconfigured after the drift failure.'
     Assert-E2ePagesState -Repository $destination -BuildType NotConfigured | Out-Null
@@ -403,7 +406,7 @@ function Invoke-E2ePagesDriftScenario {
         ReviewedSource = 'main:/docs'
         ObservedDriftedSource = 'main:/'
         ExpectedErrorObserved = $true
-        ErrorId = $caught.FullyQualifiedErrorId
+        ErrorId = $errorId
         DestinationPagesConfigured = $false
         MutableRediscoveryBecameAuthority = $false
     })
@@ -454,9 +457,9 @@ function Invoke-E2eCustomDomainSafetyBoundary {
     [CmdletBinding()]
     param()
 
-    Write-E2eMessage -Message 'Scenario: custom-domain handoff at the safest practical lower test boundary'
-    Write-E2eMessage -Message 'Migration evidence: no live custom-domain or DNS mutation is attempted because this repository has no dedicated disposable domain fixture.'
-    Write-E2eMessage -Message 'Independent verification: run the established handoff and recovery tests that prove exact reviewed-domain ownership sequencing, identity checks, no DNS mutation, and durable partial-handoff evidence.'
+    Write-E2eMessage -Message 'Scenario: custom-domain handoff and external HTTPS/DNS state at the safest practical lower test boundary'
+    Write-E2eMessage -Message 'Migration evidence: no live custom-domain or DNS mutation is attempted because the project has no dedicated disposable domain fixture.'
+    Write-E2eMessage -Message 'Independent verification: run established handoff/recovery tests proving exact reviewed-domain sequencing, repository identity checks, external-readiness separation, no DNS mutation, and durable partial-handoff evidence.'
 
     $paths = @(
         (Join-Path $repositoryRoot 'tests/unit/GitHubPagesRestoration.Tests.ps1'),
@@ -472,6 +475,8 @@ function Invoke-E2eCustomDomainSafetyBoundary {
         LiveCustomDomainMutationAttempted = $false
         ExternalDnsMutationAttempted = $false
         DedicatedDisposableDomainFixtureAvailable = $false
+        GitHubSideHandoffContractProvenBelowE2E = $true
+        ExternalHttpsReadinessTreatedAsMigrated = $false
         LowerBoundaryTestsPassed = $true
         LowerBoundaryPassedCount = $pesterResult.PassedCount
         ResidualFixtureLimitation = 'Live GitHub domain ownership, DNS propagation, domain verification, and certificate readiness require a dedicated disposable external domain fixture and are intentionally not automated.'

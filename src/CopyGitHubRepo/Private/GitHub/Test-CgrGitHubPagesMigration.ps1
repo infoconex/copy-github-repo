@@ -101,9 +101,8 @@ function Test-CgrGitHubPagesMigration {
         if ($null -ne $expectedHttps) {
             $actualHttps = Get-CgrObjectProperty -InputObject $actual -Name 'https_enforced'
             $httpsCertificate = Get-CgrObjectProperty -InputObject $actual -Name 'https_certificate'
-            $httpsPendingCertificate = [bool] $expectedHttps -and
-                ($null -eq $actualHttps -or -not [bool] $actualHttps) -and
-                $null -eq $httpsCertificate
+            $httpsNotYetEnforced = $null -eq $actualHttps -or -not [bool] $actualHttps
+            $httpsPendingCertificate = [bool] $expectedHttps -and $httpsNotYetEnforced -and $null -eq $httpsCertificate
             $httpsMatches = $null -ne $actualHttps -and [bool] $actualHttps -eq [bool] $expectedHttps
             $httpsEnforcementStatus = if ($httpsMatches) { 'Verified' } elseif ($httpsPendingCertificate) { 'PendingCertificate' } else { 'Mismatch' }
             $checks.Add([pscustomobject] @{

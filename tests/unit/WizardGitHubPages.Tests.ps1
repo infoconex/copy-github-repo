@@ -33,10 +33,7 @@ Describe 'Wizard GitHub Pages restoration' {
                 }
                 Steps = @([pscustomobject] @{ Description = 'Restore GitHub Pages from approved plan evidence.' })
             }
-            $script:messages = @()
-            Mock Write-CgrWizardMessage {
-                if ($PSBoundParameters.ContainsKey('Message')) { $script:messages += [string] $Message }
-            }
+            Mock Write-CgrWizardMessage
             Mock Get-GitHubRepository { @($source) }
             Mock Select-CgrWizardRepository { ConvertTo-CgrWizardNavigationResult -Action Next -Value $source }
             Mock Test-CgrGitHubRepositoryExistence { $false }
@@ -52,13 +49,13 @@ Describe 'Wizard GitHub Pages restoration' {
 
             Should -Invoke Copy-GitHubRepository -Times 1 -Exactly -ParameterFilter { $PlanOnly -and $RestorePages -and -not $SkipSettings }
             Should -Invoke Invoke-CgrApprovedMigrationPlan -Times 1 -Exactly -ParameterFilter { [object]::ReferenceEquals($Plan, $plan) }
-            ($script:messages -join "`n") | Should -Match 'GitHub Actions \(workflow-based Pages\)'
-            ($script:messages -join "`n") | Should -Match 'Custom domain: docs\.example\.com'
-            ($script:messages -join "`n") | Should -Match 'HTTPS enforcement intent: True'
-            ($script:messages -join "`n") | Should -Match 'Domain verification readiness: verified'
-            ($script:messages -join "`n") | Should -Match 'Certificate readiness: approved'
-            ($script:messages -join "`n") | Should -Match 'DNS evidence: ExternalNotQueried'
-            ($script:messages -join "`n") | Should -Match 'does not discover or mutate external DNS'
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'GitHub Actions \(workflow-based Pages\)' }
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'Custom domain: docs\.example\.com' }
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'HTTPS enforcement intent: True' }
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'Domain verification readiness: verified' }
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'Certificate readiness: approved' }
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'DNS evidence: ExternalNotQueried' }
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'does not discover or mutate external DNS' }
         }
     }
 
@@ -72,8 +69,7 @@ Describe 'Wizard GitHub Pages restoration' {
                 Pages = [pscustomobject] @{ Status = 'NotConfigured'; Configured = $false; BuildType = $null; Source = $null; CustomDomain = $null; HttpsEnforced = $false }
                 Steps = @()
             }
-            $script:messages = @()
-            Mock Write-CgrWizardMessage { if ($PSBoundParameters.ContainsKey('Message')) { $script:messages += [string] $Message } }
+            Mock Write-CgrWizardMessage
             Mock Get-GitHubRepository { @($source) }
             Mock Select-CgrWizardRepository { ConvertTo-CgrWizardNavigationResult -Action Next -Value $source }
             Mock Test-CgrGitHubRepositoryExistence { $false }
@@ -88,8 +84,8 @@ Describe 'Wizard GitHub Pages restoration' {
             Invoke-CgrRepositoryCopyWizard -HostName github.com -ExecutionGuard { $true } | Out-Null
 
             Should -Invoke Copy-GitHubRepository -Times 1 -Exactly -ParameterFilter { $PlanOnly -and $RestorePages -and $SkipSettings }
-            ($script:messages -join "`n") | Should -Match 'Source Pages status: NotConfigured'
-            ($script:messages -join "`n") | Should -Match 'will not create a destination Pages site'
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'Source Pages status: NotConfigured' }
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'will not create a destination Pages site' }
         }
     }
 
@@ -109,8 +105,7 @@ Describe 'Wizard GitHub Pages restoration' {
                 }
                 Steps = @()
             }
-            $script:messages = @()
-            Mock Write-CgrWizardMessage { if ($PSBoundParameters.ContainsKey('Message')) { $script:messages += [string] $Message } }
+            Mock Write-CgrWizardMessage
             Mock Get-GitHubRepository { @($source) }
             Mock Select-CgrWizardRepository { ConvertTo-CgrWizardNavigationResult -Action Next -Value $source }
             Mock Test-CgrGitHubRepositoryExistence { $false }
@@ -124,10 +119,10 @@ Describe 'Wizard GitHub Pages restoration' {
 
             Invoke-CgrRepositoryCopyWizard -HostName github.com -ExecutionGuard { $true } | Out-Null
 
-            ($script:messages -join "`n") | Should -Match 'legacy \(branch/path-based Pages\)'
-            ($script:messages -join "`n") | Should -Match 'Publishing source: gh-pages/docs'
-            ($script:messages -join "`n") | Should -Match 'not restorable from this reviewed plan'
-            ($script:messages -join "`n") | Should -Match 'not supported for restoration'
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'legacy \(branch/path-based Pages\)' }
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'Publishing source: gh-pages/docs' }
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'not restorable from this reviewed plan' }
+            Should -Invoke Write-CgrWizardMessage -ParameterFilter { $Message -match 'not supported for restoration' }
             Should -Invoke Invoke-CgrApprovedMigrationPlan -Times 0 -Exactly
         }
     }
@@ -149,7 +144,7 @@ Describe 'Wizard GitHub Pages restoration' {
             }
             $script:sequence = @()
             Mock Write-CgrWizardMessage {
-                if ($PSBoundParameters.ContainsKey('Message') -and [string] $Message -match 'Same-name replacement must hand off custom-domain ownership') {
+                if ([string] $Message -match 'Same-name replacement must hand off custom-domain ownership') {
                     $script:sequence += 'handoff-warning'
                 }
             }
@@ -259,8 +254,7 @@ Describe 'Wizard GitHub Pages restoration' {
                 SourceState = [pscustomobject] @{ ContentMode = 'FullHistory'; Refs = @('refs/heads/main abc'); ReachableCommitCount = 1; DefaultBranch = 'main' }
                 Steps = @()
             }
-            $script:messages = @()
-            Mock Write-CgrWizardMessage { if ($PSBoundParameters.ContainsKey('Message')) { $script:messages += [string] $Message } }
+            Mock Write-CgrWizardMessage
             Mock Get-GitHubRepository { @($source) }
             Mock Select-CgrWizardRepository { ConvertTo-CgrWizardNavigationResult -Action Next -Value $source }
             Mock Test-CgrGitHubRepositoryExistence { $false }
@@ -275,7 +269,7 @@ Describe 'Wizard GitHub Pages restoration' {
             Invoke-CgrRepositoryCopyWizard -HostName github.com -ExecutionGuard { $true } | Out-Null
 
             Should -Invoke Copy-GitHubRepository -Times 1 -Exactly -ParameterFilter { $PlanOnly -and -not $RestorePages }
-            ($script:messages -join "`n") | Should -Not -Match 'Source Pages status:'
+            Should -Invoke Write-CgrWizardMessage -Times 0 -Exactly -ParameterFilter { $Message -match 'Source Pages status:' }
             Should -Invoke Invoke-CgrApprovedMigrationPlan -Times 1 -Exactly -ParameterFilter { [object]::ReferenceEquals($Plan, $plan) }
         }
     }

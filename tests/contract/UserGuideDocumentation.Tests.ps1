@@ -47,19 +47,23 @@ Describe 'User capabilities and scenario documentation' {
                 'Issues and issue history'
                 'GitHub Releases / release history'
                 'GitHub Actions workflow-run history'
-                'GitHub Pages configuration'
+                'GitHub Pages'
+                'External DNS records'
                 'Secret values'
                 'Collaborator/team access'
                 'Packages / deployments'
             )) {
             $script:userGuide | Should -Match ([regex]::Escape($item))
         }
+        $script:userGuide | Should -Match 'RestorePages'
+        $script:userGuide | Should -Match 'certificate.*external|external.*certificate'
     }
 
     It 'documents the required user scenarios by intent' {
         foreach ($heading in @(
                 '### Publish a clean Snapshot to a new destination'
                 '### Copy FullHistory to a new destination'
+                '### Restore Pages to a new destination'
                 '### Replace an existing different destination'
                 '### Replace a repository under the same name'
                 '### Preview without mutation'

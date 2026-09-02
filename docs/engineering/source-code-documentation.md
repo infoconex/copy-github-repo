@@ -89,7 +89,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `New-CgrGitHubRepository` | Creates an empty destination repository after the public safety boundary has approved mutation. |
 | `New-CgrMigrationPlan` | **Inline tier.** Creates the immutable reviewed plan, source-state evidence, optional approved-release selection, replacement mode, and ordered safety steps without performing migration mutation. |
 | `New-CgrSnapshotReleaseCheckpointPlan` | **Inline tier.** Converts the already-approved Snapshot release selection into immutable tag/ref/tree evidence and a deterministic ancestry-ordered checkpoint sequence, coalescing duplicate targets and failing closed on incompatible release-to-release or release-to-HEAD topology without performing mutation. |
-| `New-CgrWizardActivitySink` | Creates the wizard activity adapter used to render structured progress events. |
+| `New-CgrWizardActivitySink` | Creates the wizard activity adapter used to render structured activity events for the interactive wizard. |
 | `Protect-CgrDiagnosticText` | Redacts or normalizes sensitive diagnostic text before presentation or persistence. |
 | `Read-CgrWizardChoice` | Reads a bounded menu choice with default/help/navigation behavior suitable for mocked tests. |
 | `Read-CgrWizardInput` | Provides the base injectable wizard input boundary. |
@@ -144,6 +144,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `uninstall.ps1` | Discovers installed copies, obtains confirmation as needed, and removes only selected module installations. |
 | `tests/e2e/Invoke-CleanSnapshotDemonstration.ps1` | Creates disposable repositories to demonstrate clean Snapshot publication; this is a demonstration, not part of the E2E test taxonomy. |
 | `tests/e2e/Invoke-FullHistoryEndToEndTests.ps1` | Exercises a live FullHistory copy against disposable GitHub repositories. |
+| `tests/e2e/Invoke-GitHubPagesEndToEndTests.ps1` | Exercises live GitHub Pages migration across disposable repositories, separating migration-reported evidence from independent GitHub-side verification for Actions-based and branch/path Pages, no-Pages, omitted restoration, drift, same-name replacement, and safe custom-domain boundary reporting. |
 | `tests/e2e/Invoke-GitHubReleaseEndToEndTests.ps1` | Exercises filtered FullHistory GitHub Release restoration against disposable repositories, including assets, Latest designation, ordinary tag-target preservation, and independent post-migration release verification. |
 | `tests/e2e/Invoke-GitLfsEndToEndTests.ps1` | Exercises live Git LFS transfer behavior. |
 | `tests/e2e/Invoke-RecoveryEndToEndTests.ps1` | Exercises live failure/recovery evidence paths. |

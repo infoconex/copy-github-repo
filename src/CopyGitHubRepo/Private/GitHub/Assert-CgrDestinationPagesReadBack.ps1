@@ -33,10 +33,17 @@ function Assert-CgrDestinationPagesReadBack {
         throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $actual)
     }
     $expectedHttps = Get-CgrObjectProperty -InputObject $Pages -Name 'HttpsEnforced'
-    if ($null -ne $expectedHttps -and
-        [bool] (Get-CgrObjectProperty -InputObject $actual -Name 'https_enforced') -ne [bool] $expectedHttps) {
-        $exception = [System.InvalidOperationException]::new('Destination Pages HTTPS-enforcement state does not match the reviewed intent.')
-        throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $actual)
+    if ($null -ne $expectedHttps) {
+        $actualHttps = Get-CgrObjectProperty -InputObject $actual -Name 'https_enforced'
+        $certificate = Get-CgrObjectProperty -InputObject $actual -Name 'https_certificate'
+        $httpsPendingCertificate = [bool] $expectedHttps -and
+            ($null -eq $actualHttps -or -not [bool] $actualHttps) -and
+            $null -eq $certificate
+        if (-not $httpsPendingCertificate -and
+            ($null -eq $actualHttps -or [bool] $actualHttps -ne [bool] $expectedHttps)) {
+            $exception = [System.InvalidOperationException]::new('Destination Pages HTTPS-enforcement state does not match the reviewed intent.')
+            throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $actual)
+        }
     }
     return $actual
 }

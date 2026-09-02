@@ -101,7 +101,14 @@ Describe 'Independent GitHub Pages verification' {
             }
             $script:cname = $null
             $script:https = $true
-            Mock Get-CgrGitHubApiOptional { [pscustomobject] @{ build_type = 'workflow'; cname = $script:cname; https_enforced = $script:https } }
+            Mock Get-CgrGitHubApiOptional {
+                [pscustomobject] @{
+                    build_type = 'workflow'
+                    cname = $script:cname
+                    https_enforced = $script:https
+                    https_certificate = [pscustomobject] @{ state = 'approved' }
+                }
+            }
             $destination = [pscustomobject] @{ FullName = 'acme/destination' }
 
             $missing = Test-CgrGitHubPagesMigration -Plan $plan -DestinationRepository $destination

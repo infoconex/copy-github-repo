@@ -22,13 +22,13 @@ function Assert-CgrDestinationPagesReadBack {
         $expectedSource = Get-CgrObjectProperty -InputObject $Pages -Name 'Source'
         $actualSource = Get-CgrObjectProperty -InputObject $actual -Name 'source'
         if ((Get-CgrObjectProperty -InputObject $actualSource -Name 'branch') -ne (Get-CgrObjectProperty -InputObject $expectedSource -Name 'Branch') -or
-            (Get-CgrObjectProperty -InputObject $actualSource -Name 'path') -ne (Get-CgrObjectProperty -InputObject $expectedSource -Name 'Path')) {
+                (Get-CgrObjectProperty -InputObject $actualSource -Name 'path') -ne (Get-CgrObjectProperty -InputObject $expectedSource -Name 'Path')) {
             $exception = [System.InvalidOperationException]::new('Destination Pages branch/path does not match the exact reviewed source.')
             throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $actualSource)
         }
     }
     if ($VerifyCustomDomain -and
-        (Get-CgrObjectProperty -InputObject $actual -Name 'cname') -ne (Get-CgrObjectProperty -InputObject $Pages -Name 'CustomDomain')) {
+            (Get-CgrObjectProperty -InputObject $actual -Name 'cname') -ne (Get-CgrObjectProperty -InputObject $Pages -Name 'CustomDomain')) {
         $exception = [System.InvalidOperationException]::new('Destination Pages custom domain does not match the exact reviewed value.')
         throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $actual)
     }
@@ -40,7 +40,7 @@ function Assert-CgrDestinationPagesReadBack {
             ($null -eq $actualHttps -or -not [bool] $actualHttps) -and
             $null -eq $certificate
         if (-not $httpsPendingCertificate -and
-            ($null -eq $actualHttps -or [bool] $actualHttps -ne [bool] $expectedHttps)) {
+                ($null -eq $actualHttps -or [bool] $actualHttps -ne [bool] $expectedHttps)) {
             $exception = [System.InvalidOperationException]::new('Destination Pages HTTPS-enforcement state does not match the reviewed intent.')
             throw [System.Management.Automation.ErrorRecord]::new($exception, 'DestinationPagesVerificationFailed', [System.Management.Automation.ErrorCategory]::InvalidResult, $actual)
         }

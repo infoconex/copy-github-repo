@@ -177,7 +177,6 @@ function Restore-CgrGitHubPagesConfiguration {
                 $releaseStep.Verified = $true
             }
         }
-
         if ($FailureStage) { $FailureStage.Value = 'CreateReplacementGitHubPages' }
         $createStep = [pscustomobject] @{
             Order = if ($null -ne $CompletedSteps) { $CompletedSteps.Count + 1 } else { 0 }

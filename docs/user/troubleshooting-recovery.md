@@ -57,7 +57,7 @@ flowchart TD
     U --> Q
     Q --> K[Return verified result and provenance]
 
-    E -. failure .-> X[Preserve repositories and recovery evidence]
+    E -. failure .-> X[Preserve known repositories and write recovery evidence]
     D -. failure .-> X
     G -. failure .-> X
     H -. failure .-> X
@@ -124,6 +124,8 @@ Do not paste tokens or authentication headers into issue reports.
 
 **Could GitHub state already have changed?** No from that stale execution attempt when detected at the pre-mutation source boundary.
 
+Related scenario: `SCN-PLAN-SAFETY-01`.
+
 ### Pages evidence changed before restoration
 
 **What it means:** `-RestorePages` was approved, but mutation-driving Pages state no longer matches the immutable reviewed Pages evidence.
@@ -160,6 +162,8 @@ Do not paste tokens or authentication headers into issue reports.
 
 **Could GitHub state already have changed?** If this is the initial conflict, no. If the repository may be from an earlier partial attempt, assume yes until identities/recovery evidence prove otherwise.
 
+Related scenarios: `SCN-DEST-SAFETY-01`, `SCN-DEST-PARTIAL-01`.
+
 ### The archive name is already in use
 
 **What it means:** the preservation target cannot be used safely because that repository name already exists.
@@ -183,6 +187,8 @@ Do not paste tokens or authentication headers into issue reports.
 **Corrective action:** regenerate/review the plan if any identity is wrong; otherwise enter exact required confirmation only when satisfied.
 
 **Could GitHub state already have changed?** No from rejected confirmation. `-Force` and `-Confirm:$false` do not bypass this boundary.
+
+Related scenario: `SCN-SAME-SAFETY-01`.
 
 ### Git or Git LFS fails before publication
 
@@ -222,6 +228,8 @@ gh auth status --hostname github.com
 
 **Could GitHub state already have changed?** **Yes.** Destination contains published state even though verification failed.
 
+Related scenarios: `SCN-SNAP-VERIFY-01`, `SCN-HIST-VERIFY-01`.
+
 ### Ordinary settings restoration fails
 
 **What it means:** content verification succeeded, but one or more supported repository settings could not be restored/read back successfully.
@@ -231,6 +239,8 @@ gh auth status --hostname github.com
 **Corrective action:** preserve destination and recovery evidence. Correct settings deliberately only after confirming content is the intended verified copy.
 
 **Could GitHub state already have changed?** **Yes.** Content exists and some settings may already have been restored.
+
+Related scenario: `SCN-SET-PARTIAL-01`.
 
 ### Pages already exists unexpectedly at the restoration stage
 
@@ -281,6 +291,8 @@ gh auth status --hostname github.com
 **Corrective action:** if no mutation began, simply restart/replan when ready. If wizard reports a post-mutation failure, follow recovery evidence instead of assuming cancellation rolled anything back.
 
 **Could GitHub state already have changed?** Normal pre-execution cancellation: no. Post-mutation failure: yes.
+
+Related scenario: `SCN-WIZ-NOOP-01`.
 
 ### Report or recovery-evidence output cannot be written
 
@@ -338,6 +350,19 @@ Include CopyGitHubRepo version/commit, PowerShell/OS, selected mode/scenario, wh
 Do **not** include GitHub tokens, API keys, cookies, authorization headers, credential-helper output, secret values, private repository source files unless necessary/safe, or unrelated personal/access-control data. Pages migration never requires secret values to be copied into a defect report.
 
 Before attaching JSON/Markdown reports publicly, inspect them for private repository names, IDs, URLs, commit metadata, custom-domain information, or other organization-specific information.
+
+## Related behavioral scenarios
+
+This guide consumes the shared scenario taxonomy rather than creating a competing failure model. Particularly relevant scenarios include:
+
+- `SCN-PLAN-SAFETY-01` — stale plan fails before mutation;
+- `SCN-DEST-SAFETY-01` — replacement confirmation safety;
+- `SCN-DEST-PARTIAL-01` — archive succeeds but later replacement fails;
+- `SCN-SAME-SAFETY-01` — same-name identity safety;
+- `SCN-SNAP-VERIFY-01` / `SCN-HIST-VERIFY-01` — content verification failures;
+- `SCN-SET-PARTIAL-01` — settings failure after verified content;
+- `SCN-WIZ-NOOP-01` — normal wizard no-op/cancellation behavior; and
+- `SCN-RECOVER-RECOVERY-01` — durable recovery evidence/preservation behavior.
 
 ## Related documentation
 

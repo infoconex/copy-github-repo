@@ -79,7 +79,7 @@ Initial public stable release. Before `v0.1.0` was tagged, the repository was in
 
 ### Added
 
-- Cross-platform PowerShell module for safely copying and migrating GitHub repositories on Windows, macOS, and Linux with PowerShell 7.4+.
+- Cross-platform PowerShell module for safely copying GitHub repositories on Windows, macOS, and Linux with PowerShell 7.4+.
 - Public commands for repository discovery, guided copying, scripted copying, and independent migration verification: `Get-GitHubRepository`, `Start-CopyGitHubRepositoryWizard`, `Copy-GitHubRepository`, and `Test-GitHubRepositoryMigration`.
 - `Snapshot` mode for publishing the approved default-branch contents as a clean repository with one unrelated root commit, and `FullHistory` mode for preserving ordinary branches, tags, reachable commit history, and required Git LFS content.
 - Plan-before-mutation workflows, including `-PlanOnly`, `-WhatIf`, immutable source-state checks, destination/archive collision prevention, and fail-closed handling when the approved source changes before mutation.

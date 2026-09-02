@@ -1,6 +1,6 @@
 ---
 title: "Copy and Migrate GitHub Repositories with PowerShell"
-description: "Copy GitHub repositories with PowerShell using Snapshot for a clean copy that can optionally preserve selected release checkpoints, or FullHistory to preserve commits, branches, tags, Git LFS, and selected GitHub Releases, with planning, verification, and recovery safeguards."
+description: "Copy GitHub repositories with PowerShell using Snapshot for a clean copy or FullHistory to preserve history, with optional releases and GitHub Pages restoration plus planning, verification, and recovery safeguards."
 ---
 
 ![Copy GitHub Repo banner](assets/images/product_banner.png)
@@ -15,10 +15,12 @@ description: "Copy GitHub repositories with PowerShell using Snapshot for a clea
 
 Copy GitHub Repository is a PowerShell utility for safely publishing or copying GitHub repositories. Its default `Snapshot` mode is designed for **clean publication**. Plain Snapshot copies the current source default-branch state into one unrelated root commit, intentionally leaving prior Git history, old branches/tags, pull requests, issues, milestones, and other historical GitHub records behind. With `-IncludeReleases`, Snapshot can instead preserve selected release states as a new unrelated checkpoint history while still intentionally replacing the source commit identities and detailed ancestry. The explicit `FullHistory` mode is the history-preserving alternative and keeps ordinary Git history, branches, tags, and reachable Git LFS objects; with `-IncludeReleases`, it also recreates selected GitHub Releases and their assets against the original preserved tag targets.
 
+GitHub Pages restoration is a separate opt-in capability. `-RestorePages` restores supported **GitHub-side Pages configuration** from immutable reviewed plan evidence after content verification. Site files, `CNAME`, Jekyll configuration, and Pages workflow files remain ordinary Git content and may be copied even when `-RestorePages` is omitted; copying those files does not prove that the GitHub-side Pages configuration was preserved.
+
 The project prioritizes preservation, explicit human authority, verification, and recoverability. It never automatically deletes a repository or overwrites an existing destination.
 
 > [!IMPORTANT]
-> Snapshot execution, Snapshot release preservation, same-name Snapshot replacement, new-destination FullHistory execution, same-name FullHistory replacement, supported repository-level settings restoration, and GitHub Release preservation are implemented on the current development line. The guided repository-copy wizard supports Snapshot release preservation and is covered by the project quality model.
+> Snapshot execution, Snapshot release preservation, FullHistory execution, same-name and existing-destination replacement, supported repository settings/protection restoration, GitHub Release preservation, and opt-in GitHub Pages restoration are implemented on the current development line. The guided wizard exposes the supported Pages opt-in and reviews the same immutable plan used by deterministic execution.
 
 ## Choose the right content mode
 
@@ -26,7 +28,9 @@ Use **Snapshot** when you want a clean new Git history. Plain Snapshot creates o
 
 Use **FullHistory** when commit ancestry, branches, tags, signed historical commits, blame history, or other Git-history evidence must remain intact. Add `-IncludeReleases` when selected GitHub Release pages and assets should also be recreated while preserving their original Git tag targets.
 
-For the complete user journey, support matrix, and common operating scenarios, start with the [User guide](docs/user/user-guide.md). The detailed Snapshot checkpoint rules are authoritative in the [Product contract](docs/product/product-contract.md#snapshot-release-checkpoint-contract).
+Add **`-RestorePages`** in either content mode only when supported GitHub-side Pages configuration should be restored. Actions-based Pages and representable branch/path publishing are supported. External DNS is never modified, secrets are never copied, and domain verification/certificate issuance can remain externally dependent after GitHub-side restoration.
+
+For the complete user journey, support matrix, and common operating scenarios, start with the [User guide](docs/user/user-guide.md). For Pages-specific behavior and recovery, see [GitHub Pages migration and recovery](docs/user/github-pages-migration.md). The detailed Snapshot checkpoint rules are authoritative in the [Product contract](docs/product/product-contract.md#snapshot-release-checkpoint-contract).
 
 Want to see what plain Snapshot automates? See [Manually Creating a Clean GitHub Repository Snapshot](docs/user/manual-process.md) for the equivalent Git and GitHub CLI/API procedure, including settings restoration and verification.
 
@@ -44,11 +48,16 @@ Want to see what plain Snapshot automates? See [Manually Creating a Clean GitHub
 - FullHistory release restoration remains bound to the exact release inventory approved during planning and retains original history/tag targets.
 - Existing destination GitHub Releases are not silently overwritten.
 - When the source release marked Latest is selected, that designation is preserved and verified at the destination.
+- `-RestorePages` is opt-in and consumes immutable reviewed Pages evidence; material source Pages drift before mutation fails closed.
+- Copied site/workflow files are Git content, not proof of preserved GitHub-side Pages configuration.
+- Pages restoration independently verifies the supported destination configuration and controls copied Pages workflow activation until the approved restoration boundary.
+- Same-name/existing-destination custom-domain handoff verifies archive/replacement identity and records partial handoff evidence for recovery.
+- External DNS, account/organization domain verification, certificate provisioning, and secrets are not migrated. Pending certificate provisioning can remain a valid external readiness state.
 - Release immutability state and linked release discussions are not currently recreated.
-- Failures after mutation begins retain durable recovery information instead of automatically deleting or rolling back repositories or restored releases.
+- Failures after mutation begins retain durable recovery information instead of automatically deleting or rolling back repositories, restored releases, or uncertain custom-domain ownership.
 - The current release line supports GitHub.com only and fails closed for other hosts.
 
-See the [Product contract](docs/product/product-contract.md) and [Architecture](docs/product/architecture.md) for the detailed safety and verification contracts.
+See the [Product contract](docs/product/product-contract.md), [GitHub Pages migration contract](docs/product/github-pages-migration-contract.md), and [Architecture](docs/product/architecture.md) for detailed safety and verification contracts.
 
 ## Prerequisites
 
@@ -160,7 +169,7 @@ The recommended human-facing entry point is the guided wizard:
 Start-CopyGitHubRepositoryWizard
 ```
 
-It discovers repositories, defaults to Snapshot/source visibility/settings restoration, lets you navigate Back/Next/Cancel before execution, displays a real `Copy-GitHubRepository -PlanOnly` plan, and requires an explicit Execute decision before mutation. When Snapshot is selected, the wizard can optionally preserve selected releases and exposes the same include/exclude tag, prerelease, draft, and newest-N filters used by the command.
+It discovers repositories, defaults to Snapshot/source visibility/settings restoration, lets you navigate Back/Next/Cancel before execution, displays a real `Copy-GitHubRepository -PlanOnly` plan, and requires an explicit Execute decision before mutation. When Snapshot is selected, the wizard can optionally preserve selected releases. When the source has Pages state that can be reviewed, the wizard also offers the explicit Pages-restoration choice, shows the actual plan evidence and external boundaries, and passes that reviewed `-RestorePages` decision into deterministic execution.
 
 A repository checkout can start the same guided experience through the root launcher:
 
@@ -168,7 +177,7 @@ A repository checkout can start the same guided experience through the root laun
 ./copy-github-repo.ps1
 ```
 
-See the [User guide](docs/user/user-guide.md) for scenario selection and what gets copied, then [`Start-CopyGitHubRepositoryWizard`](docs/reference/commands/Start-CopyGitHubRepositoryWizard.md) for complete command-level reference.
+See the [User guide](docs/user/user-guide.md) for scenario selection and what gets copied, [GitHub Pages migration and recovery](docs/user/github-pages-migration.md) for Pages-specific guidance, then [`Start-CopyGitHubRepositoryWizard`](docs/reference/commands/Start-CopyGitHubRepositoryWizard.md) for complete command-level reference.
 
 ## Scripted quick start
 
@@ -209,6 +218,17 @@ Copy-GitHubRepository `
     -IncludeReleases
 ```
 
+To restore supported GitHub-side Pages configuration from reviewed evidence:
+
+```powershell
+Copy-GitHubRepository `
+    -SourceRepository infoconex/source `
+    -DestinationRepository infoconex/destination `
+    -RestorePages
+```
+
+This does not migrate external DNS, domain-verification ownership, certificate provisioning, or secrets. Review the generated plan before execution, especially for branch/path publishing or custom-domain replacement.
+
 Release selection can be narrowed in either mode. For example, preserve only the three newest stable v2 releases:
 
 ```powershell
@@ -221,14 +241,14 @@ Copy-GitHubRepository `
     -ReleaseCount 3
 ```
 
-Snapshot/FullHistory distinctions, release selection, visibility changes, replacement modes, reporting, non-interactive execution, settings choices, and all parameter details are documented in [`Copy-GitHubRepository`](docs/reference/commands/Copy-GitHubRepository.md).
+Snapshot/FullHistory distinctions, release selection, Pages restoration, visibility changes, replacement modes, reporting, non-interactive execution, settings choices, and all parameter details are documented in [`Copy-GitHubRepository`](docs/reference/commands/Copy-GitHubRepository.md).
 
 ## Commands
 
 | Command | Purpose | Mutates GitHub? |
 | --- | --- | --- |
-| [`Start-CopyGitHubRepositoryWizard`](docs/reference/commands/Start-CopyGitHubRepositoryWizard.md) | Guided clean-publication/history-copy workflow, including optional Snapshot release preservation | Yes, after plan review and confirmation |
-| [`Copy-GitHubRepository`](docs/reference/commands/Copy-GitHubRepository.md) | Scriptable planning and repository publication/copy, including optional Snapshot or FullHistory GitHub Releases | Yes, except `-PlanOnly`/`-WhatIf` |
+| [`Start-CopyGitHubRepositoryWizard`](docs/reference/commands/Start-CopyGitHubRepositoryWizard.md) | Guided repository migration, including optional Snapshot release preservation and reviewed Pages restoration | Yes, after plan review and confirmation |
+| [`Copy-GitHubRepository`](docs/reference/commands/Copy-GitHubRepository.md) | Scriptable planning and repository migration, including optional releases and GitHub Pages restoration | Yes, except `-PlanOnly`/`-WhatIf` |
 | [`Get-GitHubRepository`](docs/reference/commands/Get-GitHubRepository.md) | Repository discovery and metadata | No |
 | [`Test-GitHubRepositoryMigration`](docs/reference/commands/Test-GitHubRepositoryMigration.md) | Snapshot/FullHistory verification | No |
 
@@ -240,9 +260,9 @@ Documentation uses progressive disclosure and one authoritative home per contrac
 
 | Goal | Start here |
 | --- | --- |
-| Use the product safely | [User guide](docs/user/user-guide.md), [Installation security](docs/security/installation-security.md), [Command reference](docs/reference/commands/README.md) |
+| Use the product safely | [User guide](docs/user/user-guide.md), [GitHub Pages migration and recovery](docs/user/github-pages-migration.md), [Installation security](docs/security/installation-security.md), [Command reference](docs/reference/commands/README.md) |
 | Understand product journeys, capabilities, use cases, and behavior scenarios | [Product journeys and behavioral model](docs/product/product-model.md) |
-| Understand normative product behavior and safety | [Product contract](docs/product/product-contract.md), [Architecture](docs/product/architecture.md) |
+| Understand normative product behavior and safety | [Product contract](docs/product/product-contract.md), [GitHub Pages migration contract](docs/product/github-pages-migration-contract.md), [Architecture](docs/product/architecture.md) |
 | Understand the guided interaction | [Wizard contract](docs/product/wizard-contract.md) |
 | Understand how Snapshot can be done manually | [Manual Snapshot procedure](docs/user/manual-process.md) |
 | Determine supported versions, platforms, prerequisites, and deprecation rules | [Support, compatibility, and deprecation policy](docs/user/support-policy.md) |

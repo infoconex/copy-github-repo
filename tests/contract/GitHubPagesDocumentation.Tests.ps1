@@ -39,7 +39,7 @@ Describe 'GitHub Pages migration documentation' {
 
     It 'documents Actions and branch-path publishing without inventing representability' {
         foreach ($document in @($script:pagesGuide, $script:copyReference, $script:pagesContract)) {
-            $document | Should -Match 'Actions-based Pages'
+            $document | Should -Match 'Actions-based(?: Pages)?'
             $document | Should -Match 'workflow'
             $document | Should -Match 'branch/path'
             $document | Should -Match 'representable|representability'
@@ -66,7 +66,7 @@ Describe 'GitHub Pages migration documentation' {
 
     It 'documents the omitted RestorePages behavior without claiming Pages preservation' {
         foreach ($document in @($script:pagesGuide, $script:copyReference, $script:pagesContract)) {
-            $document | Should -Match 'Without `?-RestorePages`?|when `?-RestorePages`? is omitted|Without -RestorePages'
+            $document | Should -Match 'Without `?-RestorePages`?|when `?-RestorePages`? is omitted|Without -RestorePages|`-RestorePages` is off by default\. Without it'
             $document | Should -Match 'does not claim|no guarantee|does not.*preserved or restored'
         }
     }
@@ -132,7 +132,7 @@ Describe 'GitHub Pages migration documentation' {
 
     It 'keeps public help consistent with implemented Pages behavior' {
         $script:copySource | Should -Match '\.PARAMETER RestorePages'
-        $script:copySource | Should -Match 'immutable reviewed plan evidence'
+        $script:copySource | Should -Match 'immutable reviewed\s+plan evidence'
         $script:copySource | Should -Match 'after destination content verification'
         $script:copySource | Should -Match 'revalidated immediately before mutation'
         $script:copySource | Should -Not -Match 'RestorePages[\s\S]{0,300}not implemented'

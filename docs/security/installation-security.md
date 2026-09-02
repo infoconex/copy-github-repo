@@ -66,16 +66,16 @@ The repository-hosted stable convenience bootstrap is an alternative to the norm
 irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1 | iex
 ```
 
-Without parameters, the bootstrap resolves the latest stable GitHub release. A specific stable version can be requested from the same bootstrap; for example, after `v0.3.0` is published:
+Without parameters, the bootstrap resolves the latest stable GitHub release. A specific stable version can be requested from the same bootstrap; for example, after `v0.4.0` is published:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1))) -Version 0.3.0
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1))) -Version 0.4.0
 ```
 
 If the selected version is already installed and intentional replacement is required, supply `-Force`:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1))) -Version 0.3.0 -Force
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1))) -Version 0.4.0 -Force
 ```
 
 The stable bootstrap requires GitHub CLI (`gh`) because it performs cryptographic provenance verification before extraction. It:
@@ -110,10 +110,10 @@ Therefore the convenience bootstrap remains inside the trust boundary even thoug
 
 For a higher-assurance stable install using the project's GitHub Release evidence, avoid executing mutable branch content. Pin a stable release and download its versioned artifact/checksum directly, then verify both checksum and GitHub artifact attestation before extraction.
 
-The initial stable version is `v0.1.0`; the following pattern pins version `v0.3.0` after that release is published:
+The initial stable version is `v0.1.0`; the following pattern pins version `v0.4.0` after that release is published:
 
 ```powershell
-$version = '0.3.0'
+$version = '0.4.0'
 $repository = 'infoconex/copy-github-repo'
 $tag = "v$version"
 $releaseBase = "https://github.com/$repository/releases/download/$tag"

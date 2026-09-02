@@ -144,6 +144,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `uninstall.ps1` | Discovers installed copies, obtains confirmation as needed, and removes only selected module installations. |
 | `tests/e2e/Invoke-CleanSnapshotDemonstration.ps1` | Creates disposable repositories to demonstrate clean Snapshot publication; this is a demonstration, not part of the E2E test taxonomy. |
 | `tests/e2e/Invoke-FullHistoryEndToEndTests.ps1` | Exercises a live FullHistory copy against disposable GitHub repositories. |
+| `tests/e2e/Invoke-GitHubPagesEndToEndTests.ps1` | Exercises live GitHub Pages migration across disposable repositories, separating migration-reported evidence from independent GitHub-side verification for Actions-based and branch/path Pages, no-Pages, omitted restoration, drift, same-name replacement, and safe custom-domain boundary reporting. |
 | `tests/e2e/Invoke-GitHubReleaseEndToEndTests.ps1` | Exercises filtered FullHistory GitHub Release restoration against disposable repositories, including assets, Latest designation, ordinary tag-target preservation, and independent post-migration release verification. |
 | `tests/e2e/Invoke-GitLfsEndToEndTests.ps1` | Exercises live Git LFS transfer behavior. |
 | `tests/e2e/Invoke-RecoveryEndToEndTests.ps1` | Exercises live failure/recovery evidence paths. |

@@ -7,31 +7,29 @@ description: "Normative contract and architecture for GitHub Pages migration, im
 
 ## Status and authority
 
-This document is the authoritative 0.4.0 product contract and architecture for GitHub Pages migration. Later Pages planning, execution, verification, recovery, wizard, E2E, and user-documentation work must consume this definition rather than redefine it.
+This document is the authoritative 0.4.0 product contract and architecture for GitHub Pages migration. Pages planning, execution, verification, recovery, wizard, E2E, and user documentation consume this definition rather than redefine it.
 
-This contract/investigation change does not implement Pages restoration. The existing `-RestorePages` switch remains intentional and opt-in; mutating execution continues to reject it until the later implementation work provides the behavior defined here.
+The 0.4.0 release line implements deterministic GitHub-side Pages planning, restoration, independent verification, activation control, replacement custom-domain handoff, and recovery evidence behind the existing opt-in `-RestorePages` switch. General GitHub Actions restoration, external DNS mutation, secrets migration, account/organization domain verification transfer, and certificate management remain outside this contract.
 
 ## Core distinction: Git content is not GitHub Pages state
 
 Repository files are ordinary Git content. Snapshot and FullHistory may therefore copy site files, `CNAME`, Jekyll configuration, and `.github/workflows/**`, including a Pages deployment workflow, according to their existing Git-content contracts.
 
-GitHub Pages configuration is separate GitHub-side state. A copied workflow file, a successful Pages workflow run, or a successfully published site is not proof that the reviewed source Pages configuration was preserved. First-class Pages migration must capture, restore, and independently verify the supported GitHub-side state described below.
+GitHub Pages configuration is separate GitHub-side state. A copied workflow file, a successful Pages workflow run, or a successfully published site is not proof that the reviewed source Pages configuration was preserved. First-class Pages migration captures, restores, and independently verifies the supported GitHub-side state described below.
 
-Plain migrations without `-RestorePages` do not gain an implicit guarantee that Pages will be disabled, preserved, or restored. They preserve only the existing Git-content contract. Any Pages activation caused by copied content or GitHub defaults is an implicit side effect that later implementation must control according to this contract.
+Plain migrations without `-RestorePages` do not gain an implicit guarantee that Pages will be disabled, preserved, or restored. They preserve only the existing Git-content contract. Any Pages activation caused by copied content or GitHub defaults is an implicit side effect controlled only to the extent required by the implementation's activation-safety contract; omission of `-RestorePages` does not become a Pages-restoration guarantee.
 
-## Evidence for current implicit Actions-based behavior
+## Evidence for implicit Actions-based behavior
 
-The current repository contains a push-triggered Pages deployment workflow that configures Pages, uploads a Pages artifact, and deploys with the GitHub Pages deployment action. On the exact pre-0.4.0 baseline `e775d92bd3ed34c3633a3bd2972150cb9e063d9e`, GitHub Actions run `33456980366` completed the `Configure GitHub Pages`, `Upload GitHub Pages artifact`, `Deploy to GitHub Pages`, and published-site smoke-test steps successfully.
+The repository's Pages design was motivated by the fact that a push-triggered Pages deployment workflow can configure and deploy Pages at the same Git boundary where migration publishes content. A copied workflow can therefore become available before first-class Pages restoration unless activation is controlled.
 
-The migration engine also publishes repository content by pushing the selected Snapshot or FullHistory Git state to the destination. Therefore a migration can make a copied push-triggered Pages workflow available at the same Git boundary that publishes content. Where GitHub permits that workflow to run, Pages can become active or change before any first-class `-RestorePages` stage exists.
-
-This is an implicit-activation risk, not successful Pages migration. Later implementation must prevent or safely contain an unreviewed Pages end state until the reviewed Pages decision is ready to apply.
+This is an implicit-activation risk, not successful Pages migration. The implementation prevents a copied Pages workflow from establishing an unreviewed Pages end state before the reviewed Pages restoration/verification boundary where that guard applies.
 
 ## Actions-based Pages
 
-For Actions-based Pages, the GitHub-side publishing mode is `workflow`. The reviewed plan must distinguish this mode from branch/path publishing.
+For Actions-based Pages, the GitHub-side publishing mode is `workflow`. The reviewed plan distinguishes this mode from branch/path publishing.
 
-Supported first-class migration may restore the reviewed GitHub-side mode and other supported Pages properties, but it must not infer preservation merely because a copied workflow exists or ran successfully. Workflow content remains Git content. General GitHub Actions configuration, enablement policy, secrets, environments, and unrelated workflow state remain outside the Pages restoration contract unless another explicit product contract says otherwise.
+Supported first-class migration restores the reviewed GitHub-side mode and other supported Pages properties, but it does not infer preservation merely because a copied workflow exists or ran successfully. Workflow content remains Git content. General GitHub Actions configuration, enablement policy, secrets, environments, and unrelated workflow state remain outside the Pages restoration contract unless another explicit product contract says otherwise.
 
 A destination whose reviewed source mode is Actions-based must not silently substitute a branch/path build mode.
 
@@ -41,11 +39,9 @@ For branch/path-based Pages, the reviewed GitHub-side configuration includes the
 
 Restoration is representable only when the exact reviewed publishing branch/path exists at the destination under the selected content mode. FullHistory can preserve ordinary branch topology according to its existing contract. Snapshot normally publishes only its constructed destination history/default branch; it must not invent a missing source publishing branch or silently redirect Pages to another branch/path.
 
-If the reviewed branch/path cannot be represented safely at the destination, planning or execution must fail closed/report the state as unsupported rather than substitute another publishing source.
+If the reviewed branch/path cannot be represented safely at the destination, planning or execution fails closed/reports the state as unsupported rather than substituting another publishing source.
 
 ## Pages property classification
-
-The following classifications control later implementation.
 
 | Property/state | Classification | Contract |
 | --- | --- | --- |
@@ -60,13 +56,13 @@ The following classifications control later implementation.
 | Account/organization domain verification | External identity/policy state | Never claim it was transferred. A missing prerequisite can make custom-domain restoration unsafe or incomplete. |
 | Secrets, tokens, environment secrets | Unsupported/sensitive | Never request, copy, display, or persist secret values. |
 
-Unsupported or incompatible state must remain explicit. CopyGitHubRepo must not invent a substitute publishing mode, branch, path, domain, or external configuration.
+Unsupported or incompatible state remains explicit. CopyGitHubRepo does not invent a substitute publishing mode, branch, path, domain, or external configuration.
 
 ## Custom domains and replacement ownership
 
 A production custom domain is an ownership-sensitive resource, not merely text to copy.
 
-For a new destination, later restoration may attempt to attach the exact reviewed custom domain only when GitHub permits it and the operation does not require taking the domain from an unrelated site. External DNS and domain-verification state remain outside the mutation contract.
+For a new destination, restoration may attempt to attach the exact reviewed custom domain only when GitHub permits it and the operation does not require taking the domain from an unrelated site. External DNS and domain-verification state remain outside the mutation contract.
 
 For same-name replacement and delegated/existing-destination archive-and-replace flows:
 
@@ -79,7 +75,7 @@ For same-name replacement and delegated/existing-destination archive-and-replace
 7. record whether archive release occurred and whether replacement claim succeeded so a mid-handoff failure is recoverable; and
 8. do not perform destructive automatic rollback when ownership state after failure is uncertain.
 
-The implementation should minimize the interval in which the domain is unbound, but safety and evidence take precedence over minimizing downtime.
+The implementation minimizes the interval in which the domain is unbound where practical, but safety and evidence take precedence over minimizing downtime.
 
 ## Stage ordering
 
@@ -97,7 +93,7 @@ The normative ordering for migrations that request first-class Pages restoration
 10. independently read back and verify supported Pages configuration, while reporting external DNS/domain/certificate readiness separately; and
 11. restore transferable repository/branch protection last, consistent with the existing protection contract.
 
-A later implementation may combine adjacent read-only checks operationally, but it must preserve these dependency and authority boundaries. In particular, Pages restoration never precedes successful content verification, and copied workflow execution never counts as Pages verification.
+Adjacent read-only checks may be combined operationally, but these dependency and authority boundaries remain intact. In particular, Pages restoration never precedes successful content verification, and copied workflow execution never counts as Pages verification.
 
 ## Behavior when `-RestorePages` is omitted
 
@@ -106,14 +102,14 @@ Without `-RestorePages`:
 - Snapshot and FullHistory keep their existing Git-content semantics unchanged;
 - site files and Pages workflow files may still be copied because they are Git content;
 - CopyGitHubRepo makes no guarantee that GitHub-side Pages configuration is preserved or restored;
-- CopyGitHubRepo must not represent incidental workflow execution as successful Pages migration; and
-- later implicit-activation controls must avoid creating a new undocumented Pages-restoration guarantee.
+- CopyGitHubRepo does not represent incidental workflow execution as successful Pages migration; and
+- activation controls do not create a new undocumented Pages-restoration guarantee.
 
 ## Planning and stale-state authority
 
-When `-RestorePages` is requested, planning must capture immutable reviewed Pages evidence sufficient for later mutation and drift detection. Execution must consume that reviewed evidence rather than rerun mutable source selection/discovery as authority.
+When `-RestorePages` is requested, planning captures immutable reviewed Pages evidence sufficient for later mutation and drift detection. Execution consumes that reviewed evidence rather than rerun mutable source selection/discovery as authority.
 
-Relevant source Pages configuration must be revalidated immediately before Pages mutation. Drift that changes whether Pages is configured, build type, branch/path, custom domain, or another supported mutation-driving property must terminate before Pages mutation rather than silently applying the new live state.
+Relevant source Pages configuration is revalidated immediately before Pages mutation. Drift that changes whether Pages is configured, build type, branch/path, custom domain, or another supported mutation-driving property terminates before Pages mutation rather than silently applying the new live state.
 
 ## Independent verification
 
@@ -128,7 +124,7 @@ Where applicable it verifies:
 - HTTPS-enforcement state where deterministic comparison is supported; and
 - after replacement handoff, that the archive no longer owns the production domain and the replacement does.
 
-DNS records, account/organization domain verification, certificate issuance/propagation, and similar external/asynchronous state are reported separately and never treated as proof that CopyGitHubRepo migrated them.
+DNS records, account/organization domain verification, certificate issuance/propagation, and similar external/asynchronous state are reported separately and never treated as proof that CopyGitHubRepo migrated them. Pending certificate provisioning can therefore be a valid external readiness state after deterministic GitHub-side Pages configuration has been restored.
 
 ## Fail-closed rules
 
@@ -142,8 +138,10 @@ Pages work terminates or reports an explicit unsupported state rather than guess
 - GitHub refuses a supported Pages mutation or read-back does not match reviewed intent; or
 - required verification cannot distinguish the destination from an unsafe or incompatible state.
 
-No Pages feature may weaken existing destructive confirmation, source-state preservation, stale-plan detection, repository identity checks, content/release verification, recovery evidence, least-privilege Actions permissions, or protection restoration.
+No Pages feature weakens existing destructive confirmation, source-state preservation, stale-plan detection, repository identity checks, content/release verification, recovery evidence, least-privilege Actions permissions, or protection restoration.
 
-## Explicit non-goals for this contract
+## Explicit non-goals
 
-This contract does not implement Pages restoration, general GitHub Actions restoration, external DNS changes, account/organization domain verification, certificate management, secrets migration, or a new public Pages switch. Those boundaries are intentional.
+The Pages capability does not restore general GitHub Actions configuration, modify external DNS, transfer account/organization domain verification, manage certificate issuance/propagation, migrate secrets, or introduce a second public Pages switch. Those boundaries are intentional.
+
+For operator-focused behavior, examples, replacement implications, and recovery steps, see [GitHub Pages migration and recovery](../user/github-pages-migration.md).

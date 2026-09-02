@@ -42,22 +42,27 @@ Describe 'GitHub Pages migration product contract' {
     }
 
     It 'preserves immutable reviewed evidence and independent verification boundaries' {
-        $script:contract | Should -Match 'planning must capture immutable reviewed Pages evidence'
-        $script:contract | Should -Match 'consume that reviewed evidence rather than rerun mutable source selection/discovery as authority'
+        $script:contract | Should -Match 'planning captures immutable reviewed Pages evidence'
+        $script:contract | Should -Match 'consumes that reviewed evidence rather than rerun mutable source selection/discovery as authority'
         $script:contract | Should -Match 'Pages verification is read-only and independent from restoration logic'
         $script:contract | Should -Match 'DNS records, account/organization domain verification, certificate issuance/propagation.*reported separately'
     }
 
-    It 'records evidence for current implicit Actions-based Pages behavior' {
-        $script:contract | Should -Match '33456980366'
-        $script:contract | Should -Match 'Configure GitHub Pages'
-        $script:contract | Should -Match 'Deploy to GitHub Pages'
+    It 'documents the implicit Actions activation risk without treating historical workflow runs as authority' {
+        $script:contract | Should -Match 'push-triggered Pages deployment workflow can configure and deploy Pages'
+        $script:contract | Should -Match 'copied workflow can therefore become available before first-class Pages restoration unless activation is controlled'
         $script:contract | Should -Match 'implicit-activation risk, not successful Pages migration'
+        $script:contract | Should -Match 'prevents a copied Pages workflow from establishing an unreviewed Pages end state'
+        $script:contract | Should -Not -Match '33456980366'
     }
 
-    It 'keeps contract-only scope and retains the existing public switch' {
-        $script:contract | Should -Match 'does not implement Pages restoration'
-        $script:contract | Should -Match 'existing `-RestorePages` switch remains intentional and opt-in'
-        $script:contract | Should -Match 'does not implement Pages restoration, general GitHub Actions restoration, external DNS changes'
+    It 'documents implemented opt-in Pages scope and explicit non-goals' {
+        $script:contract | Should -Match 'implements deterministic GitHub-side Pages planning, restoration, independent verification'
+        $script:contract | Should -Match 'existing opt-in `-RestorePages` switch'
+        $script:contract | Should -Match 'does not restore general GitHub Actions configuration'
+        $script:contract | Should -Match 'modify external DNS'
+        $script:contract | Should -Match 'migrate secrets'
+        $script:contract | Should -Match 'does not introduce a second public Pages switch|introduce a second public Pages switch'
+        $script:contract | Should -Not -Match 'does not implement Pages restoration'
     }
 }

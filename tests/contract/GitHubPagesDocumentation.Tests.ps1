@@ -66,7 +66,7 @@ Describe 'GitHub Pages migration documentation' {
 
     It 'documents the omitted RestorePages behavior without claiming Pages preservation' {
         foreach ($document in @($script:pagesGuide, $script:copyReference, $script:pagesContract)) {
-            $document | Should -Match 'Without `?-RestorePages`?|when `?-RestorePages`? is omitted|Without -RestorePages|`-RestorePages` is off by default\. Without it'
+            $document | Should -Match '`-RestorePages` is (?:off by default|opt-in)\. Without it|Without `-RestorePages`|Without -RestorePages|when `-RestorePages` is omitted'
             $document | Should -Match 'does not claim|no guarantee|does not.*preserved or restored'
         }
     }
@@ -135,7 +135,13 @@ Describe 'GitHub Pages migration documentation' {
         $script:copySource | Should -Match 'immutable reviewed\s+plan evidence'
         $script:copySource | Should -Match 'after destination content verification'
         $script:copySource | Should -Match 'revalidated immediately before mutation'
-        $script:copySource | Should -Not -Match 'RestorePages[\s\S]{0,300}not implemented'
+
+        $restorePagesHelp = [regex]::Match(
+            $script:copySource,
+            '(?s)\.PARAMETER RestorePages(?<Body>.*?)\.PARAMETER EnableActionsAfterMigration'
+        ).Groups['Body'].Value
+        $restorePagesHelp | Should -Not -BeNullOrEmpty
+        $restorePagesHelp | Should -Not -Match 'not implemented'
 
         $script:wizardSource | Should -Match 'GitHub Pages restoration is explicit and opt-in'
         $script:wizardSource | Should -Match 'GitHub-side Pages configuration'

@@ -351,7 +351,7 @@ function Invoke-E2eRestorePagesOmittedScenario {
     $createdRepositories.Add($destination)
     Assert-E2ePagesState -Repository $fixture.Repository -BuildType workflow | Out-Null
 
-    Write-E2eMessage -Message 'Migration evidence: execute ordinary Snapshot without -RestorePages; the #97 contract intentionally does not add an activation guard to this path.'
+    Write-E2eMessage -Message 'Migration evidence: execute ordinary Snapshot without -RestorePages; this path intentionally does not add the Pages activation guard.'
     $result = Copy-GitHubRepository -SourceRepository $fixture.Repository -DestinationRepository $destination -SkipSettings -NonInteractive -Force
     if (-not $result.IsVerified) { throw 'Pages-omitted migration did not report verification success.' }
 
@@ -382,6 +382,7 @@ function Invoke-E2ePagesDriftScenario {
     $createdRepositories.Add($destination)
 
     Write-E2eMessage -Message 'Migration evidence: capture immutable main:/docs Pages plan, then change live source Pages to main:/ before executing that exact approved plan.'
+    Write-E2eMessage -Message 'Expected failure: execution must fail closed after destination creation when the live source Pages state no longer matches the reviewed plan; a recovery-report warning is expected evidence.'
     $plan = Copy-GitHubRepository -SourceRepository $fixture.Repository -DestinationRepository $destination -RestorePages -SkipSettings -PlanOnly
     Invoke-E2eNativeCommand -FilePath 'gh' -ArgumentList @(
         'api', '--hostname', 'github.com', '--method', 'PUT', "repos/$($fixture.Repository)/pages",
@@ -469,16 +470,17 @@ function Invoke-E2eCustomDomainSafetyBoundary {
 
     Write-E2eMessage -Message 'Scenario: custom-domain handoff and external HTTPS/DNS state at the safest practical lower test boundary'
     Write-E2eMessage -Message 'Migration evidence: no live custom-domain or DNS mutation is attempted because the project has no dedicated disposable domain fixture.'
-    Write-E2eMessage -Message 'Independent verification: run established handoff/recovery tests proving exact reviewed-domain sequencing, repository identity checks, external-readiness separation, no DNS mutation, and durable partial-handoff evidence.'
+    Write-E2eMessage -Message 'Independent verification: run established handoff/recovery tests in an isolated PowerShell/Pester process, proving exact reviewed-domain sequencing, repository identity checks, external-readiness separation, no DNS mutation, and durable partial-handoff evidence.'
 
-    $paths = @(
-        (Join-Path $repositoryRoot 'tests/unit/GitHubPagesRestoration.Tests.ps1'),
-        (Join-Path $repositoryRoot 'tests/unit/GitHubPagesCustomDomainRecovery.Tests.ps1')
-    )
-    $pesterResult = Invoke-Pester -Path $paths -PassThru -Output Detailed
-    if ($pesterResult.FailedCount -ne 0) {
-        throw "Custom-domain lower-boundary tests failed: $($pesterResult.FailedCount) failing test(s)."
-    }
+    $restorationPath = Join-Path $repositoryRoot 'tests/unit/GitHubPagesRestoration.Tests.ps1'
+    $recoveryPath = Join-Path $repositoryRoot 'tests/unit/GitHubPagesCustomDomainRecovery.Tests.ps1'
+    $pesterCommand = @"
+Import-Module Pester -MinimumVersion 5.0 -DisableNameChecking -ErrorAction Stop
+`$result = Invoke-Pester -Path @('$restorationPath', '$recoveryPath') -PassThru -Output Detailed
+if (`$result.FailedCount -ne 0) { exit 1 }
+"@
+    $pesterOutput = @(Invoke-E2eNativeCommand -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', $pesterCommand))
+    $pesterOutput | ForEach-Object { Write-E2eMessage -Message $_.ToString() }
 
     $summary = [pscustomobject] @{
         Scenario = 'Custom-domain handoff safe lower boundary'
@@ -488,7 +490,7 @@ function Invoke-E2eCustomDomainSafetyBoundary {
         GitHubSideHandoffContractProvenBelowE2E = $true
         ExternalHttpsReadinessTreatedAsMigrated = $false
         LowerBoundaryTestsPassed = $true
-        LowerBoundaryPassedCount = $pesterResult.PassedCount
+        LowerBoundaryExecution = 'Isolated PowerShell/Pester process'
         ResidualFixtureLimitation = 'Live GitHub domain ownership, DNS propagation, domain verification, and certificate readiness require a dedicated disposable external domain fixture and are intentionally not automated.'
     }
     $scenarioResults.Add($summary)
@@ -505,7 +507,6 @@ Write-E2eMessage
 
 Assert-E2eCleanupCapability
 Import-Module $modulePath -Force -ErrorAction Stop
-Import-Module Pester -MinimumVersion 5.0 -ErrorAction Stop
 New-Item -Path $tempRoot -ItemType Directory -Force | Out-Null
 
 try {

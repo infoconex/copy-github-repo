@@ -28,13 +28,15 @@ function Copy-GitHubRepository {
     replacement confirmation.
 
     After content verification, approved GitHub Releases are restored when
-    requested, followed by supported repository settings and transferable
-    repository protection. -SkipSettings skips only the settings/protection stages.
+    requested, followed by supported repository settings, requested GitHub Pages
+    restoration from reviewed plan evidence, and transferable repository protection.
+    -SkipSettings skips only the settings/protection stages.
 
     Mutating execution supports -WhatIf and -Confirm. Non-interactive mutation
     requires -Force. Changing destination visibility requires -Force. GitHub Pages
-    restoration and Actions activation are reserved switches and are not yet
-    implemented for mutating execution. Version 1 supports github.com only.
+    restoration is opt-in with -RestorePages. General Actions activation remains a
+    reserved switch and is not implemented for mutating execution. Version 1 supports
+    github.com only.
 
     .PARAMETER SourceRepository
     Specifies the source repository as owner/name. The source must exist and have
@@ -101,8 +103,9 @@ function Copy-GitHubRepository {
     FullHistory preserves existing commits and does not rewrite them.
 
     .PARAMETER RestorePages
-    Requests GitHub Pages restoration. Planning records the request, but mutating
-    execution rejects it because Pages restoration is not yet implemented.
+    Requests deterministic GitHub-side Pages restoration from immutable reviewed
+    plan evidence after destination content verification. Source Pages evidence is
+    revalidated immediately before mutation and incompatible drift fails closed.
 
     .PARAMETER EnableActionsAfterMigration
     Requests Actions activation after the copy. Planning records the request, but
@@ -110,7 +113,8 @@ function Copy-GitHubRepository {
 
     .PARAMETER SkipSettings
     Skips restoration of supported repository settings and repository protection.
-    Content verification and requested release restoration still run.
+    Content verification, requested release restoration, and requested Pages
+    restoration still run.
 
     .PARAMETER PlanOnly
     Returns a read-only repository copy plan without mutation. The plan contains
@@ -304,12 +308,6 @@ function Copy-GitHubRepository {
         return $plan
     }
 
-    if ($RestorePages) {
-        $message = 'Pages restoration is not implemented yet. Remove -RestorePages and review the plan output for unsupported settings.'
-        $exception = [System.NotSupportedException]::new($message)
-        $errorRecord = [System.Management.Automation.ErrorRecord]::new($exception, 'RestorePagesExecutionNotImplemented', [System.Management.Automation.ErrorCategory]::NotImplemented, 'RestorePages')
-        $PSCmdlet.ThrowTerminatingError($errorRecord)
-    }
     if ($EnableActionsAfterMigration) {
         $message = 'Actions activation after repository copy is not implemented yet. Remove -EnableActionsAfterMigration and review the plan output.'
         $exception = [System.NotSupportedException]::new($message)

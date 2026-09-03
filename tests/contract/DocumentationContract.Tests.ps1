@@ -24,7 +24,7 @@ Describe 'Normative documentation consistency' {
     }
 
     It 'documents expanded repository settings restoration as implemented and verified' {
-        $script:documents.Readme | Should -Match 'supported repository-level settings restoration.*implemented'
+        $script:documents.Readme | Should -Match 'supported repository (?:-level )?settings(?:/protection)? restoration.*implemented'
         $script:documents.ProductContract | Should -Match 'ordinary supported repository settings are restored differentially and read back'
         $script:documents.Versioning | Should -Match 'expanded repository-settings restoration contract is live-validated'
         $script:documents.ProductContract | Should -Not -Match 'Pending validation.*expanded repository settings'
@@ -141,7 +141,7 @@ Describe 'Normative documentation consistency' {
         $script:documents.ProductContract | Should -Match 'Plain `Snapshot` without `-IncludeReleases` remains unchanged'
         $script:documents.ProductContract | Should -Match 'FullHistory -IncludeReleases` remains unchanged'
         $script:documents.Architecture | Should -Match 'Plain Snapshot remains the one-unrelated-root path when `-IncludeReleases` is absent'
-        $script:documents.Architecture | Should -Match 'FullHistory remains the history-preserving path'
+        $script:documents.Architecture | Should -Match 'FullHistory remains (?:the )?history-preserving(?: path)?'
     }
 
     It 'documents the implemented wizard across release-facing surfaces' {

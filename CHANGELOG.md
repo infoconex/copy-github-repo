@@ -14,6 +14,22 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 No unreleased product changes.
 
+## [0.4.0] - 2026-09-01
+
+### Added
+
+- Added opt-in GitHub Pages configuration restoration with `-RestorePages`, binding execution to immutable reviewed Pages evidence captured during planning and revalidating relevant source state before destination mutation.
+- Added restoration and independent verification for supported GitHub-side Pages configuration, including Actions-based publishing and representable branch/path publishing without treating copied site or workflow files as proof that Pages configuration was preserved.
+- Added controlled Pages activation behavior so copied Pages workflows do not silently become authoritative migration evidence or enable unsupported GitHub-side state outside the reviewed restoration path.
+- Added same-name and archive-and-replace custom-domain handoff with fail-closed repository identity safeguards, deliberate archive release/replacement claim ordering, independent readback, and durable recovery/provenance evidence for partial handoff failures.
+- Added guided-wizard support, command/reference documentation, operational guidance, contract tests, and controlled GitHub end-to-end coverage for the supported Pages migration paths.
+
+### Changed
+
+- Clarified that external DNS records, DNS ownership-verification records, secret values, account/organization domain ownership, certificate provisioning, and externally dependent HTTPS readiness are outside the migration contract and are reported rather than assumed complete.
+- Clarified branch/path representability and failure behavior: CopyGitHubRepo does not invent substitute publishing branches or paths when the reviewed source Pages configuration cannot be represented safely at the destination.
+- Extended migration verification and recovery reporting to distinguish migrated GitHub-side Pages state from externally observed DNS, domain-verification, certificate, and HTTPS readiness state.
+
 ## [0.3.0] - 2026-08-31
 
 ### Added

@@ -1,11 +1,11 @@
 ---
 title: "Test-GitHubRepositoryMigration – Verify GitHub Repository Migrations"
-description: "Verify Snapshot or FullHistory GitHub repository migrations with PowerShell using read-only destination evidence, including approved Snapshot release checkpoints and GitHub Release assets."
+description: "Verify Snapshot or FullHistory GitHub repository migrations with read-only destination evidence, including approved release checkpoints, GitHub Releases, and reviewed GitHub Pages configuration."
 ---
 
 # Test-GitHubRepositoryMigration
 
-Performs read-only verification of migrated repository content. Plain Snapshot and FullHistory retain their existing verification contracts. Snapshot migrations that used `-IncludeReleases` are verified against the immutable reviewed migration plan rather than by rerunning live release selection.
+Performs read-only verification of migrated repository content. Plain Snapshot and FullHistory retain their existing verification contracts. Snapshot migrations that used `-IncludeReleases` are verified against immutable reviewed migration evidence rather than by rerunning live release selection. Migrations that used `-RestorePages` can add `-VerifyPages -ApprovedPlan` to independently compare destination GitHub Pages state with the reviewed Pages evidence.
 
 ## Synopsis
 
@@ -15,6 +15,7 @@ Test-GitHubRepositoryMigration `
     -DestinationRepository <owner/name> `
     [-ContentMode Snapshot|FullHistory] `
     [-IncludeReleases] `
+    [-VerifyPages] `
     [-ReleaseTag <string[]>] `
     [-ReleaseExcludeTag <string[]>] `
     [-IncludePrerelease] `
@@ -26,23 +27,24 @@ Test-GitHubRepositoryMigration `
 
 ## When to use it
 
-Use this command when you want an independent verification result for a completed Snapshot or FullHistory migration. For Snapshot migrations that used `-IncludeReleases`, provide the exact reviewed plan returned by the migration with `-ApprovedPlan`; that evidence defines the expected checkpoints and selected releases. For FullHistory migrations that included GitHub Releases, add `-IncludeReleases` and the same release filters to verify the selected current source releases against the destination. The command does not repair or mutate either repository.
+Use this command when you want an independent verification result for a completed Snapshot or FullHistory migration. For Snapshot migrations that used `-IncludeReleases`, provide the exact reviewed plan with `-ApprovedPlan`; that evidence defines the expected checkpoints and selected releases. For any supported migration that requested `-RestorePages`, add `-VerifyPages -ApprovedPlan`; `Plan.Pages` defines the expected GitHub-side Pages state and live source Pages discovery is not rerun as authority. The command does not repair or mutate either repository.
 
 ## Parameters
 
 | Parameter | Type | Required | Default | Accepted values / format | Description |
 | --- | --- | --- | --- | --- | --- |
-| `SourceRepository` | `String` | Yes | — | `owner/name` | Source repository identity associated with the migration. Plain Snapshot and FullHistory read it as the verification reference; Snapshot `-IncludeReleases` uses the approved plan as expected-state evidence. |
-| `DestinationRepository` | `String` | Yes | — | `owner/name` | Destination repository whose migrated content and, when requested, recreated releases are independently read and checked. |
+| `SourceRepository` | `String` | Yes | — | `owner/name` | Source repository identity associated with the migration. Approved Pages verification requires it to match the reviewed plan. |
+| `DestinationRepository` | `String` | Yes | — | `owner/name` | Destination repository whose migrated content and requested GitHub-side state are independently read and checked. Approved Pages verification requires it to match the reviewed plan. |
 | `ContentMode` | `String` | No | `Snapshot` | `Snapshot`, `FullHistory` | Selects the verification contract. Use the same mode as the migration. |
 | `IncludeReleases` | `Switch` | No | `$false` | Snapshot or FullHistory | Adds GitHub Release verification. Snapshot requires `-ApprovedPlan`; FullHistory retains live source-selection verification. |
-| `ReleaseTag` | `String[]` | No | — | PowerShell wildcard patterns | Includes only source releases whose tag names match at least one supplied pattern for FullHistory verification. Requires `-IncludeReleases`. Snapshot approved-plan verification rejects live release filters. |
-| `ReleaseExcludeTag` | `String[]` | No | — | PowerShell wildcard patterns | Excludes matching source release tags after include filtering for FullHistory verification. Requires `-IncludeReleases`. Snapshot approved-plan verification rejects live release filters. |
-| `IncludePrerelease` | `Switch` | No | `$false` | Switch | Includes prereleases in FullHistory live-selection verification. Requires `-IncludeReleases`; not used with Snapshot `-ApprovedPlan`. |
-| `IncludeDraftReleases` | `Switch` | No | `$false` | Switch | Includes draft releases in FullHistory live-selection verification. Requires `-IncludeReleases`; not used with Snapshot `-ApprovedPlan`. |
-| `ReleaseCount` | `Int32` | No | — | `1` or greater | Limits FullHistory live-selection verification to the newest N source releases after filtering. Requires `-IncludeReleases`; not used with Snapshot `-ApprovedPlan`. |
-| `ApprovedPlan` | `PSObject` | No | — | Reviewed Snapshot migration plan | Required with `-ContentMode Snapshot -IncludeReleases`. Supplies immutable `ReleaseCheckpointPlan` and `ReleaseSelection` evidence so verification does not rerun release selection, filtering, ordering, or topology discovery. |
-| `HostName` | `String` | No | `github.com` | `github.com` in the current release line | GitHub host used for discovery and authentication. Unsupported hosts fail closed. |
+| `VerifyPages` | `Switch` | No | `$false` | Switch | Verifies supported GitHub-side Pages configuration from immutable `Plan.Pages` evidence. Requires `-ApprovedPlan` from a migration that requested `-RestorePages`. |
+| `ReleaseTag` | `String[]` | No | — | PowerShell wildcard patterns | Includes matching source releases for FullHistory verification. Requires `-IncludeReleases`. Snapshot approved-plan verification rejects live release filters. |
+| `ReleaseExcludeTag` | `String[]` | No | — | PowerShell wildcard patterns | Excludes matching source release tags for FullHistory verification. Requires `-IncludeReleases`. |
+| `IncludePrerelease` | `Switch` | No | `$false` | Switch | Includes prereleases in FullHistory release verification. Requires `-IncludeReleases`. |
+| `IncludeDraftReleases` | `Switch` | No | `$false` | Switch | Includes draft releases in FullHistory release verification. Requires `-IncludeReleases`. |
+| `ReleaseCount` | `Int32` | No | — | `1` or greater | Limits FullHistory release verification to the newest N selected source releases. Requires `-IncludeReleases`. |
+| `ApprovedPlan` | `PSObject` | No | — | Reviewed migration plan | Required for Snapshot `-IncludeReleases` and for `-VerifyPages`. Pages verification requires the plan to be bound to the requested source, destination, content mode, host, and `RestorePages` decision. |
+| `HostName` | `String` | No | `github.com` | Supported GitHub host | GitHub host used for discovery and authentication. Unsupported hosts fail closed. |
 
 Standard PowerShell common parameters are also available.
 
@@ -50,44 +52,47 @@ Standard PowerShell common parameters are also available.
 
 Plain `Snapshot` compares the source and destination default-branch Git trees and verifies that the destination has the expected single-root-commit history shape.
 
-With `Snapshot -IncludeReleases -ApprovedPlan`, the command uses immutable reviewed planning evidence and destination reads to verify:
+With `Snapshot -IncludeReleases -ApprovedPlan`, the command uses immutable reviewed planning evidence and destination reads to verify checkpoint sequence and parentage, checkpoint trees, selected release-tag targets, the reviewed source HEAD state, recreated release metadata/assets, and Latest designation. It does not rerun live release selection or topology discovery.
 
-- the exact generated Snapshot checkpoint count and linear sequence;
-- root and parent relationships between generated checkpoint commits;
-- each checkpoint tree against the reviewed source release-state tree, without requiring source and destination commit SHA identity;
-- each reviewed selected release tag against its expected generated Snapshot checkpoint;
-- the final destination default-branch tree against the reviewed source HEAD;
-- whether a final current-state checkpoint is present only when the reviewed plan requires one;
-- the exact reviewed selected destination release-tag set;
-- the exact reviewed selected GitHub Release set;
-- release name/body, draft/prerelease state, assets, supported asset digest/size/content-type evidence, and Latest designation.
+`FullHistory` compares ordinary branch/tag targets, reachable commit counts, branch-tip trees, the default branch, and reachable Git LFS object availability. With `FullHistory -IncludeReleases`, existing live source release-selection behavior remains unchanged.
 
-Snapshot release verification does not rerun live source release selection or filtering. The reviewed plan defines what must exist. A mismatch fails verification; the command does not repair, retag, recreate, delete, or otherwise mutate destination state.
+With `-VerifyPages -ApprovedPlan`, the command independently reads destination GitHub Pages configuration and, where applicable, verifies:
 
-`FullHistory` compares ordinary branch/tag targets, reachable commit counts, branch-tip trees, the default branch, and reachable Git LFS object availability.
+- whether Pages is configured when the reviewed plan requires it;
+- the explicit reviewed no-Pages state;
+- Actions/workflow versus legacy branch/path build type;
+- the exact reviewed branch and path for legacy Pages;
+- the exact reviewed custom domain, including a reviewed absence of a custom domain;
+- HTTPS enforcement when the reviewed evidence exposes a deterministic value; and
+- for same-name or existing-destination replacement handoff, that the reviewed production custom domain is absent from the archive and present on the replacement.
 
-With `FullHistory -IncludeReleases`, the command retains the existing behavior: it applies the requested current source release-selection rules, then verifies each selected source release against the destination by tag. It compares release tag and resolved commit identity, release metadata, assets, and Latest designation where applicable.
+Pages verification never reruns mutable source Pages discovery as expected-state authority. For plain Snapshot plus `-VerifyPages`, repository-content verification also uses the plan's approved `SourceState` rather than recloning source content as the expected tree.
 
-See [Architecture](../../product/architecture.md) for the detailed evidence model.
+DNS records, account/organization domain verification, certificate issuance/propagation, and similar external or asynchronous state are not migration success criteria. The verifier reports available GitHub readiness evidence separately, records DNS as `ExternalNotQueried`, and reports `DnsMigrated = $false`.
+
+See [GitHub Pages migration contract](../../product/github-pages-migration-contract.md) for the normative Pages boundary.
 
 ## Output
 
 Returns a `CopyGitHubRepo.MigrationVerificationResult`.
 
-For Snapshot `-IncludeReleases -ApprovedPlan`, the result includes generated checkpoint and release-tag verification evidence plus:
+When release verification is requested, the result retains `GitContentSuccessful`, `ReleaseVerification`, `ReleasesVerified`, and the existing combined `IsSuccessful` behavior.
 
-- `GitContentSuccessful` — the checkpoint/tag/tree/HEAD verification outcome;
-- `ReleaseVerification` — structured per-release destination verification evidence;
-- `ReleasesVerified` — the recreated-release verification outcome; and
-- `IsSuccessful` — `$true` only when both Git/checkpoint and requested release verification succeed.
+When `-VerifyPages` is requested, the result additionally includes:
 
-For FullHistory `-IncludeReleases`, the existing FullHistory result similarly includes `GitContentSuccessful`, `ReleaseVerification`, `ReleasesVerified`, and a combined `IsSuccessful` result.
+- `PagesVerification` — a `CopyGitHubRepo.GitHubPagesVerificationResult` containing expected/actual configured state, named deterministic comparison checks, and external-readiness evidence;
+- `PagesVerified` — whether all deterministic reviewed Pages checks passed; and
+- `IsSuccessful` — `$true` only when the existing content/release contract and Pages verification all succeed.
+
+`PagesVerification.ExternalReadiness` is informational evidence. It explicitly does not affect Pages configuration verification success.
 
 ## Important failure conditions
 
-The command fails when Git or GitHub CLI is unavailable, authentication is unavailable, an unsupported host is supplied, required repository discovery fails, or native verification cannot gather required evidence. Release filter parameters require `-IncludeReleases`.
+The command fails before verification when required reviewed evidence is absent or not bound to the requested migration identity. `-VerifyPages` requires a plan produced with `RestorePages = $true`, non-null `Plan.Pages`, the same source and destination repository identities, the same content mode, and the same GitHub host.
 
-Snapshot `-IncludeReleases` additionally fails closed when `-ApprovedPlan` is absent or incomplete, or when live release filters are supplied alongside the approved plan. A completed verification returns `IsSuccessful = $false` for concrete destination mismatches such as an incorrect checkpoint tree or tag target, a missing/unexpected selected release, altered release metadata or assets, or an incorrect Latest designation.
+A completed verification returns `IsSuccessful = $false` for concrete destination mismatches such as an incorrect Pages configured state, build type, legacy branch/path, custom domain, deterministic HTTPS state, or replacement/archive domain ownership. External DNS, domain-verification, and certificate readiness do not make those deterministic checks pass or fail.
+
+Existing Git/content/release failure behavior is unchanged.
 
 ## Examples
 
@@ -110,41 +115,32 @@ Test-GitHubRepositoryMigration `
     -ApprovedPlan $migration.Plan
 ```
 
-### Verify a FullHistory migration
+### Verify restored GitHub Pages from reviewed evidence
 
 ```powershell
 Test-GitHubRepositoryMigration `
     -SourceRepository infoconex/source `
     -DestinationRepository infoconex/destination `
-    -ContentMode FullHistory
+    -ContentMode Snapshot `
+    -VerifyPages `
+    -ApprovedPlan $migration.Plan
 ```
 
-### Verify FullHistory plus all stable releases
+### Verify FullHistory plus Pages
 
 ```powershell
 Test-GitHubRepositoryMigration `
     -SourceRepository infoconex/source `
     -DestinationRepository infoconex/destination `
     -ContentMode FullHistory `
-    -IncludeReleases
-```
-
-### Verify the three newest stable v2 FullHistory releases
-
-```powershell
-Test-GitHubRepositoryMigration `
-    -SourceRepository infoconex/source `
-    -DestinationRepository infoconex/destination `
-    -ContentMode FullHistory `
-    -IncludeReleases `
-    -ReleaseTag 'v2.*' `
-    -ReleaseCount 3
+    -VerifyPages `
+    -ApprovedPlan $migration.Plan
 ```
 
 ## Related documentation
 
 - [`Copy-GitHubRepository`](Copy-GitHubRepository.md)
+- [GitHub Pages migration contract](../../product/github-pages-migration-contract.md)
 - [Product contract](../../product/product-contract.md)
-- [Command design](../../product/command-design.md)
 - [Architecture](../../product/architecture.md)
 - [Host support](../../user/host-support.md)

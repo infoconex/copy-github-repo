@@ -173,6 +173,19 @@ InModuleScope CopyGitHubRepo {
                 }
                 else { $script:sourceState }
             }
+            Mock Get-CgrGitHubPagesPlanEvidence {
+                [pscustomobject] @{
+                    Status = 'NotConfigured'
+                    Configured = $false
+                    BuildType = $null
+                    Source = $null
+                    CustomDomain = $null
+                    HttpsEnforced = $null
+                    Representability = [pscustomobject] @{ Status = 'NotApplicable'; IsRepresentable = $true; Reason = 'Source Pages is not configured.' }
+                    ExternalReadiness = [pscustomobject] @{ DomainVerification = 'NotApplicable'; Certificate = 'NotApplicable'; Dns = 'ExternalNotQueried' }
+                    DriftEvidence = [pscustomobject] @{ Configured = $false; BuildType = $null; Branch = $null; Path = $null; CustomDomain = $null; HttpsEnforced = $null }
+                }
+            }
             Mock Assert-CgrApprovedSourceState { $SourceState }
             Mock Invoke-CgrApprovedMigrationPlan {
                 [pscustomobject] @{
@@ -226,9 +239,10 @@ InModuleScope CopyGitHubRepo {
             Should -Invoke Invoke-CgrApprovedMigrationPlan -Times 1 -Exactly -ParameterFilter { $Plan.DestinationVisibility -eq 'private' }
         }
 
-        It 'rejects unimplemented Pages and Actions mutation switches' {
-            { Copy-GitHubRepository -SourceRepository infoconex/source -DestinationRepository infoconex/destination -RestorePages -Confirm:$false } |
-                Should -Throw -ErrorId 'RestorePagesExecutionNotImplemented,Copy-GitHubRepository'
+        It 'executes reviewed Pages restoration while continuing to reject generic Actions activation' {
+            Copy-GitHubRepository -SourceRepository infoconex/source -DestinationRepository infoconex/destination -RestorePages -Confirm:$false | Out-Null
+            Should -Invoke Invoke-CgrApprovedMigrationPlan -Times 1 -Exactly -ParameterFilter { $Plan.RestorePages }
+
             { Copy-GitHubRepository -SourceRepository infoconex/source -DestinationRepository infoconex/destination -EnableActionsAfterMigration -Confirm:$false } |
                 Should -Throw -ErrorId 'EnableActionsAfterMigrationExecutionNotImplemented,Copy-GitHubRepository'
         }

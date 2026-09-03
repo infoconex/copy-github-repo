@@ -56,11 +56,11 @@ function Invoke-CgrApprovedFullHistoryVerification {
             $destinationBranchTrees.Add("$branch $([string] @($treeResult.Output)[0])")
         }
 
-        $expectedRefs = @(Get-CgrObjectProperty -InputObject $ApprovedSourceState -Name 'Refs') | Sort-Object
+        $expectedRefs = @(Get-CgrObjectProperty -InputObject $ApprovedSourceState -Name 'Refs' | Sort-Object)
         $actualRefs = @($refsResult.Output | ForEach-Object { $_.ToString() } | Sort-Object)
         $expectedCommitCount = [int] (Get-CgrObjectProperty -InputObject $ApprovedSourceState -Name 'ReachableCommitCount')
         $actualCommitCount = [int] ([string] @($commitCountResult.Output)[0])
-        $expectedBranchTrees = @(Get-CgrObjectProperty -InputObject $ApprovedSourceState -Name 'BranchTrees') | Sort-Object
+        $expectedBranchTrees = @(Get-CgrObjectProperty -InputObject $ApprovedSourceState -Name 'BranchTrees' | Sort-Object)
         $actualBranchTrees = @($destinationBranchTrees.ToArray() | Sort-Object)
         $expectedDefaultBranch = [string] (Get-CgrObjectProperty -InputObject $ApprovedSourceState -Name 'DefaultBranch')
 

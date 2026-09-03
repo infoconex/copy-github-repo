@@ -16,9 +16,11 @@ function Start-CopyGitHubRepositoryWizard {
     converges on the same destination-conflict and archive-and-replace workflow.
 
     The guided flow selects a source repository, destination identity, Snapshot
-    or FullHistory content mode, destination visibility, and supported-settings
-    behavior. Snapshot mode, source visibility, and supported repository-settings
-    restoration are the defaults. Effective defaults are restated at the end of
+    or FullHistory content mode, destination visibility, supported-settings
+    behavior, optional release preservation where applicable, and optional
+    GitHub Pages restoration. Snapshot mode, source visibility, supported
+    repository-settings restoration, no release preservation, and no Pages
+    restoration are safe defaults. Effective defaults are restated at the end of
     prompts and can be accepted with Enter. Back preserves valid prior choices
     before execution, and cancellation returns a structured no-change result.
 
@@ -29,15 +31,35 @@ function Start-CopyGitHubRepositoryWizard {
     distinguishes an actual transfer from a successful no-op when no LFS content
     exists.
 
+    GitHub Pages restoration is explicit and opt-in. Repository site files, CNAME,
+    Jekyll configuration, and Pages workflow files remain ordinary Git content;
+    copying them is distinct from restoring GitHub-side Pages configuration. The
+    Pages decision uses the real plan evidence and presents source configured state,
+    publishing mode/source, custom domain, HTTPS intent, representability, and
+    external readiness where available. External DNS, account/organization domain
+    verification, certificate provisioning, and secrets are not presented as state
+    the migration will copy.
+
+    Actions-based Pages and safely representable branch/path publishing can be
+    restored by the delegated deterministic command. A branch/path that cannot be
+    represented under the selected content mode is not silently redirected. For
+    same-name or existing-destination replacement with a reviewed custom domain,
+    the wizard surfaces the archive-to-replacement handoff before execution; the
+    deterministic command retains identity, stale-state, verification, and recovery
+    authority.
+
     Planning captures immutable source-state evidence. The Execute action runs the
     exact reviewed plan rather than rebuilding an equivalent request. The final
     Execute/Cancel prompt is headed "Confirm repository copy". If the source changes
-    after plan review, execution fails closed before mutation and the wizard returns
-    to plan generation so the new source state can be reviewed explicitly.
+    after plan review, including plan-driving Pages state at its applicable boundary,
+    execution fails closed before the affected mutation and the wizard returns to
+    plan generation so the new state can be reviewed explicitly.
 
     Known application, validation, prerequisite, and safety conditions are shown
     as concise wizard messages rather than raw PowerShell exception formatting.
-    Unexpected defects are rethrown so diagnostic information is not hidden.
+    Expected fail-closed Pages recovery conditions are presented as application
+    conditions; unexpected defects are rethrown so diagnostic information is not
+    hidden.
 
     Replacement workflows preserve the existing repository under an archive name
     before creating the replacement. Their exact typed confirmation remains
@@ -52,9 +74,10 @@ function Start-CopyGitHubRepositoryWizard {
     Interactive terminals receive in-place progress for the active operation and
     durable completed-stage status lines. Redirected/non-interactive hosts receive
     line-oriented activity without cursor control. Verification, supported-settings
-    restoration, and repository-protection handling are reported in actual execution
-    order. Successful no-op stages are informational rather than presented as work
-    performed, and completed terminal stages use the same elapsed-time convention.
+    restoration, requested Pages restoration, and repository-protection handling
+    are reported in actual execution order. Successful no-op stages are
+    informational rather than presented as work performed, and completed terminal
+    stages use the same elapsed-time convention.
     Direct structured API calls do not install this sink and remain presentation-free.
 
     Successful interactive execution ends with restoration statuses followed by a
@@ -72,7 +95,8 @@ function Start-CopyGitHubRepositoryWizard {
     .EXAMPLE
     Start-CopyGitHubRepositoryWizard
 
-    Starts the guided repository-copy wizard using github.com.
+    Starts the guided repository-copy wizard using github.com. Pages restoration
+    remains off unless explicitly selected in the reviewed guided flow.
 
     .EXAMPLE
     Start-CopyGitHubRepositoryWizard -Version
@@ -82,8 +106,8 @@ function Start-CopyGitHubRepositoryWizard {
     .EXAMPLE
     Start-CopyGitHubRepositoryWizard -WhatIf
 
-    Runs selection and reviewed-plan flow but prevents the approved plan from
-    mutating GitHub when ShouldProcess is reached.
+    Runs selection and reviewed-plan flow, including optional Pages review, but
+    prevents the approved plan from mutating GitHub when ShouldProcess is reached.
 
     .INPUTS
     None. This command does not accept pipeline input.
@@ -96,6 +120,9 @@ function Start-CopyGitHubRepositoryWizard {
 
     .LINK
     https://github.com/infoconex/copy-github-repo
+
+    .LINK
+    https://github.com/infoconex/copy-github-repo/blob/main/docs/user/github-pages-migration.md
 
     .LINK
     https://github.com/infoconex/copy-github-repo/blob/main/docs/product/wizard-contract.md

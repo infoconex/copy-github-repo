@@ -106,6 +106,54 @@ function Format-CgrMigrationPlan {
             }
         }
 
+        $pages = Get-CgrObjectProperty -InputObject $Plan -Name 'Pages'
+        if ([bool] (Get-CgrObjectProperty -InputObject $Plan -Name 'RestorePages') -and $pages) {
+            $representability = Get-CgrObjectProperty -InputObject $pages -Name 'Representability'
+            $externalReadiness = Get-CgrObjectProperty -InputObject $pages -Name 'ExternalReadiness'
+            $driftEvidence = Get-CgrObjectProperty -InputObject $pages -Name 'DriftEvidence'
+            $pagesSource = Get-CgrObjectProperty -InputObject $pages -Name 'Source'
+
+            $lines.Add('')
+            $lines.Add('## Approved GitHub Pages Configuration')
+            $lines.Add('')
+            $lines.Add('This is the immutable GitHub-side Pages evidence approved by the plan. Later Pages work must use this reviewed evidence as execution authority and revalidate drift-driving fields before any Pages mutation. External DNS, domain verification, and certificate readiness remain separate from transferable configuration.')
+            $lines.Add('')
+            $lines.Add('| Field | Value |')
+            $lines.Add('| --- | --- |')
+            $lines.Add("| Planning status | $(Get-CgrObjectProperty -InputObject $pages -Name 'Status') |")
+            $lines.Add("| Pages configured | $(Get-CgrObjectProperty -InputObject $pages -Name 'Configured') |")
+            $buildType = Get-CgrObjectProperty -InputObject $pages -Name 'BuildType'
+            $lines.Add("| Build type | $(if ([string]::IsNullOrWhiteSpace([string] $buildType)) { 'N/A' } else { $buildType }) |")
+            if ($pagesSource) {
+                $lines.Add("| Publishing branch | $(Get-CgrObjectProperty -InputObject $pagesSource -Name 'Branch') |")
+                $lines.Add("| Publishing path | $(Get-CgrObjectProperty -InputObject $pagesSource -Name 'Path') |")
+            }
+            $customDomain = Get-CgrObjectProperty -InputObject $pages -Name 'CustomDomain'
+            $httpsEnforced = Get-CgrObjectProperty -InputObject $pages -Name 'HttpsEnforced'
+            $lines.Add("| Custom domain | $(if ([string]::IsNullOrWhiteSpace([string] $customDomain)) { 'None' } else { $customDomain }) |")
+            $lines.Add("| HTTPS enforcement intent | $(if ($null -eq $httpsEnforced) { 'Not reported' } else { [bool] $httpsEnforced }) |")
+            if ($representability) {
+                $lines.Add("| Representable | $(Get-CgrObjectProperty -InputObject $representability -Name 'IsRepresentable') |")
+                $lines.Add("| Representability status | $(Get-CgrObjectProperty -InputObject $representability -Name 'Status') |")
+                $lines.Add("| Representability reason | $((Get-CgrObjectProperty -InputObject $representability -Name 'Reason').ToString().Replace('|', '\|')) |")
+            }
+            if ($externalReadiness) {
+                $lines.Add("| Domain verification readiness | $(Get-CgrObjectProperty -InputObject $externalReadiness -Name 'DomainVerification') |")
+                $certificate = Get-CgrObjectProperty -InputObject $externalReadiness -Name 'Certificate'
+                $certificateState = if ($certificate -is [string]) { $certificate } else { Get-CgrObjectProperty -InputObject $certificate -Name 'state' }
+                $lines.Add("| Certificate readiness | $(if ([string]::IsNullOrWhiteSpace([string] $certificateState)) { 'NotReportedByGitHub' } else { $certificateState }) |")
+                $lines.Add("| DNS evidence | $(Get-CgrObjectProperty -InputObject $externalReadiness -Name 'Dns') |")
+            }
+            if ($driftEvidence) {
+                $lines.Add('')
+                $lines.Add('### Pages drift-driving evidence')
+                $lines.Add('')
+                $lines.Add('| Configured | Build type | Branch | Path | Custom domain | HTTPS enforced |')
+                $lines.Add('| --- | --- | --- | --- | --- | --- |')
+                $lines.Add("| $(Get-CgrObjectProperty -InputObject $driftEvidence -Name 'Configured') | $(Get-CgrObjectProperty -InputObject $driftEvidence -Name 'BuildType') | $(Get-CgrObjectProperty -InputObject $driftEvidence -Name 'Branch') | $(Get-CgrObjectProperty -InputObject $driftEvidence -Name 'Path') | $(Get-CgrObjectProperty -InputObject $driftEvidence -Name 'CustomDomain') | $(Get-CgrObjectProperty -InputObject $driftEvidence -Name 'HttpsEnforced') |")
+            }
+        }
+
         $releaseSelection = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseSelection'
         $releaseCheckpointPlan = Get-CgrObjectProperty -InputObject $Plan -Name 'ReleaseCheckpointPlan'
         if ($Plan.ContentMode -eq 'Snapshot' -and $includeReleases -and $releaseSelection -and $releaseCheckpointPlan) {

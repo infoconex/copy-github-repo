@@ -53,7 +53,7 @@ display, copy, or persist token values. GitHub secrets, webhook secrets, private
 deploy-key material, and GitHub App credentials are outside the migration
 contract.
 
-The current `0.3.x` release line supports GitHub.com only. Public commands reject
+The current `0.4.x` release line supports GitHub.com only. Public commands reject
 unsupported hosts before prerequisites, discovery, planning, verification, or
 mutation. HTTPS Git operations use GitHub CLI credentials through command-scoped
 Git configuration; interactive Git credential prompting is disabled.

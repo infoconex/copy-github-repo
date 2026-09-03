@@ -73,6 +73,7 @@ function Invoke-CgrRepositoryCopyWizard {
     $commitMessage = 'Initial repository commit'
     $destinationVisibility = $null
     $settingsBehavior = 'Restore'
+    $restorePages = $false
     $archiveRepositoryName = $null
     $sameNameConfirmation = $null
     $existingDestinationArchiveName = $null
@@ -207,17 +208,26 @@ function Invoke-CgrRepositoryCopyWizard {
             }
 
             4 {
+                Write-CgrWizardMessage -Message 'GitHub Pages is GitHub-side state and is restored only when explicitly selected.' -Style Hint
+                $currentSettingsChoice = if ($restorePages) {
+                    if ($settingsBehavior -eq 'Skip') { 'Skip settings + restore GitHub Pages' } else { 'Restore settings + GitHub Pages' }
+                }
+                else {
+                    $settingsBehavior
+                }
                 $result = Read-CgrWizardChoice `
                     -Title 'Supported repository settings' `
-                    -Choices @('Restore', 'Skip') `
+                    -Choices @('Restore', 'Skip', 'Restore settings + GitHub Pages', 'Skip settings + restore GitHub Pages') `
                     -DefaultValue Restore `
-                    -CurrentValue $settingsBehavior `
+                    -CurrentValue $currentSettingsChoice `
                     -HelpTopic SupportedSettings `
                     -AllowBack `
                     -AllowCancel
                 if ($result.Action -eq 'Cancel') { return & $cancelResult }
                 if ($result.Action -eq 'Back') { $step = 3; continue }
-                $settingsBehavior = [string] $result.Value
+                $settingsChoice = [string] $result.Value
+                $settingsBehavior = if ($settingsChoice -like 'Skip*') { 'Skip' } else { 'Restore' }
+                $restorePages = $settingsChoice -match 'GitHub Pages'
                 $step = if ($destinationRepository -eq $sourceRepository.FullName) { 5 } else { 6 }
             }
 
@@ -230,44 +240,7 @@ function Invoke-CgrRepositoryCopyWizard {
                     $archiveRepositoryName = [string] $archiveResult.Value
                     $sameNameConfirmation = $null
                 }
-
-                $expectedConfirmation = "SOURCE=$($sourceRepository.FullName);ARCHIVE=$($sourceRepository.Owner)/$archiveRepositoryName;REPLACEMENT=$destinationRepository"
-                while ($true) {
-                    Write-CgrWizardMessage -Message 'Same-name replacement preserves the current repository as an archive before creating the replacement.' -Status Warning
-                    Write-CgrWizardMessage -Message 'Exact confirmation is required and cannot be bypassed.' -Style Hint
-                    Write-CgrWizardMessage -Message 'Required text:' -Style Hint
-                    Write-CgrWizardMessage -Message $expectedConfirmation -Style Value
-                    if (-not [string]::IsNullOrWhiteSpace($sameNameConfirmation)) {
-                        Write-CgrWizardMessage -Message 'A valid confirmation is already stored. Press Enter to reuse it.' -Style Hint
-                    }
-
-                    $inputText = Read-CgrWizardInput `
-                        -Prompt 'Exact confirmation' `
-                        -DefaultValue $sameNameConfirmation `
-                        -AllowHelp `
-                        -AllowBack `
-                        -AllowCancel
-                    $navigation = Resolve-CgrWizardNavigationInput `
-                        -InputText $inputText `
-                        -AllowBack `
-                        -AllowNext:(-not [string]::IsNullOrWhiteSpace($sameNameConfirmation)) `
-                        -AllowCancel `
-                        -AllowHelp
-
-                    if ($null -ne $navigation) {
-                        if ($navigation.Action -eq 'Help') { Show-CgrWizardHelp -Topic ExactConfirmation; continue }
-                        if ($navigation.Action -eq 'Cancel') { return & $cancelResult }
-                        if ($navigation.Action -eq 'Back') { $step = 4; break }
-                        if ($navigation.Action -eq 'Next') { $step = 6; break }
-                    }
-
-                    if ($inputText -ceq $expectedConfirmation) {
-                        $sameNameConfirmation = $inputText
-                        $step = 6
-                        break
-                    }
-                    Write-CgrWizardMessage -Message 'The confirmation did not match exactly. Retry, go Back, or Cancel.' -Status Warning
-                }
+                $step = 6
             }
 
             6 {
@@ -390,6 +363,7 @@ function Invoke-CgrRepositoryCopyWizard {
                 }
                 if ($destinationVisibility -ne $sourceRepository.Visibility) { $planParameters.DestinationVisibility = $destinationVisibility }
                 if ($settingsBehavior -eq 'Skip') { $planParameters.SkipSettings = $true }
+                if ($restorePages) { $planParameters.RestorePages = $true }
                 if ($destinationRepository -eq $sourceRepository.FullName) {
                     $planParameters.ArchiveRepositoryName = $archiveRepositoryName
                 }
@@ -463,6 +437,73 @@ function Invoke-CgrRepositoryCopyWizard {
                 if (-not [string]::IsNullOrWhiteSpace([string] $plan.ArchiveRepository)) {
                     Write-CgrWizardMessage -Message ('  Archive: {0}' -f $plan.ArchiveRepository) -Style Value
                 }
+
+                if (Get-CgrObjectProperty -InputObject $plan -Name 'RestorePages') {
+                    Write-CgrWizardMessage -Message '  GitHub Pages restoration:' -Style Heading
+                    $pages = Get-CgrObjectProperty -InputObject $plan -Name 'Pages'
+                    if ($null -eq $pages) {
+                        Write-CgrWizardMessage -Message '    - Reviewed Pages evidence is unavailable; Pages cannot be presented as restorable.' -Status Warning
+                    }
+                    else {
+                        $pagesStatus = [string] (Get-CgrObjectProperty -InputObject $pages -Name 'Status')
+                        Write-CgrWizardMessage -Message ('    - Source Pages status: {0}' -f $pagesStatus)
+                        if ($pagesStatus -eq 'NotConfigured') {
+                            Write-CgrWizardMessage -Message '    - Source Pages is not configured; the approved plan will not create a destination Pages site.' -Style Hint
+                        }
+                        else {
+                            $buildType = [string] (Get-CgrObjectProperty -InputObject $pages -Name 'BuildType')
+                            if ($buildType -eq 'workflow') {
+                                Write-CgrWizardMessage -Message '    - Build mode: GitHub Actions (workflow-based Pages); no branch/path publishing source is implied.' -Style Hint
+                            }
+                            elseif (-not [string]::IsNullOrWhiteSpace($buildType)) {
+                                Write-CgrWizardMessage -Message ('    - Build mode: {0} (branch/path-based Pages).' -f $buildType) -Style Hint
+                                $pagesSource = Get-CgrObjectProperty -InputObject $pages -Name 'Source'
+                                if ($null -ne $pagesSource) {
+                                    Write-CgrWizardMessage -Message ('    - Publishing source: {0}{1}' -f (Get-CgrObjectProperty -InputObject $pagesSource -Name 'Branch'), (Get-CgrObjectProperty -InputObject $pagesSource -Name 'Path')) -Style Hint
+                                }
+                            }
+
+                            $representability = Get-CgrObjectProperty -InputObject $pages -Name 'Representability'
+                            if ($null -ne $representability -and -not [bool] (Get-CgrObjectProperty -InputObject $representability -Name 'IsRepresentable')) {
+                                Write-CgrWizardMessage -Message ('    - Pages is not restorable from this reviewed plan: {0}' -f (Get-CgrObjectProperty -InputObject $representability -Name 'Reason')) -Status Warning
+                            }
+
+                            $customDomain = [string] (Get-CgrObjectProperty -InputObject $pages -Name 'CustomDomain')
+                            $httpsIntent = Get-CgrObjectProperty -InputObject $pages -Name 'HttpsEnforced'
+                            $domainText = if ([string]::IsNullOrWhiteSpace($customDomain)) { '(none)' } else { $customDomain }
+                            Write-CgrWizardMessage -Message ('    - Custom domain: {0}' -f $domainText) -Style Hint
+                            Write-CgrWizardMessage -Message ('    - HTTPS enforcement intent: {0}' -f $httpsIntent) -Style Hint
+
+                            $externalReadiness = Get-CgrObjectProperty -InputObject $pages -Name 'ExternalReadiness'
+                            if ($null -ne $externalReadiness) {
+                                $domainVerification = Get-CgrObjectProperty -InputObject $externalReadiness -Name 'DomainVerification'
+                                $certificate = Get-CgrObjectProperty -InputObject $externalReadiness -Name 'Certificate'
+                                $certificateState = if ($null -eq $certificate) {
+                                    'NotReportedByGitHub'
+                                }
+                                elseif ($certificate -is [string]) {
+                                    [string] $certificate
+                                }
+                                else {
+                                    $state = [string] (Get-CgrObjectProperty -InputObject $certificate -Name 'state')
+                                    if ([string]::IsNullOrWhiteSpace($state)) { [string] $certificate } else { $state }
+                                }
+                                $dnsReadiness = Get-CgrObjectProperty -InputObject $externalReadiness -Name 'Dns'
+                                Write-CgrWizardMessage -Message ('    - Domain verification readiness: {0}' -f $domainVerification) -Style Hint
+                                Write-CgrWizardMessage -Message ('    - Certificate readiness: {0}' -f $certificateState) -Style Hint
+                                Write-CgrWizardMessage -Message ('    - DNS evidence: {0}' -f $dnsReadiness) -Style Hint
+                            }
+
+                            if (-not [string]::IsNullOrWhiteSpace($customDomain) -or [bool] $httpsIntent) {
+                                Write-CgrWizardMessage -Message '    - Custom-domain and HTTPS completion can depend on external DNS, GitHub domain verification, and certificate readiness; the wizard does not discover or mutate external DNS.' -Status Warning
+                            }
+                            if (-not [string]::IsNullOrWhiteSpace($customDomain) -and $plan.Mode -eq 'SameNameReplacement') {
+                                Write-CgrWizardMessage -Message ("    - Same-name replacement must hand off custom-domain ownership for '$customDomain': the archived original may need to release the exact domain before the replacement can claim it. This happens only through the reviewed Pages handoff contract; external DNS is unchanged.") -Status Warning
+                            }
+                        }
+                    }
+                }
+
                 Write-CgrWizardMessage -Message '  Planned steps:' -Style Heading
                 foreach ($plannedStep in @($plan.Steps)) {
                     Write-CgrWizardMessage -Message ('    - {0}' -f $plannedStep.Description)
@@ -481,6 +522,51 @@ function Invoke-CgrRepositoryCopyWizard {
                     continue
                 }
                 if ($confirmation.Value -ne 'Execute') { continue }
+
+                $restartPlanning = $false
+                if ($plan.Mode -eq 'SameNameReplacement') {
+                    $expectedConfirmation = "SOURCE=$($plan.SourceRepository);ARCHIVE=$($plan.ArchiveRepository);REPLACEMENT=$($plan.DestinationRepository)"
+                    while ($true) {
+                        Write-CgrWizardMessage -Message 'Same-name replacement preserves the current repository as an archive before creating the replacement.' -Status Warning
+                        Write-CgrWizardMessage -Message 'Exact confirmation is required and cannot be bypassed.' -Style Hint
+                        Write-CgrWizardMessage -Message 'Required text:' -Style Hint
+                        Write-CgrWizardMessage -Message $expectedConfirmation -Style Value
+                        if (-not [string]::IsNullOrWhiteSpace($sameNameConfirmation)) {
+                            Write-CgrWizardMessage -Message 'A valid confirmation is already stored. Press Enter to reuse it.' -Style Hint
+                        }
+
+                        $inputText = Read-CgrWizardInput `
+                            -Prompt 'Exact confirmation' `
+                            -DefaultValue $sameNameConfirmation `
+                            -AllowHelp `
+                            -AllowBack `
+                            -AllowCancel
+                        $navigation = Resolve-CgrWizardNavigationInput `
+                            -InputText $inputText `
+                            -AllowBack `
+                            -AllowNext:(-not [string]::IsNullOrWhiteSpace($sameNameConfirmation)) `
+                            -AllowCancel `
+                            -AllowHelp
+
+                        if ($null -ne $navigation) {
+                            if ($navigation.Action -eq 'Help') { Show-CgrWizardHelp -Topic ExactConfirmation; continue }
+                            if ($navigation.Action -eq 'Cancel') { return & $cancelResult }
+                            if ($navigation.Action -eq 'Back') {
+                                $step = 5
+                                $restartPlanning = $true
+                                break
+                            }
+                            if ($navigation.Action -eq 'Next') { break }
+                        }
+
+                        if ($inputText -ceq $expectedConfirmation) {
+                            $sameNameConfirmation = $inputText
+                            break
+                        }
+                        Write-CgrWizardMessage -Message 'The confirmation did not match exactly. Retry, go Back, or Cancel.' -Status Warning
+                    }
+                }
+                if ($restartPlanning) { continue }
 
                 if ($plan.Mode -eq 'ExistingDestinationReplacement') {
                     $expectedConfirmation = "DESTINATION=$($plan.DestinationRepository);ARCHIVE=$($plan.ArchiveRepository);REPLACEMENT=$($plan.DestinationRepository)"

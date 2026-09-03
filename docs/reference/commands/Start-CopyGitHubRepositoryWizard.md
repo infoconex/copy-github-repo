@@ -1,6 +1,6 @@
 ---
 title: "Start-CopyGitHubRepositoryWizard – Guided GitHub Repository Copy"
-description: "Use Start-CopyGitHubRepositoryWizard for a guided PowerShell workflow that discovers repositories, configures plain Snapshot, Snapshot release checkpoints, or FullHistory, reviews a real copy plan, and safely executes the approved migration."
+description: "Use Start-CopyGitHubRepositoryWizard for a guided PowerShell workflow that selects Snapshot or FullHistory, optional releases and GitHub Pages restoration, reviews a real copy plan, and safely executes it."
 ---
 
 # Start-CopyGitHubRepositoryWizard
@@ -24,13 +24,13 @@ Use `-Version` when you only need to report the version of the loaded `CopyGitHu
 | Parameter | Type | Required | Default | Accepted values / format | Description |
 | --- | --- | --- | --- | --- | --- |
 | `HostName` | `String` | No | `github.com` | `github.com` in the current release line | GitHub host used by discovery and migration operations. Unsupported hosts fail closed. |
-| `Version` | `Switch` | No | Off | `-Version` | Displays the loaded `CopyGitHubRepo` module version and exits. |
+| `Version` | `Switch` | No | Off | `-Version` | Displays the loaded CopyGitHubRepo module version and exits. |
 
 Because the command supports `ShouldProcess`, PowerShell also provides `-WhatIf` and `-Confirm`. Standard common parameters are available as well.
 
 ## Guided flow
 
-The wizard guides the user through source selection, destination identity, content mode, destination visibility, supported-settings behavior, replacement safety where applicable, and Snapshot-specific choices. Safe defaults are `Snapshot`, source visibility, settings restoration, the default Snapshot commit message, and no release preservation.
+The wizard guides the user through source selection, destination identity, content mode, destination visibility, supported-settings behavior, replacement safety where applicable, Snapshot-specific release choices, and optional GitHub Pages restoration. Safe defaults are `Snapshot`, source visibility, settings restoration, the default Snapshot commit message, no release preservation, and no Pages restoration.
 
 Repository lists are paged in groups of 20. Use `N` and `P` for next and previous pages and `F` to filter the list. Page-local numbers select a repository from the visible page, while a full repository name remains a valid direct selection.
 
@@ -57,17 +57,45 @@ When release preservation is enabled, the wizard then asks for the same release-
 4. whether to exclude or include draft releases, defaulting to exclude; and
 5. an optional positive whole-number release-count limit, applied to the newest releases after the other filters.
 
-Press Enter keeps the current optional filter value. Enter `-` to clear an optional include pattern, exclude pattern, or count value. Back navigation moves through the release-filter screens without discarding already accepted values, and Cancel ends the wizard before mutation.
+Press Enter keeps the current optional filter value. Enter `-` to clear an optional include pattern, exclude pattern, or count value. Back navigation moves through release-filter screens without discarding already accepted values, and Cancel ends the wizard before mutation.
 
 The wizard does not invent its own checkpoint list. These selections are passed into the real `Copy-GitHubRepository -PlanOnly` path. The reviewed plan therefore contains the actual selected release/checkpoint evidence, topology validation, and final-current-state behavior that execution will use. The detailed checkpoint semantics are authoritative in the [Snapshot release-checkpoint product contract](../../product/product-contract.md#snapshot-release-checkpoint-contract).
 
 Snapshot root/checkpoint commits are attributed according to the implementation's Snapshot authoring contract. Plain Snapshot and Snapshot release preservation both create new destination commit identities; neither mode promises preservation of source commit authorship, committer identity, parentage, timestamps, or SHAs.
 
+## GitHub Pages choice and review
+
+GitHub Pages restoration is a separate opt-in choice. The default is to **not** restore GitHub-side Pages configuration.
+
+The wizard distinguishes ordinary Git content from Pages service state. Site files, `CNAME`, Jekyll configuration, and `.github/workflows/**` can be copied by Snapshot or FullHistory as repository content even when Pages restoration is skipped. That does not mean GitHub-side Pages configuration was migrated.
+
+When Pages restoration is selected, the wizard delegates to the same real plan path used by `Copy-GitHubRepository -RestorePages`. The review uses plan-derived evidence rather than reconstructing Pages state independently. Where available it shows:
+
+- whether source Pages is configured;
+- Actions/workflow versus branch/path publishing;
+- the exact publishing branch/path for branch-based Pages;
+- custom domain;
+- HTTPS enforcement intent;
+- destination representability/safety; and
+- external readiness that remains outside migration authority.
+
+Actions-based Pages can restore the reviewed `workflow` build type. Branch/path publishing is supported only when the exact reviewed branch and supported `/` or `/docs` path can exist at the destination. Snapshot does not invent a missing source publishing branch or redirect Pages to a substitute source; unrepresentable state fails closed.
+
+External DNS is not changed. Account/organization domain verification is not transferred. Certificate issuance/propagation can remain pending after deterministic GitHub-side configuration is restored, and the wizard does not present that external readiness as state it will migrate. Secrets, tokens, and environment secret values are never copied.
+
+For same-name and existing-destination replacement with a reviewed custom domain, the review explains the archive-to-replacement domain handoff before execution. The underlying command verifies archive/replacement identity and exact reviewed ownership before release/claim, independently reads back the result, and preserves recovery evidence if handoff is only partially completed. The wizard does not weaken or replace those checks.
+
+See [GitHub Pages migration and recovery](../../user/github-pages-migration.md) for operational and recovery details.
+
+## Review and execution authority
+
 Before mutation, the user can move Back or Cancel and can accept effective defaults with Enter. Changing a plan-affecting choice invalidates an older plan.
 
 The review step calls the real `Copy-GitHubRepository -PlanOnly` path and displays that plan. The final Execute/Cancel decision is headed **Confirm repository copy**. GitHub mutation is not requested until the plan has been shown and the user explicitly chooses Execute. The wizard's `ShouldProcess` check is the final execution gate before delegation.
 
-For same-name replacement, the wizard collects an unused archive name and the exact source/archive/replacement confirmation required by `Copy-GitHubRepository`. It does not weaken that command's safety rules. Snapshot release preservation uses the same archived-source/replacement safeguards and reviewed-plan evidence as the deterministic command.
+For same-name replacement, the wizard collects an unused archive name and the exact source/archive/replacement confirmation required by `Copy-GitHubRepository`. It does not weaken that command's safety rules. Snapshot release preservation and Pages restoration use the same archived-source/replacement safeguards and reviewed-plan authority as the deterministic command.
+
+If plan-driving source state changes after review, deterministic execution fails closed at the applicable stale-state boundary. The wizard requires a newly generated plan to be reviewed rather than silently substituting live state.
 
 ## Prompt defaults
 
@@ -84,19 +112,21 @@ The wizard does not use separate `default/current` wording that could disagree w
 
 ## Execution activity
 
-During execution, the wizard presents durable activity in the same order as the approved migration operations. This includes repository creation or archival where applicable, source cloning, Git LFS inspection/transfer, content publication, destination verification, requested release/checkpoint restoration and verification where applicable, supported-settings restoration, and repository-protection restoration/checking.
+During execution, the wizard presents durable activity in the same order as approved migration operations. This includes repository creation or archival where applicable, source cloning, Git LFS inspection/transfer, content publication, destination verification, requested release/checkpoint restoration and verification, supported-settings restoration, requested Pages restoration/verification, and repository-protection restoration/checking.
 
 Git LFS activity distinguishes a real transfer from a successful no-op. When the source contains no required Git LFS content, the wizard reports that no transfer was required rather than implying that objects were copied.
 
 Terminal activity stages consistently include elapsed duration when a start timestamp is available. Successful work is shown as success, successful no-ops as informational outcomes, partial/unsupported outcomes as warnings, and failures as errors.
 
-The completion summary reports verification, release restoration where requested, settings, and protection outcomes before the final completion heading. A source with no transferable repository-protection rules is a successful `NotApplicable` outcome, not a skipped or failed restoration.
+For Pages, external readiness such as pending certificate provisioning is distinguished from unexpected migration failure. A partial custom-domain handoff remains a recovery condition with preserved evidence rather than being presented as if automatic rollback succeeded.
+
+The completion summary reports verification, release restoration where requested, settings, Pages where requested, and protection outcomes before the final completion heading. A source with no transferable repository-protection rules is a successful `NotApplicable` outcome, not a skipped or failed restoration.
 
 ## Contextual help
 
-Enter `?` at an applicable wizard prompt to display help for that exact decision, then return to the same prompt. Help is available for the established wizard decisions such as source selection, destination input, existing-destination handling, content mode, visibility, supported settings, Snapshot commit messages, archive names, plan review, and exact safety confirmations.
+Enter `?` at an applicable wizard prompt to display help for that exact decision, then return to the same prompt. Help is available for established wizard decisions such as source selection, destination input, existing-destination handling, content mode, visibility, supported settings, Snapshot commit messages, archive names, plan review, exact safety confirmations, and the Pages restoration decision where applicable.
 
-Snapshot release-preservation screens present their release-specific explanatory hints directly in the flow. Viewing available help does not advance or cancel the wizard, change the current/default value, invalidate a plan, or trigger GitHub mutation.
+Snapshot release-preservation and Pages screens present their feature-specific explanatory hints directly in the flow. Viewing available help does not advance or cancel the wizard, change the current/default value, invalidate a plan, or trigger GitHub mutation.
 
 Back, Cancel, paging, filtering, and other navigation behaviors retain state after help is viewed.
 
@@ -104,7 +134,7 @@ Back, Cancel, paging, filtering, and other navigation behaviors retain state aft
 
 Cancellation before mutation is a normal no-change outcome. Once mutation begins, Back is no longer offered.
 
-Known application, validation, prerequisite, and safety conditions are presented as intentional wizard messages. This includes fail-closed Snapshot release-topology or stale reviewed-evidence failures returned by the shared planning/execution path. The normal wizard UI does not display PowerShell source-file locations, line-number blocks, internal function prefixes, or invocation-position details for known conditions.
+Known application, validation, prerequisite, and safety conditions are presented as intentional wizard messages. This includes fail-closed Snapshot release-topology, stale reviewed-evidence, Pages representability, and Pages stale-state/safety failures returned by the shared planning/execution path. Expected recovery warnings are distinct from unexpected defects. The normal wizard UI does not display PowerShell source-file locations, line-number blocks, internal function prefixes, or invocation-position details for known conditions.
 
 This presentation behavior does not change the deterministic command contract. Calling `Copy-GitHubRepository`, `Get-GitHubRepository`, or the other public commands directly still produces structured terminating errors that scripts can inspect and catch.
 
@@ -116,7 +146,9 @@ With `-Version`, the command returns a `System.String` containing the loaded mod
 
 ## Important failure conditions
 
-The wizard can stop before mutation when the selected host is unsupported or when delegated discovery/planning cannot satisfy its prerequisites. Snapshot execution also requires usable Snapshot commit-authoring identity. Snapshot release preservation can additionally fail closed during planning when selected release tags cannot be represented as the deterministic checkpoint topology required by the product contract or when reviewed release/tag/tree evidence is invalid/stale. Same-name replacement and existing-destination replacement cannot proceed without valid unused archive names and their required exact confirmations.
+The wizard can stop before mutation when the selected host is unsupported or when delegated discovery/planning cannot satisfy prerequisites. Snapshot execution also requires usable Snapshot commit-authoring identity. Snapshot release preservation can fail closed during planning when selected release tags cannot be represented as deterministic checkpoint topology or when reviewed release/tag/tree evidence is invalid/stale. Pages restoration can fail closed when the reviewed publishing mode/source is unsupported or unrepresentable, when Pages evidence becomes stale, or when custom-domain ownership/handoff prerequisites are ambiguous. Same-name and existing-destination replacement cannot proceed without valid unused archive names and required exact confirmations.
+
+After mutation begins, Pages recovery evidence can describe a partial custom-domain release/claim or other completed stage. The wizard does not infer that external DNS, domain verification, or certificate readiness was migrated, and it does not claim destructive rollback occurred when ownership state is uncertain.
 
 ## Examples
 
@@ -132,7 +164,7 @@ Start-CopyGitHubRepositoryWizard -Version
 Start-CopyGitHubRepositoryWizard
 ```
 
-Accept or change the guided choices. For Snapshot, you can keep the default plain one-commit publication or opt into selected release preservation and configure its filters. Review the generated real plan before execution.
+Accept or change the guided choices. For Snapshot, you can keep the default plain one-commit publication or opt into selected release preservation. Pages restoration remains off unless explicitly selected. Review the generated real plan before execution.
 
 ### State the supported host explicitly
 
@@ -146,12 +178,14 @@ Start-CopyGitHubRepositoryWizard -HostName github.com
 Start-CopyGitHubRepositoryWizard -WhatIf
 ```
 
-The wizard can still gather choices, including Snapshot release selections, and display the real plan, but `ShouldProcess` prevents delegated execution.
+The wizard can still gather choices, including Snapshot release selections and Pages restoration, and display the real plan, but `ShouldProcess` prevents delegated execution.
 
 ## Related documentation
 
 - [`Copy-GitHubRepository`](Copy-GitHubRepository.md)
 - [`Get-GitHubRepository`](Get-GitHubRepository.md)
+- [GitHub Pages migration and recovery](../../user/github-pages-migration.md)
+- [GitHub Pages migration contract](../../product/github-pages-migration-contract.md)
 - [Snapshot release-checkpoint product contract](../../product/product-contract.md#snapshot-release-checkpoint-contract)
 - [Wizard contract](../../product/wizard-contract.md)
 - [Wizard activity](../../product/wizard-activity.md)

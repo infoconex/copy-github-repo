@@ -33,6 +33,29 @@ Describe 'GitHub Actions security analysis workflow contract' {
         $script:workflow | Should -Match '(?m)^\s+persist-credentials: false$'
     }
 
+    It 'keeps CodeQL init and analyze on the same immutable revision' {
+        $initPins = @([regex]::Matches($script:workflow, '(?m)^\s+uses: github/codeql-action/init@([0-9a-f]{40})\s*
+        $script:workflow | Should -Match '(?m)^\s+languages: actions$'
+        $script:workflow | Should -Match '(?m)^\s+queries: security-extended$'
+        $script:workflow | Should -Match '(?m)^\s+category: /language:actions$'
+        $script:workflow | Should -Not -Match '(?m)^\s+languages: powershell$'
+    }
+}
+))
+        $analyzePins = @([regex]::Matches($script:workflow, '(?m)^\s+uses: github/codeql-action/analyze@([0-9a-f]{40})\s*
+        $script:workflow | Should -Match '(?m)^\s+languages: actions$'
+        $script:workflow | Should -Match '(?m)^\s+queries: security-extended$'
+        $script:workflow | Should -Match '(?m)^\s+category: /language:actions$'
+        $script:workflow | Should -Not -Match '(?m)^\s+languages: powershell$'
+    }
+}
+))
+
+        $initPins.Count | Should -Be 1
+        $analyzePins.Count | Should -Be 1
+        $analyzePins[0].Groups[1].Value | Should -Be $initPins[0].Groups[1].Value
+    }
+
     It 'scans only the supported GitHub Actions language with extended security queries' {
         $script:workflow | Should -Match '(?m)^\s+languages: actions$'
         $script:workflow | Should -Match '(?m)^\s+queries: security-extended$'

@@ -97,6 +97,12 @@ Describe 'Automated dependency and supply-chain monitoring' {
         $content | Should -Match 'interval:\s*weekly'
     }
 
+    It 'groups coupled CodeQL version updates in one Dependabot pull request' {
+        $content = (Get-Content -LiteralPath $script:dependabotPath -Raw) -replace "`r`n?", "`n"
+
+        $content | Should -Match '(?m)^    groups:\n      codeql-actions:\n        patterns:\n          - "github/codeql-action/\*"\r?$'
+    }
+
     It 'runs a read-only scheduled PowerShell dependency monitor with distinct freshness and advisory findings' {
         $content = Get-Content -LiteralPath $script:dependencyMonitorWorkflowPath -Raw
 

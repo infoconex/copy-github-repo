@@ -56,7 +56,7 @@ The upstream repository advisory API is a useful detection source, not a guarant
 
 ## GitHub Actions update policy
 
-Dependabot is configured for the `github-actions` ecosystem on a weekly cadence. Dependabot changes are proposals and receive the same review as maintainer-authored workflow changes.
+Dependabot is configured for the `github-actions` ecosystem on a weekly cadence. Dependabot changes are proposals and receive the same review as maintainer-authored workflow changes. Version updates for `github/codeql-action/*` are grouped so the coupled `init` and `analyze` steps are proposed together. Reviewers must verify both steps resolve to the same full immutable upstream commit SHA; a separate security update or manual change must preserve this contract.
 
 Before accepting an action update:
 

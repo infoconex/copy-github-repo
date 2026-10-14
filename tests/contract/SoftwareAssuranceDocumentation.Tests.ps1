@@ -1,5 +1,6 @@
 BeforeAll {
     $repositoryRoot = Split-Path -Parent $PSScriptRoot
+    $script:dependencyVersions = Import-PowerShellDataFile -LiteralPath (Join-Path $repositoryRoot 'build/DevelopmentDependencies.psd1')
     $script:assurance = Get-Content -LiteralPath (Join-Path $repositoryRoot 'docs/security/software-assurance.md') -Raw
     $script:strategy = Get-Content -LiteralPath (Join-Path $repositoryRoot 'docs/engineering/documentation-strategy.md') -Raw
     $script:navigation = Get-Content -LiteralPath (Join-Path $repositoryRoot '_data/navigation.yml') -Raw
@@ -62,7 +63,8 @@ Describe 'Software assurance review package documentation contract' {
             )) {
             $script:assurance | Should -Match ([regex]::Escape($class))
         }
-        $script:assurance | Should -Match 'Pester 6\.1\.0, PSScriptAnalyzer 1\.25\.0'
+        $expectedDevelopmentPins = 'Pester {0}, PSScriptAnalyzer {1}' -f $script:dependencyVersions.Pester, $script:dependencyVersions.PSScriptAnalyzer
+        $script:assurance | Should -Match ([regex]::Escape($expectedDevelopmentPins))
         $script:assurance | Should -Match 'No third-party PowerShell runtime module dependency currently shipped'
         $script:assurance | Should -Match 'release-sbom\.md'
         $script:assurance | Should -Match 'dependency-monitoring\.md'

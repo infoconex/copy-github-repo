@@ -1,5 +1,6 @@
 BeforeAll {
     $repositoryRoot = Split-Path -Parent $PSScriptRoot
+    $script:dependencyVersions = Import-PowerShellDataFile -LiteralPath (Join-Path $repositoryRoot 'build/DevelopmentDependencies.psd1')
     $script:securityArchitecture = Get-Content -LiteralPath (Join-Path $repositoryRoot 'docs/security/security-architecture.md') -Raw
     $script:releaseSbom = Get-Content -LiteralPath (Join-Path $repositoryRoot 'docs/security/release-sbom.md') -Raw
     $script:securityPolicy = Get-Content -LiteralPath (Join-Path $repositoryRoot 'SECURITY.md') -Raw
@@ -53,8 +54,8 @@ Describe 'Security architecture documentation contract' {
     }
 
     It 'tracks current completed and remaining hardening controls directly' {
-        $script:securityArchitecture | Should -Match 'PSScriptAnalyzer 1\.25\.0'
-        $script:securityArchitecture | Should -Match 'Pester 6\.1\.0'
+        $script:securityArchitecture | Should -Match ([regex]::Escape("PSScriptAnalyzer $($script:dependencyVersions.PSScriptAnalyzer)"))
+        $script:securityArchitecture | Should -Match ([regex]::Escape("Pester $($script:dependencyVersions.Pester)"))
         $script:securityArchitecture | Should -Match 'Measure-CgrSecurity'
         $script:securityArchitecture | Should -Match 'PSScriptAnalyzerSecurityRules\.Tests\.ps1'
         $script:securityArchitecture | Should -Match 'CodeQL.*GitHub Actions'

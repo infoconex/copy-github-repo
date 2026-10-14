@@ -34,22 +34,8 @@ Describe 'GitHub Actions security analysis workflow contract' {
     }
 
     It 'keeps CodeQL init and analyze on the same immutable revision' {
-        $initPins = @([regex]::Matches($script:workflow, '(?m)^\s+uses: github/codeql-action/init@([0-9a-f]{40})\s*
-        $script:workflow | Should -Match '(?m)^\s+languages: actions$'
-        $script:workflow | Should -Match '(?m)^\s+queries: security-extended$'
-        $script:workflow | Should -Match '(?m)^\s+category: /language:actions$'
-        $script:workflow | Should -Not -Match '(?m)^\s+languages: powershell$'
-    }
-}
-))
-        $analyzePins = @([regex]::Matches($script:workflow, '(?m)^\s+uses: github/codeql-action/analyze@([0-9a-f]{40})\s*
-        $script:workflow | Should -Match '(?m)^\s+languages: actions$'
-        $script:workflow | Should -Match '(?m)^\s+queries: security-extended$'
-        $script:workflow | Should -Match '(?m)^\s+category: /language:actions$'
-        $script:workflow | Should -Not -Match '(?m)^\s+languages: powershell$'
-    }
-}
-))
+        $initPins = @([regex]::Matches($script:workflow, '(?m)^\s+uses: github/codeql-action/init@([0-9a-f]{40})\s*$'))
+        $analyzePins = @([regex]::Matches($script:workflow, '(?m)^\s+uses: github/codeql-action/analyze@([0-9a-f]{40})\s*$'))
 
         $initPins.Count | Should -Be 1
         $analyzePins.Count | Should -Be 1

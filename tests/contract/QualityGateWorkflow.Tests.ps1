@@ -154,4 +154,34 @@ Describe 'Validate Project Quality workflow contract' {
 
         $script:workflow | Should -Match '(?m)^\s+run: \./build/Test-Project\.ps1 -AnalysisOnly$'
     }
+
+    It 'requires full Windows Linux and macOS quality results through an always-present gate' {
+        $script:workflow | Should -Match '(?m)^    name: Required Project Quality Gate
+        $script:workflow | Should -Match '(?m)^    needs: \[scope, windows, other-platforms\]
+        $script:workflow | Should -Match '(?m)^    if: .+always\(\)'
+        foreach ($term in @('needs.scope.result', 'needs.windows.result', 'needs.other-platforms.result',
+                'needs.scope.outputs.run-quality', "'true', 'false'", "'success'", "'skipped'")) {
+            $script:workflow | Should -Match ([regex]::Escape($term))
+        }
+    }
+
+    It 'creates an always-present documentation PR gate with scoped validation' {
+        $pullRequestSection = [regex]::Match(
+            $script:documentationWorkflow,
+            '(?ms)^  pull_request:\n(.*?)(?=^  workflow_dispatch:)'
+        ).Groups[1].Value
+        $pullRequestSection | Should -Not -BeNullOrEmpty
+        $pullRequestSection | Should -Not -Match '(?m)^    paths:'
+
+        $script:documentationWorkflow | Should -Match '(?m)^    name: Determine Documentation Scope
+        $script:documentationWorkflow | Should -Match '(?m)^    name: Required Documentation Gate
+        $script:documentationWorkflow | Should -Match '(?m)^    needs: \[scope, validate\]
+        $script:documentationWorkflow | Should -Match '(?m)^    if: .+always\(\)'
+        foreach ($term in @('needs.scope.result', 'needs.validate.result',
+                'needs.scope.outputs.run-documentation', 'git diff --name-only',
+                "'true', 'false'", "'success'", "'skipped'",
+                'tests/contract/', 'docs/', 'Test-Documentation', 'DevelopmentDependencies')) {
+            $script:documentationWorkflow | Should -Match ([regex]::Escape($term))
+        }
+    }
 }

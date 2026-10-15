@@ -48,4 +48,23 @@ Describe 'GitHub Actions security analysis workflow contract' {
         $script:workflow | Should -Match '(?m)^\s+category: /language:actions$'
         $script:workflow | Should -Not -Match '(?m)^\s+languages: powershell$'
     }
+
+    It 'creates an unfiltered PR check while analyzing workflow changes with CodeQL' {
+        $pullRequestSection = [regex]::Match(
+            $script:workflow,
+            '(?ms)^  pull_request:\n(.*?)(?=^  schedule:)'
+        ).Groups[1].Value
+        $pullRequestSection | Should -Not -BeNullOrEmpty
+        $pullRequestSection | Should -Not -Match '(?m)^    paths:'
+
+        $script:workflow | Should -Match '(?m)^    name: Determine Actions Analysis Scope
+        $script:workflow | Should -Match '(?m)^    name: Required GitHub Actions Security Gate
+        $script:workflow | Should -Match '(?m)^    needs: \[scope, analyze-actions\]
+        $script:workflow | Should -Match '(?m)^    if: .+always\(\)'
+        foreach ($term in @('needs.scope.result', 'needs.analyze-actions.result',
+                'needs.scope.outputs.run-analysis', 'git diff --name-only',
+                "'true', 'false'", "'success'", "'skipped'", '.github/workflows/')) {
+            $script:workflow | Should -Match ([regex]::Escape($term))
+        }
+    }
 }

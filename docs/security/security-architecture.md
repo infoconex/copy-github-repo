@@ -156,7 +156,7 @@ For v0.1.0, GitHub artifact attestation is the selected independent release-auth
 | Runtime native prerequisite | GitHub CLI | authentication/API prerequisite |
 | Conditional runtime prerequisite | Git LFS | required for FullHistory and Snapshot with approved LFS content |
 | Runtime PowerShell modules | none declared by the module manifest | no third-party PowerShell runtime dependency currently shipped |
-| Development modules | Pester 6.1.0, PSScriptAnalyzer 1.25.0 | exact-version pinned; weekly freshness/advisory monitoring is documented in [`dependency-monitoring.md`](dependency-monitoring.md) |
+| Development modules | Pester 6.2.0, PSScriptAnalyzer 1.25.0 | exact-version pinned; weekly freshness/advisory monitoring is documented in [`dependency-monitoring.md`](dependency-monitoring.md) |
 | CI actions | GitHub Actions referenced by workflows | immutable SHA pinning is repository policy; Dependabot proposes reviewed updates and CodeQL analyzes workflow code |
 | Runtime remote service | GitHub.com | v0.1.0 supported host and primary external service |
 | Distribution | GitHub Releases, PowerShell Gallery | release/distribution trust boundaries; not installed-module runtime dependencies |

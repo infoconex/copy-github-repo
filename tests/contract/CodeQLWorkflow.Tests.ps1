@@ -57,9 +57,9 @@ Describe 'GitHub Actions security analysis workflow contract' {
         $pullRequestSection | Should -Not -BeNullOrEmpty
         $pullRequestSection | Should -Not -Match '(?m)^    paths:'
 
-        $script:workflow | Should -Match '(?m)^    name: Determine Actions Analysis Scope
-        $script:workflow | Should -Match '(?m)^    name: Required GitHub Actions Security Gate
-        $script:workflow | Should -Match '(?m)^    needs: \[scope, analyze-actions\]
+        $script:workflow | Should -Match '(?m)^    name: Determine Actions Analysis Scope$'
+        $script:workflow | Should -Match '(?m)^    name: Required GitHub Actions Security Gate$'
+        $script:workflow | Should -Match '(?m)^    needs: \[scope, analyze-actions\]$'
         $script:workflow | Should -Match '(?m)^    if: .+always\(\)'
         foreach ($term in @('needs.scope.result', 'needs.analyze-actions.result',
                 'needs.scope.outputs.run-analysis', 'git diff --name-only',

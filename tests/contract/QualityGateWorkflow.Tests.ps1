@@ -226,4 +226,65 @@ Describe 'Validate Project Quality workflow contract' {
             $actions | Should -Be $scenario.Actions -Because $scenario.Label
         }
     }
+
+    It 'executes final gate scripts against accepted and rejected upstream result combinations' {
+        $gates = @(
+            @{ Name = 'project quality'; Workflow = $script:workflow; Job = 'required-project-quality'; ScopeOutput = 'run-quality'; Dependency = 'other-platforms' },
+            @{ Name = 'PowerShell security'; Workflow = $script:codeSecurityWorkflow; Job = 'required-code-security'; ScopeOutput = 'run-security'; Dependency = 'analyze' },
+            @{ Name = 'GitHub Actions CodeQL'; Workflow = $script:actionsSecurityWorkflow; Job = 'required-actions-security'; ScopeOutput = 'run-analysis'; Dependency = 'analyze-actions' },
+            @{ Name = 'documentation'; Workflow = $script:documentationWorkflow; Job = 'required-documentation'; ScopeOutput = 'run-documentation'; Dependency = 'validate' }
+        )
+        $scenarios = @(
+            @{ Name = 'mandatory success'; Scope = 'success'; Required = 'true'; Dep = 'success'; Windows = 'success'; Pass = $true },
+            @{ Name = 'intentional skip'; Scope = 'success'; Required = 'false'; Dep = 'skipped'; Windows = 'success'; Pass = $true },
+            @{ Name = 'scope failed'; Scope = 'failure'; Required = 'true'; Dep = 'success'; Windows = 'success'; Pass = $false },
+            @{ Name = 'scope cancelled'; Scope = 'cancelled'; Required = 'false'; Dep = 'skipped'; Windows = 'success'; Pass = $false },
+            @{ Name = 'scope output missing'; Scope = 'success'; Required = ''; Dep = 'success'; Windows = 'success'; Pass = $false },
+            @{ Name = 'scope output invalid'; Scope = 'success'; Required = 'unknown'; Dep = 'success'; Windows = 'success'; Pass = $false },
+            @{ Name = 'mandatory job unexpectedly skipped'; Scope = 'success'; Required = 'true'; Dep = 'skipped'; Windows = 'success'; Pass = $false },
+            @{ Name = 'inapplicable job unexpectedly ran'; Scope = 'success'; Required = 'false'; Dep = 'success'; Windows = 'success'; Pass = $false },
+            @{ Name = 'mandatory job failed'; Scope = 'success'; Required = 'true'; Dep = 'failure'; Windows = 'success'; Pass = $false },
+            @{ Name = 'mandatory job cancelled'; Scope = 'success'; Required = 'true'; Dep = 'cancelled'; Windows = 'success'; Pass = $false }
+        )
+
+        foreach ($gate in $gates) {
+            $jobAnchor = "  $($gate.Job):`n"
+            $jobStart = $gate.Workflow.IndexOf($jobAnchor, [StringComparison]::Ordinal)
+            $jobStart | Should -BeGreaterOrEqual 0 -Because $gate.Name
+            $jobText = $gate.Workflow.Substring($jobStart + $jobAnchor.Length)
+            $runAnchor = "        run: |`n"
+            $runStart = $jobText.IndexOf($runAnchor, [StringComparison]::Ordinal)
+            $runStart | Should -BeGreaterOrEqual 0 -Because $gate.Name
+            $body = $jobText.Substring($runStart + $runAnchor.Length) -replace '(?m)^ {10}', ''
+
+            foreach ($scenario in $scenarios) {
+                $scriptText = $body.Replace('${{ needs.scope.result }}', $scenario.Scope)
+                $scopeExpression = '${{ needs.scope.outputs.' + $gate.ScopeOutput + ' }}'
+                $scriptText = $scriptText.Replace($scopeExpression, $scenario.Required)
+                $dependencyExpression = '${{ needs.' + $gate.Dependency + '.result }}'
+                $scriptText = $scriptText.Replace($dependencyExpression, $scenario.Dep)
+                $scriptText = $scriptText.Replace('${{ needs.windows.result }}', $scenario.Windows)
+                $scriptText | Should -Not -Match '\$\{\{' -Because "$($gate.Name): $($scenario.Name)"
+                $scriptBlock = [scriptblock]::Create($scriptText)
+
+                if ($scenario.Pass) {
+                    { & $scriptBlock } | Should -Not -Throw -Because "$($gate.Name): $($scenario.Name)"
+                }
+                else {
+                    { & $scriptBlock } | Should -Throw -Because "$($gate.Name): $($scenario.Name)"
+                }
+            }
+
+            if ($gate.Job -eq 'required-project-quality') {
+                foreach ($windowsResult in @('failure', 'cancelled', 'skipped', '')) {
+                    $scriptText = $body.Replace('${{ needs.scope.result }}', 'success')
+                    $scriptText = $scriptText.Replace('${{ needs.scope.outputs.run-quality }}', 'false')
+                    $scriptText = $scriptText.Replace('${{ needs.windows.result }}', $windowsResult)
+                    $scriptText = $scriptText.Replace('${{ needs.other-platforms.result }}', 'skipped')
+                    $scriptBlock = [scriptblock]::Create($scriptText)
+                    { & $scriptBlock } | Should -Throw -Because "Windows '$windowsResult' must succeed even on documentation-only PRs"
+                }
+            }
+        }
+    }
 }

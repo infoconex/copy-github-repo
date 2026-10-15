@@ -3,10 +3,14 @@ BeforeAll {
     $script:workflowPath = Join-Path $repositoryRoot '.github/workflows/validate-project-quality.yml'
     $script:documentationWorkflowPath = Join-Path $repositoryRoot '.github/workflows/validate-documentation.yml'
     $script:deploymentWorkflowPath = Join-Path $repositoryRoot '.github/workflows/deploy-documentation-site.yml'
+    $script:codeSecurityWorkflowPath = Join-Path $repositoryRoot '.github/workflows/analyze-code-security.yml'
+    $script:actionsSecurityWorkflowPath = Join-Path $repositoryRoot '.github/workflows/analyze-github-actions-security.yml'
 
     $script:workflow = (Get-Content -LiteralPath $script:workflowPath -Raw) -replace "`r`n?", "`n"
     $script:documentationWorkflow = (Get-Content -LiteralPath $script:documentationWorkflowPath -Raw) -replace "`r`n?", "`n"
     $script:deploymentWorkflow = (Get-Content -LiteralPath $script:deploymentWorkflowPath -Raw) -replace "`r`n?", "`n"
+    $script:codeSecurityWorkflow = (Get-Content -LiteralPath $script:codeSecurityWorkflowPath -Raw) -replace "`r`n?", "`n"
+    $script:actionsSecurityWorkflow = (Get-Content -LiteralPath $script:actionsSecurityWorkflowPath -Raw) -replace "`r`n?", "`n"
 
     $siteOnlyPatternMatch = [regex]::Match($script:workflow, '(?m)^\s*\$siteOnlyPattern = ''([^'']+)''$')
     if (-not $siteOnlyPatternMatch.Success) {
@@ -182,6 +186,44 @@ Describe 'Validate Project Quality workflow contract' {
                 "'true', 'false'", "'success'", "'skipped'",
                 'tests/contract/', 'docs/', 'Test-Documentation', 'DevelopmentDependencies')) {
             $script:documentationWorkflow | Should -Match ([regex]::Escape($term))
+        }
+    }
+
+    It 'classifies representative source documentation workflow and Dependabot PR paths consistently' {
+        $qualityMatch = [regex]::Match($script:workflow, '(?m)\$siteOnlyPattern = ''([^'']+)''')
+        $securityMatch = [regex]::Match($script:codeSecurityWorkflow, '(?m)\$securityPattern = ''([^'']+)''')
+        $documentationMatch = [regex]::Match($script:documentationWorkflow, '(?m)\$documentationPattern = ''([^'']+)''')
+        $qualityMatch.Success | Should -BeTrue
+        $securityMatch.Success | Should -BeTrue
+        $documentationMatch.Success | Should -BeTrue
+        $script:actionsSecurityWorkflow | Should -Match ([regex]::Escape("Where-Object { $_ -match '^\.github/workflows/' }"))
+
+        $siteOnlyPattern = $qualityMatch.Groups[1].Value
+        $securityPattern = $securityMatch.Groups[1].Value
+        $documentationPattern = $documentationMatch.Groups[1].Value
+        $actionsPattern = '^\.github/workflows/'
+
+        $scenarios = @(
+            @{ Label = 'module source'; Paths = @('src/CopyGitHubRepo/Private/Get-CgrSample.ps1'); Quality = $true; Security = $true; Documentation = $false; Actions = $false },
+            @{ Label = 'documentation-only'; Paths = @('docs/user/installation.md'); Quality = $false; Security = $false; Documentation = $true; Actions = $false },
+            @{ Label = 'CodeQL workflow'; Paths = @('.github/workflows/analyze-github-actions-security.yml'); Quality = $true; Security = $false; Documentation = $false; Actions = $true },
+            @{ Label = 'documentation workflow'; Paths = @('.github/workflows/validate-documentation.yml'); Quality = $false; Security = $false; Documentation = $true; Actions = $true },
+            @{ Label = 'Dependabot workflow update'; Paths = @('.github/workflows/monitor-dependencies.yml'); Quality = $true; Security = $false; Documentation = $false; Actions = $true },
+            @{ Label = 'Dependabot configuration'; Paths = @('.github/dependabot.yml'); Quality = $true; Security = $false; Documentation = $false; Actions = $false },
+            @{ Label = 'contract test'; Paths = @('tests/contract/QualityGateWorkflow.Tests.ps1'); Quality = $true; Security = $true; Documentation = $true; Actions = $false },
+            @{ Label = 'source and documentation'; Paths = @('src/CopyGitHubRepo/CopyGitHubRepo.psd1', 'docs/product/product-contract.md'); Quality = $true; Security = $true; Documentation = $true; Actions = $false }
+        )
+
+        foreach ($scenario in $scenarios) {
+            $quality = @($scenario.Paths | Where-Object { $_ -notmatch $siteOnlyPattern }).Count -gt 0
+            $security = @($scenario.Paths | Where-Object { $_ -match $securityPattern }).Count -gt 0
+            $documentation = @($scenario.Paths | Where-Object { $_ -match $documentationPattern }).Count -gt 0
+            $actions = @($scenario.Paths | Where-Object { $_ -match $actionsPattern }).Count -gt 0
+
+            $quality | Should -Be $scenario.Quality -Because $scenario.Label
+            $security | Should -Be $scenario.Security -Because $scenario.Label
+            $documentation | Should -Be $scenario.Documentation -Because $scenario.Label
+            $actions | Should -Be $scenario.Actions -Because $scenario.Label
         }
     }
 }

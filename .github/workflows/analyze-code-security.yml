@@ -186,3 +186,24 @@ jobs:
           path: TestResults/
           if-no-files-found: warn
           retention-days: 14
+
+  required-code-security:
+    name: Required PowerShell Security Gate
+    needs: [scope, analyze]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required PowerShell security results
+        shell: pwsh
+        run: |
+          if ('${{ needs.scope.result }}' -ne 'success') {
+              throw 'PowerShell security scope determination did not succeed.'
+          }
+          $required = '${{ needs.scope.outputs.run-security }}'
+          if ($required -notin @('true', 'false')) {
+              throw 'PowerShell security scope result is invalid or missing.'
+          }
+          $expected = if ($required -eq 'true') { 'success' } else { 'skipped' }
+          if ('${{ needs.analyze.result }}' -ne $expected) {
+              throw "PowerShell security analysis result must be '$expected'."
+          }

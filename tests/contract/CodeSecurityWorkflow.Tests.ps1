@@ -52,8 +52,8 @@ Describe 'Analyze Code Security workflow contract' {
     }
 
     It 'requires a fail-closed code-security gate even when analysis is conditionally skipped' {
-        $script:workflow | Should -Match '(?m)^    name: Required PowerShell Security Gate
-        $script:workflow | Should -Match '(?m)^    needs: \[scope, analyze\]
+        $script:workflow | Should -Match '(?m)^    name: Required PowerShell Security Gate$'
+        $script:workflow | Should -Match '(?m)^    needs: \[scope, analyze\]$'
         $script:workflow | Should -Match '(?m)^    if: .+always\(\)'
         foreach ($term in @('needs.scope.result', 'needs.analyze.result',
                 'needs.scope.outputs.run-security', "'true', 'false'",

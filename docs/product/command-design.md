@@ -139,7 +139,8 @@ A different existing destination can also be archived and replaced only through 
 - `-WhatIf` returns the execution plan and does not create or rename repositories.
 - Any destination visibility that differs from the source requires `-Force` for mutation.
 - Non-interactive mutation requires `-Force`.
-- `-RestorePages` and `-EnableActionsAfterMigration` are reserved plan switches; mutating execution rejects them because those operations are not implemented.
+- `-RestorePages` is an implemented opt-in for supported GitHub-side Pages restoration from immutable reviewed plan evidence after destination content verification. Relevant source Pages evidence is revalidated immediately before mutation; stale, unsupported, or unrepresentable state fails closed, and destination Pages configuration is independently verified. Without `-RestorePages`, copied site/workflow files do not prove or restore GitHub-side Pages configuration.
+- `-EnableActionsAfterMigration` remains a reserved plan-only switch: mutating execution rejects general Actions activation as unimplemented. Pages-specific activation control under `-RestorePages` does not implement general Actions activation.
 - `-ReportPath` writes Markdown by default or JSON for `.json`.
 - Post-mutation terminating failures write durable recovery evidence before the original error is rethrown.
 - Recovery retains planned source state and actual copied source evidence when available and never automatically deletes or renames repositories.

@@ -30,6 +30,19 @@ Describe 'Normative documentation consistency' {
         $script:documents.ProductContract | Should -Not -Match 'Pending validation.*expanded repository settings'
     }
 
+    It 'distinguishes implemented Pages opt-in from reserved general Actions activation' {
+        $script:documents.ProductContract | Should -Match '`-RestorePages` is implemented as an explicit opt-in'
+        $script:documents.ProductContract | Should -Match '`-EnableActionsAfterMigration` may appear in plans, but mutating execution rejects general Actions activation'
+        $script:documents.CommandDesign | Should -Match '(?m)^- `-RestorePages` is an implemented opt-in for supported GitHub-side Pages restoration'
+        $script:documents.CommandDesign | Should -Match 'immutable reviewed plan evidence after destination content verification'
+        $script:documents.CommandDesign | Should -Match 'stale, unsupported, or unrepresentable state fails closed'
+        $script:documents.CommandDesign | Should -Match 'destination Pages configuration is independently verified'
+        $script:documents.CommandDesign | Should -Match 'Without `-RestorePages`, copied site/workflow files do not prove or restore GitHub-side Pages configuration'
+        $script:documents.CommandDesign | Should -Match '(?m)^- `-EnableActionsAfterMigration` remains a reserved plan-only switch'
+        $script:documents.CommandDesign | Should -Match 'mutating execution rejects general Actions activation as unimplemented'
+        $script:documents.CommandDesign | Should -Not -Match '`-RestorePages` and `-EnableActionsAfterMigration` are reserved plan switches'
+    }
+
     It 'keeps Snapshot settings behavior aligned with the full supported settings contract' {
         $script:documents.CommandDesign | Should -Match 'Supported settings are description, homepage'
         $script:documents.CommandDesign | Should -Match 'Topics'

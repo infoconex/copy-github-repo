@@ -29,6 +29,14 @@ This guide is the contributor/maintainer map for making changes safely and knowi
 
 The current architecture and behavioral boundaries are authoritative in `docs/product/architecture.md`, `docs/product/product-contract.md`, `docs/product/product-model.md`, and `docs/product/non-functional-requirements.md`. Do not infer ownership solely from file location when those contracts say otherwise.
 
+## Maintenance-only changes without a product release
+
+Changes limited to repository tests and test infrastructure, CI/CD, GitHub Actions, dependency automation, or repository-only security/administrative configuration may use a focused issue branch from the freshly verified `main` HEAD and open a pull request targeting `main` directly. This is the primary maintainer's approved maintenance-only exception to normal product release-branch integration. Such changes do **not** by themselves require a module version increase, a product changelog entry, a stable tag, PowerShell Gallery publication, or a GitHub Release.
+
+Maintenance PRs still require the existing protected pull-request process, exact commit qualification, appropriate local and cross-platform CI, issue acceptance-criteria review, and squash merge. Changes to which status checks are required must be staged separately: prove newly implemented checks with representative PRs first, obtain explicit approval for live ruleset changes, and preserve existing required checks until replacements have been independently verified. Never bypass branch protection or treat cancelled/superseded CI runs as qualified final evidence.
+
+Changes to packaged module behavior, the module manifest or public API, installers, or published distribution contents require release-contract assessment and normally target a release branch. Separate mixed product/maintenance scope into distinct issues and PRs where practical; a PR is not maintenance-only simply because it also changes tests or workflows. Git-tracked workflows are not evidence that GitHub-side services and settings are configured.
+
 ## Normal development workflow
 
 1. Identify the authoritative contract affected by the change before editing implementation.

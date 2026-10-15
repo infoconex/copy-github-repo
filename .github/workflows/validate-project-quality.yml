@@ -214,3 +214,27 @@ jobs:
           path: TestResults/
           if-no-files-found: warn
           retention-days: 14
+
+  required-project-quality:
+    name: Required Project Quality Gate
+    needs: [scope, windows, other-platforms]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required platform quality results
+        shell: pwsh
+        run: |
+          if ('${{ needs.scope.result }}' -ne 'success') {
+              throw 'Project quality scope determination did not succeed.'
+          }
+          $required = '${{ needs.scope.outputs.run-quality }}'
+          if ($required -notin @('true', 'false')) {
+              throw 'Project quality scope result is invalid or missing.'
+          }
+          if ('${{ needs.windows.result }}' -ne 'success') {
+              throw 'Windows project quality did not succeed.'
+          }
+          $expected = if ($required -eq 'true') { 'success' } else { 'skipped' }
+          if ('${{ needs.other-platforms.result }}' -ne $expected) {
+              throw "Linux/macOS project quality must be '$expected'."
+          }

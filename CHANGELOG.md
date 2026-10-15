@@ -14,6 +14,19 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 No unreleased product changes.
 
+## [0.4.1] - 2026-10-14
+
+### Fixed
+
+- Updated the coupled CodeQL `init` and `analyze` security-workflow actions together to v4.38.3 at one reviewed immutable commit, preventing the version mismatch that caused separately proposed dependency updates to fail.
+- Corrected the command-design documentation to recognize implemented, opt-in `-RestorePages` restoration and verification rather than incorrectly describing it as unimplemented; migration runtime behavior is unchanged.
+
+### Changed
+
+- Grouped future CodeQL Dependabot version updates and added regression contracts requiring matching immutable CodeQL action pins and retaining the update group.
+- Updated six immutable `actions/upload-artifact` pins to v7.0.2 across code security, scale characterization, documentation and cross-platform quality workflows, preserving the existing upload conditions, permissions and artifact handling.
+- Updated the exact Pester development/test pin and reviewed-stable monitoring baseline from 6.1.0 to 6.2.0 after Windows, Linux and macOS test qualification, while preserving dependency-freshness and security-advisory monitoring semantics.
+
 ## [0.4.0] - 2026-09-01
 
 ### Added

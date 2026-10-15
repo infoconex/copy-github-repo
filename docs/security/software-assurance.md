@@ -58,7 +58,7 @@ The machine-readable release inventory is defined in [`release-sbom.md`](release
 | Runtime native prerequisite | Git | No | External prerequisite/trust boundary |
 | Runtime native prerequisite | GitHub CLI (`gh`) | No | External prerequisite and authentication/API boundary |
 | Conditional runtime prerequisite | Git LFS | No | Required when the approved operation includes LFS content |
-| Development/test | Pester 6.1.0, PSScriptAnalyzer 1.25.0 | No | Exact-version pinned development dependencies |
+| Development/test | Pester 6.2.0, PSScriptAnalyzer 1.25.0 | No | Exact-version pinned development dependencies |
 | CI/release automation | GitHub Actions dependencies | No | Immutable-SHA pinning policy; monitored/reviewed separately |
 | Runtime remote service | GitHub.com | N/A | v0.1.0 supported remote API/Git service |
 | Distribution | GitHub Releases, PowerShell Gallery | N/A | Distribution trust boundaries, not installed-module dependencies |

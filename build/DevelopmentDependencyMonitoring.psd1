@@ -1,6 +1,6 @@
 @{
     Pester = @{
-        ReviewedLatestStableVersion = '6.1.0'
+        ReviewedLatestStableVersion = '6.2.0'
         UpstreamRepository = 'pester/Pester'
         AdvisoryEcosystem = 'other'
         AdvisoryPackage = 'Pester'

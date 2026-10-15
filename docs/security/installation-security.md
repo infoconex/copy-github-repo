@@ -112,6 +112,8 @@ For a higher-assurance stable install using the project's GitHub Release evidenc
 
 The initial stable version is `v0.1.0`; the following pattern pins version `v0.4.0` after that release is published:
 
+To pin the module's `v0.4.1` release, set `$version = '0.4.1'` **only after that release has been published**. A module manifest version or release-candidate branch does not establish that the corresponding stable ZIP, checksum, and provenance attestation are available. Until then, use a version that is already published, such as the `v0.4.0` example below.
+
 ```powershell
 $version = '0.4.0'
 $repository = 'infoconex/copy-github-repo'

@@ -196,7 +196,7 @@ Describe 'Validate Project Quality workflow contract' {
         $qualityMatch.Success | Should -BeTrue
         $securityMatch.Success | Should -BeTrue
         $documentationMatch.Success | Should -BeTrue
-        $script:actionsSecurityWorkflow | Should -Match ([regex]::Escape("Where-Object { $_ -match '^\.github/workflows/' }"))
+        $script:actionsSecurityWorkflow | Should -Match ([regex]::Escape('Where-Object { $_ -match ''^\.github/workflows/'' }'))
 
         $siteOnlyPattern = $qualityMatch.Groups[1].Value
         $securityPattern = $securityMatch.Groups[1].Value

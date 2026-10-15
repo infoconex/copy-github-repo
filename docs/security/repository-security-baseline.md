@@ -49,7 +49,7 @@ A future same-name Snapshot replacement may require a controlled administrative 
 
 ### Safe expansion of required CI gates
 
-The presently enforced ruleset requires the Windows PowerShell quality and PowerShell security analysis contexts. Issue #149 addresses proposed additional required checks; these are **not** active branch-protection requirements until an explicit owner-approved live ruleset update and independent readback.
+The presently enforced ruleset requires the Windows PowerShell quality and PowerShell security analysis contexts. Additional required checks are proposed but are **not** active branch-protection requirements until an explicit owner-approved live ruleset update and independent readback.
 
 Required PR status checks must always be created for every PR to which the ruleset applies. Path-filtered workflows can fail to create a required context, while conditional jobs can report a skipped outcome even if mandatory upstream work did not run. Scope-aware gate jobs must fail on missing/failed scope decisions, missing or failed required execution, and unexpected cancellations or skips. They may accept explicitly inapplicable expensive checks only when reviewed, fail-closed scope classification supports that decision. For source changes, full quality includes Windows, Ubuntu and macOS. Documentation validation is required for documentation-relevant changes; GitHub Actions CodeQL is required for workflow-file changes.
 

@@ -19,6 +19,7 @@ No unreleased product changes.
 ### Fixed
 
 - Updated the coupled CodeQL `init` and `analyze` security-workflow actions together to v4.38.3 at one reviewed immutable commit, preventing the version mismatch that caused separately proposed dependency updates to fail.
+- Corrected the command-design documentation to recognize implemented, opt-in `-RestorePages` restoration and verification rather than incorrectly describing it as unimplemented; migration runtime behavior is unchanged.
 
 ### Changed
 

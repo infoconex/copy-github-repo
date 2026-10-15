@@ -10,8 +10,6 @@ name: Analyze GitHub Actions Security
     branches:
       - main
       - 'release/**'
-    paths:
-      - '.github/workflows/**'
   schedule:
     - cron: '23 16 * * 2'
   workflow_dispatch:
@@ -24,7 +22,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  scope:
+    name: Determine Actions Analysis Scope
+    runs-on: ubuntu-latest
+    outputs:
+      run-analysis: ${{ steps.scope.outputs.run-analysis }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Determine whether GitHub Actions analysis is required
+        id: scope
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -ne 'pull_request') {
+              'run-analysis=true' >> $env:GITHUB_OUTPUT
+              exit 0
+          }
+          $baseSha = '${{ github.event.pull_request.base.sha }}'
+          $headSha = '${{ github.event.pull_request.head.sha }}'
+          $changedFiles = @(git diff --name-only $baseSha $headSha)
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Unable to determine changed files for GitHub Actions security analysis.'
+          }
+          $requiresAnalysis = @($changedFiles | Where-Object { $_ -match '^\.github/workflows/' }).Count -gt 0
+          "run-analysis=$($requiresAnalysis.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
   analyze-actions:
+    needs: scope
+    if: ${{ needs.scope.outputs.run-analysis == 'true' }}
     name: Analyze GitHub Actions Security
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -50,3 +79,24 @@ jobs:
         uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d
         with:
           category: /language:actions
+
+  required-actions-security:
+    name: Required GitHub Actions Security Gate
+    needs: [scope, analyze-actions]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify GitHub Actions security results
+        shell: pwsh
+        run: |
+          if ('${{ needs.scope.result }}' -ne 'success') {
+              throw 'GitHub Actions security scope determination did not succeed.'
+          }
+          $required = '${{ needs.scope.outputs.run-analysis }}'
+          if ($required -notin @('true', 'false')) {
+              throw 'GitHub Actions security scope result is invalid or missing.'
+          }
+          $expected = if ($required -eq 'true') { 'success' } else { 'skipped' }
+          if ('${{ needs.analyze-actions.result }}' -ne $expected) {
+              throw "GitHub Actions CodeQL result must be '$expected'."
+          }

@@ -47,6 +47,14 @@ The live repository uses an active ruleset named `main`. The ruleset name itself
 
 A future same-name Snapshot replacement may require a controlled administrative path. Any temporary bypass must be explicit and removed or narrowed before the resulting repository is considered qualified.
 
+### Safe expansion of required CI gates
+
+The presently enforced ruleset requires the Windows PowerShell quality and PowerShell security analysis contexts. Additional required checks are proposed but are **not** active branch-protection requirements until an explicit owner-approved live ruleset update and independent readback.
+
+Required PR status checks must always be created for every PR to which the ruleset applies. Path-filtered workflows can fail to create a required context, while conditional jobs can report a skipped outcome even if mandatory upstream work did not run. Scope-aware gate jobs must fail on missing/failed scope decisions, missing or failed required execution, and unexpected cancellations or skips. They may accept explicitly inapplicable expensive checks only when reviewed, fail-closed scope classification supports that decision. For source changes, full quality includes Windows, Ubuntu and macOS. Documentation validation is required for documentation-relevant changes; GitHub Actions CodeQL is required for workflow-file changes.
+
+Introduce and validate new jobs before changing the live required-context list. Exercise representative source, documentation-only, workflow, and Dependabot PRs, including failures. Bind required contexts to the actual GitHub Actions integration and unique reported check names. Preserve the original required checks throughout rollout. If a newly required check is not created or deadlocks legitimate changes, remove only that new requirement under a documented rollback, rather than weakening the pre-existing rules or adding bypass actors. Maintenance-only repository changes do not require an official product release; see the maintainer guide.
+
 ### Configure or reconfigure the ruleset
 
 1. Open the repository on GitHub.

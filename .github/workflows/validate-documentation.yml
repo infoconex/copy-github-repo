@@ -28,26 +28,6 @@ name: Validate Documentation
     branches:
       - main
       - 'release/**'
-    paths:
-      - '_config.yml'
-      - '_data/**'
-      - '_layouts/**'
-      - 'assets/**'
-      - 'search-index.json'
-      - 'docs/**'
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'CODE_OF_CONDUCT.md'
-      - 'CONTRIBUTING.md'
-      - 'SECURITY.md'
-      - 'LICENSE'
-      - 'build/DevelopmentDependencies.psd1'
-      - 'build/Install-DevelopmentDependencies.ps1'
-      - 'build/Test-Documentation.ps1'
-      - 'build/Test-GeneratedSite.ps1'
-      - 'tests/contract/**'
-      - '.github/workflows/validate-documentation.yml'
-      - '.github/workflows/deploy-documentation-site.yml'
   workflow_dispatch:
 
 permissions:
@@ -58,8 +38,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  scope:
+    name: Determine Documentation Scope
+    runs-on: ubuntu-latest
+    outputs:
+      run-documentation: ${{ steps.scope.outputs.run-documentation }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Determine whether documentation validation is required
+        id: scope
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -ne 'pull_request') {
+              'run-documentation=true' >> $env:GITHUB_OUTPUT
+              exit 0
+          }
+          $baseSha = '${{ github.event.pull_request.base.sha }}'
+          $headSha = '${{ github.event.pull_request.head.sha }}'
+          $changedFiles = @(git diff --name-only $baseSha $headSha)
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Unable to determine changed files for documentation validation.'
+          }
+          $documentationPattern = '^(?:_config\.yml$|_data/|_layouts/|assets/|search-index\.json$|docs/|README\.md$|CHANGELOG\.md$|CODE_OF_CONDUCT\.md$|CONTRIBUTING\.md$|SECURITY\.md$|LICENSE$|build/(?:DevelopmentDependencies\.psd1|Install-DevelopmentDependencies\.ps1|Test-Documentation\.ps1|Test-GeneratedSite\.ps1)$|tests/contract/|\.github/workflows/(?:validate-documentation|deploy-documentation-site)\.yml$)'
+          $requiresDocumentation = @($changedFiles | Where-Object { $_ -match $documentationPattern }).Count -gt 0
+          "run-documentation=$($requiresDocumentation.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
   validate:
     name: Validate Documentation
+    needs: scope
+    if: ${{ needs.scope.outputs.run-documentation == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -126,3 +138,24 @@ jobs:
           path: TestResults/
           if-no-files-found: warn
           retention-days: 14
+
+  required-documentation:
+    name: Required Documentation Gate
+    needs: [scope, validate]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify documentation validation results
+        shell: pwsh
+        run: |
+          if ('${{ needs.scope.result }}' -ne 'success') {
+              throw 'Documentation scope determination did not succeed.'
+          }
+          $required = '${{ needs.scope.outputs.run-documentation }}'
+          if ($required -notin @('true', 'false')) {
+              throw 'Documentation scope result is invalid or missing.'
+          }
+          $expected = if ($required -eq 'true') { 'success' } else { 'skipped' }
+          if ('${{ needs.validate.result }}' -ne $expected) {
+              throw "Documentation validation result must be '$expected'."
+          }

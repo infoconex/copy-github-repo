@@ -51,6 +51,8 @@ Describe 'PowerShell Gallery manifest contract' {
         @($script:manifestData.CompatiblePSEditions) | Should -Contain 'Core'
         $script:manifestData.PrivateData.PSData.LicenseUri | Should -Be 'https://github.com/infoconex/copy-github-repo/blob/main/LICENSE'
         $script:manifestData.PrivateData.PSData.ProjectUri | Should -Be 'https://infoconex.github.io/copy-github-repo/'
+        $script:manifestData.Description | Should -Match 'For documentation, visit'
+        $script:manifestData.Description | Should -Match ([regex]::Escape([string] $script:manifestData.PrivateData.PSData.ProjectUri))
         $script:manifestData.PrivateData.PSData.IconUri | Should -Be 'https://infoconex.github.io/copy-github-repo/assets/images/gallery-icon.png'
         $script:manifestData.PrivateData.PSData.ReleaseNotes | Should -Be 'https://github.com/infoconex/copy-github-repo/releases'
     }

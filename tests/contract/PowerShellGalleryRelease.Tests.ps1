@@ -40,6 +40,9 @@ Describe 'PowerShell Gallery package' {
         @($package.ExportedFunctions | Sort-Object) | Should -Be $script:expectedCommands
 
         $packagedManifest = Import-PowerShellDataFile -LiteralPath $package.ManifestPath
+        $sourceManifest = Import-PowerShellDataFile -LiteralPath $script:manifestPath
+        $packagedManifest.Description | Should -Be $sourceManifest.Description
+        $packagedManifest.Description | Should -Match ([regex]::Escape([string] $packagedManifest.PrivateData.PSData.ProjectUri))
         $packagedManifest.PrivateData.PSData.ReleaseNotes | Should -Be $script:expectedGalleryReleaseNotes
         $packagedManifest.PrivateData.PSData.ReleaseNotes | Should -Not -Be 'https://github.com/infoconex/copy-github-repo/releases'
 

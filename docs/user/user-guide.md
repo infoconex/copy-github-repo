@@ -11,16 +11,6 @@ For normative behavior, safety invariants, and supported scope, see [`product-co
 
 ## Start here
 
-A typical user journey is:
-
-1. **Choose the outcome.** Use `Snapshot` for a clean publication with newly created Git history. Plain Snapshot creates one unrelated current-state root commit; `Snapshot -IncludeReleases` creates a new unrelated checkpoint history from selected release states. Use `FullHistory` when original ordinary Git history must be preserved.
-2. **Choose GitHub-side state deliberately.** Add `-RestorePages` only when supported GitHub-side Pages configuration should be restored. Site/workflow files are ordinary Git content and are distinct from the Pages service configuration.
-3. **Install and authenticate.** Install the stable module from PowerShell Gallery, then authenticate GitHub CLI for `github.com`.
-4. **Preview before mutation.** Use the guided wizard or `Copy-GitHubRepository -PlanOnly` to review source/destination, content mode, visibility, settings choices, immutable source-state evidence, selected releases/checkpoints, reviewed Pages evidence when requested, and any replacement/archive plan.
-5. **Execute deliberately.** Replacement operations require the safety acknowledgements and exact confirmation defined by the product contract. Custom-domain handoff also depends on verified archive/replacement identity and reviewed ownership evidence.
-6. **Verify the result.** Successful execution verifies content before reporting success. Requested release and Pages restoration are independently read back against reviewed evidence. External DNS, domain verification, and certificate readiness remain separate external state.
-7. **Preserve evidence if something fails.** If mutation has started, do not assume rollback occurred. The tool preserves repositories and writes recovery evidence when possible; use the [troubleshooting and recovery guide](troubleshooting-recovery.md) and [Pages migration and recovery guide](github-pages-migration.md).
-
 For normal stable installation, use PowerShell Gallery:
 
 ```powershell
@@ -45,6 +35,20 @@ Copy-GitHubRepository `
     -DestinationRepository owner/destination `
     -PlanOnly
 ```
+
+The wizard reviews a real plan before allowing execution. The scripted `-PlanOnly` command is non-mutating; remove it only after you have reviewed the intended destination and content mode. Plain Snapshot intentionally creates new unrelated history, while FullHistory preserves Git ancestry. Existing destinations are not silently overwritten.
+
+### Before you execute: the user journey
+
+A typical user journey is:
+
+1. **Choose the outcome.** Use `Snapshot` for a clean publication with newly created Git history. Plain Snapshot creates one unrelated current-state root commit; `Snapshot -IncludeReleases` creates a new unrelated checkpoint history from selected release states. Use `FullHistory` when original ordinary Git history must be preserved.
+2. **Choose GitHub-side state deliberately.** Add `-RestorePages` only when supported GitHub-side Pages configuration should be restored. Site/workflow files are ordinary Git content and are distinct from the Pages service configuration.
+3. **Install and authenticate.** Install the stable module from PowerShell Gallery, then authenticate GitHub CLI for `github.com`.
+4. **Preview before mutation.** Use the guided wizard or `Copy-GitHubRepository -PlanOnly` to review source/destination, content mode, visibility, settings choices, immutable source-state evidence, selected releases/checkpoints, reviewed Pages evidence when requested, and any replacement/archive plan.
+5. **Execute deliberately.** Replacement operations require the safety acknowledgements and exact confirmation defined by the product contract. Custom-domain handoff also depends on verified archive/replacement identity and reviewed ownership evidence.
+6. **Verify the result.** Successful execution verifies content before reporting success. Requested release and Pages restoration are independently read back against reviewed evidence. External DNS, domain verification, and certificate readiness remain separate external state.
+7. **Preserve evidence if something fails.** If mutation has started, do not assume rollback occurred. The tool preserves repositories and writes recovery evidence when possible; use the [troubleshooting and recovery guide](troubleshooting-recovery.md) and [Pages migration and recovery guide](github-pages-migration.md).
 
 ## Choose Snapshot or FullHistory
 

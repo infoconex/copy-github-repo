@@ -15,7 +15,7 @@ Copy GitHub Repository is a PowerShell utility for safely copying or publishing 
 
 ## Get started
 
-Install the stable module from [PowerShell Gallery](https://www.powershellgallery.com/packages/CopyGitHubRepo), authenticate to GitHub, and launch the guided wizard:
+The recommended normal installation path is PowerShell Gallery. Install from the [Gallery package](https://www.powershellgallery.com/packages/CopyGitHubRepo), authenticate to GitHub, and launch the guided wizard:
 
 ```powershell
 Install-PSResource CopyGitHubRepo

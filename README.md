@@ -3,8 +3,6 @@ title: "Copy and Migrate GitHub Repositories with PowerShell"
 description: "Copy GitHub repositories with PowerShell using Snapshot for a clean copy or FullHistory to preserve history, with optional releases and GitHub Pages restoration plus planning, verification, and recovery safeguards."
 ---
 
-![Copy GitHub Repo banner](assets/images/product_banner.png)
-
 # Copy GitHub Repository
 
 [![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/CopyGitHubRepo?label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/CopyGitHubRepo)
@@ -12,6 +10,51 @@ description: "Copy GitHub repositories with PowerShell using Snapshot for a clea
 [![Validate Project Quality](https://github.com/infoconex/copy-github-repo/actions/workflows/validate-project-quality.yml/badge.svg)](https://github.com/infoconex/copy-github-repo/actions/workflows/validate-project-quality.yml)
 ![PowerShell 7.4+](https://img.shields.io/badge/PowerShell-7.4%2B-informational)
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-informational)
+
+Copy GitHub Repository is a PowerShell utility for safely copying or publishing GitHub repositories. Use the default **Snapshot** mode for a clean new history, or choose **FullHistory** to preserve Git history.
+
+## Get started
+
+The recommended normal installation path is PowerShell Gallery. Install from the [Gallery package](https://www.powershellgallery.com/packages/CopyGitHubRepo), authenticate to GitHub, and launch the guided wizard:
+
+```powershell
+Install-PSResource CopyGitHubRepo
+Import-Module CopyGitHubRepo
+gh auth login --hostname github.com
+Start-CopyGitHubRepositoryWizard
+```
+
+Requires **PowerShell 7.4+**, **Git**, and **GitHub CLI** (`gh`); Git LFS is needed for some migrations. See [Prerequisites](#prerequisites) and [Installation security](docs/security/installation-security.md) for supported environments and trust choices.
+
+The wizard discovers repositories, displays a migration plan, and requires an explicit **Execute** decision before changing GitHub state.
+
+> [!IMPORTANT]
+> The default **Snapshot** publishes current files as new unrelated history; it does **not** preserve original commits or branches. Choose **FullHistory** if you need them. Existing destinations are not silently overwritten, and replacement requires separate explicit safeguards.
+
+## Scripted quick start
+
+For scripting, **preview first** with `-PlanOnly`. Replace `owner/source` and `owner/destination` with your repositories:
+
+```powershell
+Copy-GitHubRepository `
+    -SourceRepository owner/source `
+    -DestinationRepository owner/destination `
+    -PlanOnly
+```
+
+`-PlanOnly` makes no changes. After reviewing the approved source, destination, mode, and planned changes, run the same operation without `-PlanOnly` to execute the default clean Snapshot publication:
+
+```powershell
+Copy-GitHubRepository `
+    -SourceRepository owner/source `
+    -DestinationRepository owner/destination
+```
+
+This execution can create a new destination; do not execute against an unintended repository. Replacement workflows require exact confirmation. See the [User guide](docs/user/user-guide.md) for scenarios and [command reference](docs/reference/commands/Copy-GitHubRepository.md) for options.
+
+## About Copy GitHub Repository
+
+![Copy GitHub Repo banner](assets/images/product_banner.png)
 
 Copy GitHub Repository is a PowerShell utility for safely publishing or copying GitHub repositories. Its default `Snapshot` mode is designed for **clean publication**. Plain Snapshot copies the current source default-branch state into one unrelated root commit, intentionally leaving prior Git history, old branches/tags, pull requests, issues, milestones, and other historical GitHub records behind. With `-IncludeReleases`, Snapshot can instead preserve selected release states as a new unrelated checkpoint history while still intentionally replacing the source commit identities and detailed ancestry. The explicit `FullHistory` mode is the history-preserving alternative and keeps ordinary Git history, branches, tags, and reachable Git LFS objects; with `-IncludeReleases`, it also recreates selected GitHub Releases and their assets against the original preserved tag targets.
 
@@ -74,15 +117,9 @@ Authenticate GitHub CLI before discovery:
 gh auth login --hostname github.com
 ```
 
-## Install
+## Installation alternatives and maintenance
 
-The recommended normal installation path is PowerShell Gallery:
-
-```powershell
-Install-PSResource CopyGitHubRepo
-Import-Module CopyGitHubRepo
-Start-CopyGitHubRepositoryWizard
-```
+The recommended standard installation and guided launch are in [Get started](#get-started). Alternate PowerShellGet, repository-hosted, prerelease, and pinned release methods are documented below.
 
 For environments using the older PowerShellGet commands, the compatible alternative is:
 
@@ -161,13 +198,9 @@ For deterministic local or automated removal, replace `X.Y.Z` with the installed
 
 `-Version` and `-AllVersions` are mutually exclusive. The uninstaller validates module identity and path containment before recursive deletion, does not remove neighboring modules, and does not require network access when run locally. The one-line command above executes mutable `main`, so it has the same bootstrap trust-boundary consideration as the convenience installers. See [Installation security](docs/security/installation-security.md) for details.
 
-## Guided quick start
+## Guided wizard details
 
-The recommended human-facing entry point is the guided wizard:
-
-```powershell
-Start-CopyGitHubRepositoryWizard
-```
+The guided wizard is the recommended interactive entry point described in [Get started](#get-started).
 
 It discovers repositories, defaults to Snapshot/source visibility/settings restoration, lets you navigate Back/Next/Cancel before execution, displays a real `Copy-GitHubRepository -PlanOnly` plan, and requires an explicit Execute decision before mutation. When Snapshot is selected, the wizard can optionally preserve selected releases. When the source has Pages state that can be reviewed, the wizard also offers the explicit Pages-restoration choice, shows the actual plan evidence and external boundaries, and passes that reviewed `-RestorePages` decision into deterministic execution.
 
@@ -179,24 +212,9 @@ A repository checkout can start the same guided experience through the root laun
 
 See the [User guide](docs/user/user-guide.md) for scenario selection and what gets copied, [GitHub Pages migration and recovery](docs/user/github-pages-migration.md) for Pages-specific guidance, then [`Start-CopyGitHubRepositoryWizard`](docs/reference/commands/Start-CopyGitHubRepositoryWizard.md) for complete command-level reference.
 
-## Scripted quick start
+## Advanced scripted examples
 
-`Copy-GitHubRepository` is the deterministic API for scripts and automation. Preview first:
-
-```powershell
-Copy-GitHubRepository `
-    -SourceRepository infoconex/source `
-    -DestinationRepository infoconex/destination `
-    -PlanOnly
-```
-
-Then execute the reviewed default clean Snapshot publication:
-
-```powershell
-Copy-GitHubRepository `
-    -SourceRepository infoconex/source `
-    -DestinationRepository infoconex/destination
-```
+`Copy-GitHubRepository` supports additional deliberately selected behaviors after the basic [scripted quick start](#scripted-quick-start). Preview each intended operation with `-PlanOnly` and review the generated plan before execution.
 
 To keep a clean Snapshot history while preserving selected release checkpoints and GitHub Release content:
 

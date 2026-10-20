@@ -2,6 +2,9 @@
   items:
     - title: Overview
       path: README.md
+    - title: Get Started
+      path: README.md
+      fragment: get-started
     - title: Documentation
       path: docs/README.md
     - title: Documentation Strategy

@@ -21,6 +21,7 @@ $documentationTestNames = @(
     'DocumentationStrategy.Tests.ps1'
     'DurableDocumentationIssueReferences.Tests.ps1'
     'GitHubPagesDocumentation.Tests.ps1'
+    'GettingStartedDiscoverability.Tests.ps1'
     'GovernanceDocumentation.Tests.ps1'
     'IncidentResponseDocumentation.Tests.ps1'
     'ProductModelDocumentation.Tests.ps1'

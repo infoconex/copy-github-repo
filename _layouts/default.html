@@ -63,6 +63,7 @@
             <option value="sepia">Sepia</option>
           </select>
         </label>
+        <a class="header-link" href="{{ '/' | relative_url }}#get-started">Get Started</a>
         <a class="header-link" href="https://github.com/infoconex/copy-github-repo">GitHub</a>
       </nav>
     </div>
@@ -84,7 +85,7 @@
                     {% if nav_page %}
                       {% assign item_url = nav_page.url | relative_url %}
                       <li data-nav-item>
-                        <a class="{% if page.url == nav_page.url %}is-active{% endif %}"{% if page.url == nav_page.url %} aria-current="page"{% endif %} href="{{ item_url }}">{{ item.title }}</a>
+                        <a class="{% if page.url == nav_page.url and item.fragment == nil %}is-active{% endif %}"{% if page.url == nav_page.url and item.fragment == nil %} aria-current="page"{% endif %} href="{{ item_url }}{% if item.fragment %}#{{ item.fragment }}{% endif %}">{{ item.title }}</a>
                       </li>
                     {% endif %}
                   {% endfor %}

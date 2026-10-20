@@ -74,8 +74,8 @@ Describe 'Getting started discoverability contract' {
 
     It 'links the homepage heading from site header and sidebar with the Pages baseurl' {
         $script:navigation | Should -Match '(?s)title: Get Started\s+path: README\.md\s+fragment: get-started'
-        $script:layout | Should -Match [regex]::Escape("{{ '/' | relative_url }}#get-started")
-        $script:layout | Should -Match [regex]::Escape('#{{ item.fragment }}')
+        $script:layout | Should -Match ([regex]::Escape("{{ '/' | relative_url }}#get-started"))
+        $script:layout | Should -Match ([regex]::Escape('#{{ item.fragment }}'))
         $script:layout | Should -Match 'item\.fragment == nil'
     }
 }

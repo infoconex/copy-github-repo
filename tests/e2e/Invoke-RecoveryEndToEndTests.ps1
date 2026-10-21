@@ -544,6 +544,7 @@ try {
         }
 
         $faultEvidence = [pscustomobject] @{
+            ScenarioId = 'SCN-RETRY-RESILIENCE-02'
             Subcase = 'PostMutationCompletionReportWriteFailure'
             RelatedRequiredLiveScenarios = @('SCN-DEST-PARTIAL-01', 'SCN-RETRY-RESILIENCE-02', 'SCN-RECOVER-RECOVERY-01')
             QualifiesFailedSnapshotTransfer = $false
@@ -573,18 +574,28 @@ try {
         $faultEvidence | Format-List
     }
 
-    # Missing-LFS planning rejection cannot prove post-archive failure/retry.
-    # Those authenticated GitHub boundary checks remain Required and UNVERIFIED.
+    # Only the *opt-in successful real-GitHub retry* can prove this scenario.
+    # Without that opt-in, the earlier missing-LFS planning failure does not.
+    $pendingRequiredLiveScenarios = @('SCN-DEST-PARTIAL-01', 'SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')
+    if (-not $ReportWriteFailureProbe) {
+        $pendingRequiredLiveScenarios += 'SCN-RETRY-RESILIENCE-02'
+    }
     $pendingEvidence = [pscustomobject] @{
         Scope = if ($ReportWriteFailureProbe) { 'SafeSubsetOnlyWithReportWriteFailureProbe' } else { 'SafeSubsetOnly' }
         CompleteRequiredLiveQualification = $false
-        PendingRequiredLiveScenarios = @('SCN-DEST-PARTIAL-01', 'SCN-RETRY-RESILIENCE-02', 'SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')
+        PendingRequiredLiveScenarios = @($pendingRequiredLiveScenarios)
+        VerifiedRequiredLiveScenarios = if ($ReportWriteFailureProbe) { @('SCN-RETRY-RESILIENCE-02') } else { @() }
         EvaluatedReportWriteFailureSubcase = [bool] $ReportWriteFailureProbe
-        Reason = 'No complete required-live failed Snapshot-transfer or supported settings-failure fixture has been qualified; a local post-mutation report-write error is a narrower boundary. Issue #173 remains open.'
+        Reason = 'The opt-in report-failure probe tests fail-closed retry after real archive/replacement; failed Snapshot transfer, settings restoration failure, and broader recovery evidence remain unqualified. No full Required-live suite claim.'
     }
     $pendingEvidence | ConvertTo-Json -Depth 5 |
         Set-Content -LiteralPath (Join-Path $tempRoot 'required-live-evidence-pending.json') -Encoding utf8NoBOM -ErrorAction Stop
-    Write-Warning 'SafeSubsetOnly completed; pending Required-live partial, retry, settings and recovery scenarios are NOT qualified.'
+    if ($ReportWriteFailureProbe) {
+        Write-Warning 'Scoped live retry verified; Required-live failed replacement, settings failure and broader recovery scenarios remain UNQUALIFIED.'
+    }
+    else {
+        Write-Warning 'SafeSubsetOnly completed; Required-live partial, retry, settings and recovery scenarios remain UNQUALIFIED.'
+    }
 }
 catch {
     # Preserve the first meaningful failure before cleanup can throw a second

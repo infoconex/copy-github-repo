@@ -60,7 +60,8 @@ Describe 'Product scenario traceability contract' {
     }
 
     It 'requires genuine live evidence or an explicitly blocked Required-live fixture' {
-        $pending = @('SCN-DEST-PARTIAL-01', 'SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01', 'SCN-RETRY-RESILIENCE-02')
+        $pending = @('SCN-DEST-PARTIAL-01', 'SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')
+        $scoped = @('SCN-RETRY-RESILIENCE-02')
         foreach ($entry in $script:traceability.Scenarios.GetEnumerator()) {
             if ($entry.Value.LiveValidation -ne 'Required') {
                 continue
@@ -72,11 +73,23 @@ Describe 'Product scenario traceability contract' {
                 [string] $entry.Value.LiveReason | Should -Not -BeNullOrEmpty
                 continue
             }
+            if ($entry.Key -in $scoped) {
+                $entry.Value.Classification | Should -Be 'Required'
+                $entry.Value.LiveEvidenceStatus | Should -Be 'ScopedOptIn'
+                @($entry.Value.LiveEvidence) | Should -Contain 'tests/e2e/Invoke-RecoveryEndToEndTests.ps1'
+                $entry.Value.LiveReason | Should -Match 'ReportWriteFailureProbe'
+                $entry.Value.LiveReason | Should -Match 'not a failed Snapshot transfer'
+                continue
+            }
             @($entry.Value.LiveEvidence).Count | Should -BeGreaterThan 0 -Because "$($entry.Key) requires a real live harness"
         }
         foreach ($entry in $script:traceability.Scenarios.GetEnumerator()) {
-            if ($entry.Value.ContainsKey('LiveEvidenceStatus') -and $entry.Value.LiveEvidenceStatus -eq 'PendingSafeFixture') {
+            if (-not $entry.Value.ContainsKey('LiveEvidenceStatus')) { continue }
+            if ($entry.Value.LiveEvidenceStatus -eq 'PendingSafeFixture') {
                 $entry.Key | Should -BeIn $pending -Because 'pending required-live exceptions must be explicitly reviewed'
+            }
+            elseif ($entry.Value.LiveEvidenceStatus -eq 'ScopedOptIn') {
+                $entry.Key | Should -BeIn $scoped -Because 'scoped opt-in qualification must be explicitly reviewed'
             }
         }
     }
@@ -110,7 +123,7 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match 'IndependentDestinationAbsenceVerified = \$true'
         $source | Should -Match 'Assert-RecoveryE2eRepositoryAbsent -Repository \$destinationRepository'
 
-        foreach ($id in @('SCN-DEST-PARTIAL-01', 'SCN-SET-PARTIAL-01', 'SCN-RETRY-RESILIENCE-02', 'SCN-RECOVER-RECOVERY-01')) {
+        foreach ($id in @('SCN-DEST-PARTIAL-01', 'SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')) {
             $entry = $script:traceability.Scenarios[$id]
             $entry.LiveValidation | Should -Be 'Required'
             @($entry.LiveEvidence).Count | Should -Be 0
@@ -142,6 +155,23 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match '\$expectedRepositoryIds\[\$faultDestination\] = \$replacementId'
         $source | Should -Match '\[string\] \$faultRecovery.ReplacementRepositoryId -ne \$replacementId'
         $source | Should -Match 'IndependentRemoteStateUnchangedAfterRetry = \$true'
+
+        # The named retry scenario is emitted only after an opt-in real remote
+        # post-mutation fault, same-archive retry rejection and remote readback.
+        $retry = $script:traceability.Scenarios['SCN-RETRY-RESILIENCE-02']
+        $retry.Classification | Should -Be 'Required'
+        $retry.LiveValidation | Should -Be 'Required'
+        $retry.LiveEvidenceStatus | Should -Be 'ScopedOptIn'
+        @($retry.LiveEvidence) | Should -Contain $harnessPath
+        ([regex]::Matches($source, "ScenarioId\s*=\s*'SCN-RETRY-RESILIENCE-02'")).Count | Should -Be 1
+        $source | Should -Match '\$retryFault\.FullyQualifiedErrorId -notmatch ''ExistingDestinationArchiveAlreadyExists'''
+        $source | Should -Match '\[string\] \$faultArchiveAfterRetry\.id -ne \$originalId'
+        $source | Should -Match '\[string\] \$faultDestinationAfterRetry\.id -ne \$replacementId'
+        $source | Should -Match '\$replacementCommitAfterRetry\.sha -ne \$faultReplacementCommit\.sha'
+        $source | Should -Match 'if \(-not \$ReportWriteFailureProbe\)'
+        $source | Should -Match '\$pendingRequiredLiveScenarios \+= ''SCN-RETRY-RESILIENCE-02'''
+        $source | Should -Match 'VerifiedRequiredLiveScenarios = if \(\$ReportWriteFailureProbe\)'
+        $source | Should -Match 'CompleteRequiredLiveQualification = \$false'
     }
 
     It 'preserves opt-in live recovery reports outside destructive fixture cleanup' {

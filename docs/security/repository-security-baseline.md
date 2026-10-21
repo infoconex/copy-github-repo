@@ -152,3 +152,5 @@ Use these terms consistently:
 - **Not satisfied** — live evidence proves the intended baseline is currently missing.
 
 A permissions limitation in the verification integration is not evidence that a control is either enabled or disabled. Owner-side verification must be labeled distinctly from API evidence, and any future replacement repository must be verified independently after the Snapshot migration.
+
+<!-- Temporary, non-merge GitHub branch-ruleset enforcement probe for issue #155. -->

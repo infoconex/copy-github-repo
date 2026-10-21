@@ -108,6 +108,18 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Not -Match "ScenarioId\s*=\s*'SCN-SET-PARTIAL-01'"
     }
 
+    It 'preserves opt-in live recovery reports outside destructive fixture cleanup' {
+        $harnessPath = Join-Path $repositoryRoot 'tests/e2e/Invoke-RecoveryEndToEndTests.ps1'
+        $source = Get-Content -LiteralPath $harnessPath -Raw
+
+        $source | Should -Match '\[string\] \$EvidenceDirectory'
+        $source | Should -Match 'Refusing to overwrite existing recovery E2E evidence directory'
+        $source | Should -Match 'outside the temporary fixture directory that cleanup deletes'
+        $source | Should -Match 'Copy-Item -LiteralPath \$report\.FullName -Destination \$evidenceRunPath -ErrorAction Stop'
+        $source | Should -Match 'if \(\$evidenceCopySucceeded\)'
+        $source | Should -Match 'Temporary fixture/report directory retained for manual evidence recovery'
+    }
+
     It 'requires an explicit reason for deferred unsupported or constrained scenario classifications' {
         foreach ($entry in $script:traceability.Scenarios.GetEnumerator()) {
             if ($entry.Value.Classification -eq 'Required') {

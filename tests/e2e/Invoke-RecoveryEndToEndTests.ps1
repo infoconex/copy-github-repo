@@ -19,6 +19,7 @@ $modulePath = Join-Path $repositoryRoot 'src/CopyGitHubRepo/CopyGitHubRepo.psd1'
 $runId = [guid]::NewGuid().ToString('N').Substring(0, 10)
 $repositoryPrefix = "copy-github-repo-recovery-e2e-$runId"
 $createdRepositories = [System.Collections.Generic.List[string]]::new()
+$expectedRepositoryIds = @{}
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) $repositoryPrefix
 $sourcePath = Join-Path $tempRoot 'source'
 $reportPath = Join-Path $tempRoot 'migration-report.json'
@@ -115,7 +116,11 @@ function New-RecoveryE2eRepository {
     }
 
     Invoke-RecoveryE2eNativeCommand -FilePath 'gh' -ArgumentList @('repo', 'create', $fullName, '--private') | Out-Null
+    # Record immutable identity immediately; if readback fails, keep the name
+    # registered but never delete a repository without a known exact ID.
     $createdRepositories.Add($fullName)
+    $createdRemote = Get-RecoveryE2eRemoteRepository -Repository $fullName
+    $expectedRepositoryIds[$fullName] = [string] $createdRemote.id
     return $fullName
 }
 
@@ -132,7 +137,17 @@ function Remove-RecoveryE2eRepository {
         throw "Refusing to delete repository '$Repository' because it is outside the protected E2E prefix '$expectedPrefix'."
     }
 
-    if (-not $PSCmdlet.ShouldProcess($Repository, 'Delete temporary recovery E2E repository')) {
+    if (-not $expectedRepositoryIds.ContainsKey($Repository) -or
+        [string]::IsNullOrWhiteSpace([string] $expectedRepositoryIds[$Repository])) {
+        throw "Refusing to delete '$Repository' without a recorded immutable test-created repository ID."
+    }
+    $expectedId = [string] $expectedRepositoryIds[$Repository]
+    $liveRepository = Get-RecoveryE2eRemoteRepository -Repository $Repository
+    if ([string] $liveRepository.id -ne $expectedId) {
+        throw "Refusing to delete '$Repository': current GitHub repository ID differs from the exact test fixture ID."
+    }
+
+    if (-not $PSCmdlet.ShouldProcess($Repository, 'Delete exact-identity temporary recovery E2E repository')) {
         return
     }
 
@@ -314,6 +329,11 @@ try {
     }
 
     $recovery = Get-Content -LiteralPath $recoveryReportPath -Raw | ConvertFrom-Json
+    $createdDestinationId = [string] $recovery.Provenance.DestinationRepositoryId
+    if ([string]::IsNullOrWhiteSpace($createdDestinationId)) {
+        throw 'Recovery report did not independently identify the created destination for guarded cleanup.'
+    }
+    $expectedRepositoryIds[$destinationRepository] = $createdDestinationId
     if ($recovery.Status -ne 'FailedAfterDestinationCreation') {
         throw "Unexpected recovery status '$($recovery.Status)'."
     }
@@ -368,7 +388,13 @@ try {
         throw 'Existing-destination plan does not match exact reviewed archive/replace identity.'
     }
     $createdRepositories.Add($happyArchive)
+    $expectedRepositoryIds[$happyArchive] = [string] $oldIdentity.id
     $happyResult = Copy-GitHubRepository -SourceRepository $happySource -DestinationRepository $happyDestination -ExistingDestinationArchiveName $happyArchiveName -ExistingDestinationConfirmation $confirmation -SkipSettings -NonInteractive -Force -ReportPath (Join-Path $tempRoot 'existing-happy.json')
+    $replacementId = [string] $happyResult.ReplacementDestinationRepositoryId
+    if ([string]::IsNullOrWhiteSpace($replacementId) -or $replacementId -eq [string] $oldIdentity.id) {
+        throw 'Migration did not return a distinct immutable replacement ID needed for guarded cleanup.'
+    }
+    $expectedRepositoryIds[$happyDestination] = $replacementId
     if (-not $happyResult.IsVerified -or -not $happyResult.ArchivedOriginalIdentityPreserved -or -not $happyResult.ReplacementHasDistinctIdentity) {
         throw 'Migration-reported existing-destination replacement was not verified.'
     }
@@ -411,6 +437,7 @@ try {
     $partialConfirmation = "DESTINATION=$partialDestination;ARCHIVE=$partialArchive;REPLACEMENT=$partialDestination"
     $partialReport = Join-Path $tempRoot 'existing-partial.json'
     $createdRepositories.Add($partialArchive)
+    $expectedRepositoryIds[$partialArchive] = [string] $priorIdentity.id
     $partialError = $null
     try {
         Copy-GitHubRepository -SourceRepository $sourceRepository -DestinationRepository $partialDestination -ExistingDestinationArchiveName $partialArchiveName -ExistingDestinationConfirmation $partialConfirmation -SkipSettings -NonInteractive -Force -ReportPath $partialReport | Out-Null
@@ -420,6 +447,11 @@ try {
     $partialRecoveryPath = "$partialReport.recovery.json"
     if (-not (Test-Path -LiteralPath $partialRecoveryPath)) { throw 'Existing-destination recovery report was not produced.' }
     $partialRecovery = Get-Content -LiteralPath $partialRecoveryPath -Raw | ConvertFrom-Json
+    $partialReplacementId = [string] $partialRecovery.ReplacementRepositoryId
+    if ([string]::IsNullOrWhiteSpace($partialReplacementId) -or $partialReplacementId -eq [string] $priorIdentity.id) {
+        throw 'Recovery evidence did not identify a distinct test-created replacement for guarded cleanup.'
+    }
+    $expectedRepositoryIds[$partialDestination] = $partialReplacementId
     $archiveState = Get-RecoveryE2eRemoteRepository -Repository $partialArchive
     $partialReplacement = Get-RecoveryE2eRemoteRepository -Repository $partialDestination
     $archiveTree = (Get-RecoveryE2eRemoteCommit -Repository $partialArchive).commit.tree.sha
@@ -487,6 +519,7 @@ finally {
                 Assert-RecoveryE2eRepositoryAbsent -Repository $repository
                 $cleanupResults.Add([pscustomobject] @{
                         Repository = $repository
+                        ExpectedId = [string] $expectedRepositoryIds[$repository]
                         VerifiedAbsent = $true
                     })
             }
@@ -495,6 +528,7 @@ finally {
                 $cleanupFailures.Add($failure)
                 $cleanupResults.Add([pscustomobject] @{
                         Repository = $repository
+                        ExpectedId = if ($expectedRepositoryIds.ContainsKey($repository)) { [string] $expectedRepositoryIds[$repository] } else { $null }
                         VerifiedAbsent = $false
                         Error = $_.Exception.Message
                     })
@@ -517,6 +551,7 @@ finally {
             Results = @($cleanupResults)
             Failures = @($cleanupFailures)
             RegisteredRepositories = @($createdRepositories | Select-Object -Unique)
+            ExpectedRepositoryIds = $expectedRepositoryIds
         } | ConvertTo-Json -Depth 8 |
             Set-Content -LiteralPath (Join-Path $tempRoot 'cleanup-verification.json') -Encoding utf8NoBOM -ErrorAction Stop
     }

@@ -146,6 +146,31 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match 'Recovery E2E cleanup was not independently verified'
     }
 
+    It 'records a primary error before cleanup and never deletes a registered name without an immutable ID' {
+        $harnessPath = Join-Path $repositoryRoot 'tests/e2e/Invoke-RecoveryEndToEndTests.ps1'
+        $source = Get-Content -LiteralPath $harnessPath -Raw
+
+        # Captured migration errors and unexpected primary test failures survive
+        # a later cleanup exception as persisted, copied JSON evidence.
+        $source | Should -Match 'initial-migration-failure\.json'
+        $source | Should -Match 'primary-failure\.json'
+        $source | Should -Match 'Initial recovery E2E migration error \(before cleanup\)'
+        $source | Should -Match 'Recovery E2E primary failure before cleanup'
+        $source | Should -Match 'Copy-Item -LiteralPath \$report\.FullName -Destination \$evidenceRunPath -ErrorAction Stop'
+
+        # Never attempt a deletion for a registered name without a recorded ID.
+        # Authenticated HTTP 404, including the repo/delete_repo scopes, is the
+        # only qualifying absence result in that branch.
+        $source | Should -Match 'if \(-not \$expectedRepositoryIds\.ContainsKey\(\$repository\) -or'
+        $source | Should -Match 'RegisteredNameWithoutIdentityVerifiedAbsent'
+        $source | Should -Match 'DeletionAttempted = \$false'
+        $source | Should -Match 'if \(\$scopeLines\.Count -ne 1\)'
+        $source | Should -Match "\$scopes -notcontains 'repo' -or \$scopes -notcontains 'delete_repo'"
+        $source | Should -Match '(?s)if \(-not \$expectedRepositoryIds\.ContainsKey\(\$repository\).*?Assert-RecoveryE2eRepositoryAbsent -Repository \$repository.*?DeletionAttempted = \$false.*?VerifiedAbsent = \$true.*?continue'
+        $source | Should -Match 'Remove-RecoveryE2eRepository -Repository \$repository -Confirm:\$false\s+Assert-RecoveryE2eRepositoryAbsent -Repository \$repository'
+        $source | Should -Match 'Refusing to delete.*without a recorded immutable test-created repository ID'
+    }
+
     It 'requires an explicit reason for deferred unsupported or constrained scenario classifications' {
         foreach ($entry in $script:traceability.Scenarios.GetEnumerator()) {
             if ($entry.Value.Classification -eq 'Required') {

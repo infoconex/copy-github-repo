@@ -8,7 +8,9 @@ param(
     [switch] $KeepRepositories,
 
     [ValidateNotNullOrEmpty()]
-    [string] $EvidenceDirectory
+    [string] $EvidenceDirectory,
+
+    [switch] $SafeSubsetOnly
 )
 
 Set-StrictMode -Version Latest
@@ -301,6 +303,9 @@ function Publish-RecoveryE2ePlainRepository {
 if ($Owner -notmatch '^[A-Za-z0-9_.-]+$') {
     throw "Owner '$Owner' is not valid."
 }
+if (-not $SafeSubsetOnly) {
+    throw 'Full recovery E2E cannot be claimed without a safely reviewed post-mutation fault fixture. Use -SafeSubsetOnly to run only the missing-LFS planning guard and existing-destination happy path; Required-live partial, retry, settings and recovery scenarios remain UNVERIFIED.'
+}
 
 Assert-RecoveryE2eCleanupCapability
 Import-Module $modulePath -Force -ErrorAction Stop
@@ -348,50 +353,27 @@ try {
         throw 'Recovery E2E expected snapshot migration to fail because the source Git LFS object is intentionally missing.'
     }
 
-    $recoveryReportPath = "$reportPath.recovery.json"
-    if (-not (Test-Path -LiteralPath $recoveryReportPath)) {
-        throw "Recovery E2E did not create the expected recovery report '$recoveryReportPath'."
+    # Missing LFS content is rejected during immutable source planning, BEFORE
+    # destination creation. Post-mutation recovery must never be claimed here.
+    if ($caughtError.FullyQualifiedErrorId -ne 'SnapshotPlanningGitLfsFetchFailed,Get-CgrRepositoryDefaultBranchTree') {
+        throw "Missing LFS fixture failed at unexpected boundary: $($caughtError.FullyQualifiedErrorId)"
     }
-
-    $recovery = Get-Content -LiteralPath $recoveryReportPath -Raw | ConvertFrom-Json
-    $createdDestinationId = [string] $recovery.Provenance.DestinationRepositoryId
-    if ([string]::IsNullOrWhiteSpace($createdDestinationId)) {
-        throw 'Recovery report did not independently identify the created destination for guarded cleanup.'
+    if ((Test-Path -LiteralPath $reportPath) -or (Test-Path -LiteralPath "$reportPath.recovery.json")) {
+        throw 'Pre-mutation LFS planning rejection unexpectedly produced an execution or recovery report.'
     }
-    $expectedRepositoryIds[$destinationRepository] = $createdDestinationId
-    if ($recovery.Status -ne 'FailedAfterDestinationCreation') {
-        throw "Unexpected recovery status '$($recovery.Status)'."
+    Assert-RecoveryE2eRepositoryAbsent -Repository $destinationRepository
+    $preflightEvidence = [pscustomobject] @{
+        ScenarioId = 'SCN-LFS-VALIDATION-01'
+        ExpectedPlanningFailureObserved = $true
+        ErrorId = $caughtError.FullyQualifiedErrorId
+        FailureBoundary = 'SnapshotPlanning'
+        DestinationCreated = $false
+        IndependentDestinationAbsenceVerified = $true
+        PostMutationRecoveryExpected = $false
     }
-    if ($recovery.FailureStage -ne 'CopySnapshot') {
-        throw "Unexpected recovery failure stage '$($recovery.FailureStage)'."
-    }
-    if ($recovery.ErrorId -notmatch 'SourceGitLfsFetchFailed') {
-        throw "Unexpected recovery error ID '$($recovery.ErrorId)'."
-    }
-    if (-not $recovery.Recovery.DestinationWasCreated) {
-        throw 'Recovery report did not record that the destination repository was created.'
-    }
-    if ($recovery.Recovery.AutomaticDeletionAttempted) {
-        throw 'Recovery report incorrectly indicates that automatic deletion was attempted.'
-    }
-    if ($recovery.Recovery.SourceRepositoryMutated) {
-        throw 'Recovery report incorrectly indicates that the source repository was mutated.'
-    }
-    if (@($recovery.CompletedSteps).Count -ne 1 -or @($recovery.CompletedSteps)[0].Name -ne 'CreateDestinationRepository') {
-        throw 'Recovery report did not record the expected completed-step boundary.'
-    }
-
-    [pscustomobject] @{
-        Scenario = 'Missing Git LFS object recovery'
-        SourceRepository = $sourceRepository
-        DestinationRepository = $destinationRepository
-        ExpectedFailureObserved = $true
-        ErrorId = $recovery.ErrorId
-        FailureStage = $recovery.FailureStage
-        RecoveryReport = $recoveryReportPath
-        DestinationWasCreated = $recovery.Recovery.DestinationWasCreated
-        AutomaticDeletionAttempted = $recovery.Recovery.AutomaticDeletionAttempted
-    } | Format-List
+    $preflightEvidence | ConvertTo-Json -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $tempRoot 'lfs-planning-validation.json') -Encoding utf8NoBOM -ErrorAction Stop
+    $preflightEvidence | Format-List
 
     # SCN-DEST-HAPPY-01: run-unique disposable different-destination archive/replace.
     Write-Information -MessageData 'Scenario: SCN-DEST-HAPPY-01 existing destination archive and verified replacement' -InformationAction Continue
@@ -438,7 +420,7 @@ try {
         ($stages[0..3] -join ',') -ne 'PreserveDestinationAsArchive,VerifyArchivedDestinationIdentity,CreateReplacementRepository,VerifyReplacementRepositoryIdentity') {
         throw 'Archive identity must be verified before replacement creation.'
     }
-    [pscustomobject] @{
+    $happyEvidence = [pscustomobject] @{
         ScenarioId = 'SCN-DEST-HAPPY-01'
         MigrationReportedVerified = $happyResult.IsVerified
         IndependentVerificationSucceeded = $verification.IsSuccessful
@@ -447,92 +429,22 @@ try {
         ArchiveTreeUnchanged = ($archivedTree -eq $oldTree)
         ReplacementTreeEqualsSource = ($replacementCommit.commit.tree.sha -eq $sourceTree)
         OneUnrelatedRootCommit = (@($replacementCommit.parents).Count -eq 0)
-    } | Format-List
+    }
+    $happyEvidence | ConvertTo-Json -Depth 6 |
+        Set-Content -LiteralPath (Join-Path $tempRoot 'existing-destination-happy-result.json') -Encoding utf8NoBOM -ErrorAction Stop
+    $happyEvidence | Format-List
 
-    # SCN-DEST-PARTIAL-01: after the exact archive rename, a deliberately missing LFS
-    # source object fails Snapshot copy; archived remote identity/tree must survive.
-    Write-Information -MessageData 'Scenario: SCN-DEST-PARTIAL-01 preserve original archive after copy failure' -InformationAction Continue
-    $partialDestination = "$Owner/$repositoryPrefix-partial-destination"
-    $partialArchiveName = "$repositoryPrefix-partial-archive"
-    $partialArchive = "$Owner/$partialArchiveName"
-    New-RecoveryE2eRepository -Name "$repositoryPrefix-partial-destination" -Confirm:$false | Out-Null
-    Publish-RecoveryE2ePlainRepository -Repository $partialDestination -LocalPath (Join-Path $tempRoot 'partial-destination') -Marker 'Original destination preserved after failure'
-    $priorIdentity = Get-RecoveryE2eRemoteRepository -Repository $partialDestination
-    $priorTree = (Get-RecoveryE2eRemoteCommit -Repository $partialDestination).commit.tree.sha
-    $partialConfirmation = "DESTINATION=$partialDestination;ARCHIVE=$partialArchive;REPLACEMENT=$partialDestination"
-    $partialReport = Join-Path $tempRoot 'existing-partial.json'
-    $createdRepositories.Add($partialArchive)
-    $expectedRepositoryIds[$partialArchive] = [string] $priorIdentity.id
-    $partialError = $null
-    try {
-        Copy-GitHubRepository -SourceRepository $sourceRepository -DestinationRepository $partialDestination -ExistingDestinationArchiveName $partialArchiveName -ExistingDestinationConfirmation $partialConfirmation -SkipSettings -NonInteractive -Force -ReportPath $partialReport | Out-Null
+    # Missing-LFS planning rejection cannot prove post-archive failure/retry.
+    # Those authenticated GitHub boundary checks remain Required and UNVERIFIED.
+    $pendingEvidence = [pscustomobject] @{
+        Scope = 'SafeSubsetOnly'
+        CompleteRequiredLiveQualification = $false
+        PendingRequiredLiveScenarios = @('SCN-DEST-PARTIAL-01', 'SCN-RETRY-RESILIENCE-02', 'SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')
+        Reason = 'No reviewed safe deterministic post-mutation failure fixture; issue #173 blocks release.'
     }
-    catch { $partialError = $_ }
-    if ($null -eq $partialError) { throw 'Expected a missing-LFS failure after archival of the disposable existing destination.' }
-    $partialRecoveryPath = "$partialReport.recovery.json"
-    if (-not (Test-Path -LiteralPath $partialRecoveryPath)) { throw 'Existing-destination recovery report was not produced.' }
-    $partialRecovery = Get-Content -LiteralPath $partialRecoveryPath -Raw | ConvertFrom-Json
-    $partialReplacementId = [string] $partialRecovery.ReplacementRepositoryId
-    if ([string]::IsNullOrWhiteSpace($partialReplacementId) -or $partialReplacementId -eq [string] $priorIdentity.id) {
-        throw 'Recovery evidence did not identify a distinct test-created replacement for guarded cleanup.'
-    }
-    $expectedRepositoryIds[$partialDestination] = $partialReplacementId
-    $archiveState = Get-RecoveryE2eRemoteRepository -Repository $partialArchive
-    $partialReplacement = Get-RecoveryE2eRemoteRepository -Repository $partialDestination
-    $archiveTree = (Get-RecoveryE2eRemoteCommit -Repository $partialArchive).commit.tree.sha
-    if ($partialRecovery.Status -ne 'ExistingDestinationReplacementFailed' -or
-        $partialRecovery.FailureStage -ne 'CopySnapshot' -or
-        $partialRecovery.ErrorId -notmatch 'SourceGitLfsFetchFailed' -or
-        $partialRecovery.OriginalDestinationRepositoryId -ne $priorIdentity.id -or
-        $partialRecovery.ArchiveRepositoryId -ne $priorIdentity.id -or
-        $partialRecovery.ReplacementRepositoryId -ne $partialReplacement.id -or
-        -not $partialRecovery.Recovery.ExistingDestinationPreservedAsArchive -or
-        $partialRecovery.Recovery.AutomaticDeletionAttempted -or
-        $partialRecovery.Recovery.AutomaticRollbackAttempted -or
-        $archiveState.id -ne $priorIdentity.id -or
-        $partialReplacement.id -eq $priorIdentity.id -or
-        $archiveTree -ne $priorTree) {
-        throw 'Remote identity, preserved archive tree or durable partial-failure evidence did not match.'
-    }
-    $completed = @($partialRecovery.CompletedSteps | ForEach-Object { $_.Name })
-    if (($completed -join ',') -ne 'PreserveDestinationAsArchive,VerifyArchivedDestinationIdentity,CreateReplacementRepository,VerifyReplacementRepositoryIdentity') {
-        throw 'Partial recovery completed-step timeline was not the expected archive/copy boundary.'
-    }
-    [pscustomobject] @{
-        ScenarioId = 'SCN-DEST-PARTIAL-01'
-        ExpectedFailureObserved = $true
-        FailureStage = $partialRecovery.FailureStage
-        IndependentArchiveIdentityPreserved = ($archiveState.id -eq $priorIdentity.id)
-        IndependentArchiveTreePreserved = ($archiveTree -eq $priorTree)
-        ReplacementIdentityDistinct = ($partialReplacement.id -ne $priorIdentity.id)
-        RecoveryReport = $partialRecoveryPath
-    } | Format-List
-
-    # SCN-RETRY-RESILIENCE-02: do not blindly replay an ambiguous post-archive
-    # mutation; the approved archive name already exists and must block a new plan.
-    Write-Information -MessageData 'Scenario: SCN-RETRY-RESILIENCE-02 reject retry using preserved archive' -InformationAction Continue
-    $retryError = $null
-    try {
-        Copy-GitHubRepository -SourceRepository $sourceRepository -DestinationRepository $partialDestination -ExistingDestinationArchiveName $partialArchiveName -ExistingDestinationConfirmation $partialConfirmation -SkipSettings -NonInteractive -Force | Out-Null
-    }
-    catch { $retryError = $_ }
-    if ($null -eq $retryError -or $retryError.FullyQualifiedErrorId -notmatch 'ExistingDestinationArchiveAlreadyExists') {
-        throw 'Retry after partial mutation did not reject the unchanged occupied archive.'
-    }
-    $retryArchive = Get-RecoveryE2eRemoteRepository -Repository $partialArchive
-    $retryReplacement = Get-RecoveryE2eRemoteRepository -Repository $partialDestination
-    if ($retryArchive.id -ne $archiveState.id -or
-        $retryReplacement.id -ne $partialReplacement.id -or
-        (Get-RecoveryE2eRemoteCommit -Repository $partialArchive).commit.tree.sha -ne $priorTree) {
-        throw 'Retry changed the archived original, replacement identity or preserved tree.'
-    }
-    [pscustomobject] @{
-        ScenarioId = 'SCN-RETRY-RESILIENCE-02'
-        RetryRejectedBeforeMutation = $true
-        ErrorId = $retryError.FullyQualifiedErrorId
-        IndependentArchiveIdentityUnchanged = ($retryArchive.id -eq $archiveState.id)
-        IndependentReplacementIdentityUnchanged = ($retryReplacement.id -eq $partialReplacement.id)
-    } | Format-List
+    $pendingEvidence | ConvertTo-Json -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $tempRoot 'required-live-evidence-pending.json') -Encoding utf8NoBOM -ErrorAction Stop
+    Write-Warning 'SafeSubsetOnly completed; pending Required-live partial, retry, settings and recovery scenarios are NOT qualified.'
 }
 catch {
     # Preserve the first meaningful failure before cleanup can throw a second

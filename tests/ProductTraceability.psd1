@@ -122,7 +122,9 @@
             Classification = 'Required'
             AutomatedEvidence = @('tests/integration/ExistingDestinationReplacement.Tests.ps1', 'tests/integration/Recovery.Tests.ps1')
             LiveValidation = 'Required'
-            LiveEvidence = @('tests/e2e/Invoke-RecoveryEndToEndTests.ps1')
+            LiveEvidence = @()
+            LiveEvidenceStatus = 'PendingSafeFixture'
+            LiveReason = 'The former missing-LFS source fails immutable planning before archive; no safe authenticated deterministic post-archive failure fixture has been reviewed. Required-live release evidence is missing; issue #173.'
         }
         'SCN-SAME-HAPPY-01' = @{
             Classification = 'Required'
@@ -158,7 +160,9 @@
             Classification = 'Required'
             AutomatedEvidence = @('tests/integration/RepositorySettings.Tests.ps1', 'tests/integration/Recovery.Tests.ps1')
             LiveValidation = 'Required'
-            LiveEvidence = @('tests/e2e/Invoke-RecoveryEndToEndTests.ps1')
+            LiveEvidence = @()
+            LiveEvidenceStatus = 'PendingSafeFixture'
+            LiveReason = 'No safe deterministic authenticated post-content settings-restoration failure fixture has been reviewed. Required-live release evidence is missing; issue #173.'
         }
         'SCN-PROT-HAPPY-01' = @{
             Classification = 'Required'
@@ -226,7 +230,9 @@
             Classification = 'Required'
             AutomatedEvidence = @('tests/integration/Recovery.Tests.ps1', 'tests/integration/ReplacementExecutionEvidence.Tests.ps1', 'tests/unit/FullHistoryReleaseOrchestration.Tests.ps1')
             LiveValidation = 'Required'
-            LiveEvidence = @('tests/e2e/Invoke-RecoveryEndToEndTests.ps1')
+            LiveEvidence = @()
+            LiveEvidenceStatus = 'PendingSafeFixture'
+            LiveReason = 'The missing-LFS source fails before mutation and cannot prove durable post-mutation recovery. No safe authenticated post-mutation fault fixture has been reviewed; issue #173.'
         }
         'SCN-API-RESILIENCE-01' = @{
             Classification = 'Required'
@@ -256,7 +262,9 @@
             Classification = 'Required'
             AutomatedEvidence = @('tests/integration/RetryIdempotency.Tests.ps1', 'tests/integration/Recovery.Tests.ps1')
             LiveValidation = 'Required'
-            LiveEvidence = @('tests/e2e/Invoke-RecoveryEndToEndTests.ps1')
+            LiveEvidence = @()
+            LiveEvidenceStatus = 'PendingSafeFixture'
+            LiveReason = 'Retry after genuine partial mutation cannot be validated using the pre-planning missing-LFS fixture. Safe live archive/replacement failure and independent retry proof are missing; issue #173.'
         }
         'SCN-SCALE-RESILIENCE-01' = @{
             Classification = 'Required'

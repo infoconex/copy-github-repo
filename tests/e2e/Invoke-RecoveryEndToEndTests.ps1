@@ -389,6 +389,56 @@ try {
         DestinationWasCreated = $recovery.Recovery.DestinationWasCreated
         AutomaticDeletionAttempted = $recovery.Recovery.AutomaticDeletionAttempted
     } | Format-List
+
+    # SCN-DEST-HAPPY-01: run-unique disposable different-destination archive/replace.
+    Write-Information -MessageData 'Scenario: SCN-DEST-HAPPY-01 existing destination archive and verified replacement' -InformationAction Continue
+    $happySource = "$Owner/$repositoryPrefix-existing-source"
+    $happyDestination = "$Owner/$repositoryPrefix-existing-destination"
+    $happyArchiveName = "$repositoryPrefix-existing-archive"
+    $happyArchive = "$Owner/$happyArchiveName"
+    New-RecoveryE2eRepository -Name "$repositoryPrefix-existing-source" -Confirm:$false | Out-Null
+    New-RecoveryE2eRepository -Name "$repositoryPrefix-existing-destination" -Confirm:$false | Out-Null
+    Publish-RecoveryE2ePlainRepository -Repository $happySource -LocalPath (Join-Path $tempRoot 'existing-source') -Marker 'New approved source'
+    Publish-RecoveryE2ePlainRepository -Repository $happyDestination -LocalPath (Join-Path $tempRoot 'existing-destination') -Marker 'Prior destination to preserve'
+    $oldIdentity = Get-RecoveryE2eRemoteRepository -Repository $happyDestination
+    $oldTree = (Get-RecoveryE2eRemoteCommit -Repository $happyDestination).commit.tree.sha
+    $sourceTree = (Get-RecoveryE2eRemoteCommit -Repository $happySource).commit.tree.sha
+    if ($oldTree -eq $sourceTree) { throw 'Fixture source/destination trees must differ.' }
+    $confirmation = "DESTINATION=$happyDestination;ARCHIVE=$happyArchive;REPLACEMENT=$happyDestination"
+    $plan = Copy-GitHubRepository -SourceRepository $happySource -DestinationRepository $happyDestination -ExistingDestinationArchiveName $happyArchiveName -SkipSettings -PlanOnly
+    if ($plan.Mode -ne 'ExistingDestinationReplacement' -or $plan.ArchiveRepository -ne $happyArchive) {
+        throw 'Existing-destination plan does not match exact reviewed archive/replace identity.'
+    }
+    $createdRepositories.Add($happyArchive)
+    $happyResult = Copy-GitHubRepository -SourceRepository $happySource -DestinationRepository $happyDestination -ExistingDestinationArchiveName $happyArchiveName -ExistingDestinationConfirmation $confirmation -SkipSettings -NonInteractive -Force -ReportPath (Join-Path $tempRoot 'existing-happy.json')
+    if (-not $happyResult.IsVerified -or -not $happyResult.ArchivedOriginalIdentityPreserved -or -not $happyResult.ReplacementHasDistinctIdentity) {
+        throw 'Migration-reported existing-destination replacement was not verified.'
+    }
+    $archivedRemote = Get-RecoveryE2eRemoteRepository -Repository $happyArchive
+    $replacementRemote = Get-RecoveryE2eRemoteRepository -Repository $happyDestination
+    $archivedTree = (Get-RecoveryE2eRemoteCommit -Repository $happyArchive).commit.tree.sha
+    $replacementCommit = Get-RecoveryE2eRemoteCommit -Repository $happyDestination
+    $verification = Test-GitHubRepositoryMigration -SourceRepository $happySource -DestinationRepository $happyDestination -ContentMode Snapshot -ApprovedPlan $happyResult.Plan
+    if ($archivedRemote.id -ne $oldIdentity.id -or $replacementRemote.id -eq $oldIdentity.id -or
+        $archivedTree -ne $oldTree -or $replacementCommit.commit.tree.sha -ne $sourceTree -or
+        @($replacementCommit.parents).Count -ne 0 -or -not $verification.IsSuccessful) {
+        throw 'Independent remote archive identity, original tree or Snapshot replacement validation failed.'
+    }
+    $stages = @($happyResult.CompletedSteps | ForEach-Object { $_.Name })
+    if ($stages.Count -lt 4 -or
+        ($stages[0..3] -join ',') -ne 'PreserveDestinationAsArchive,VerifyArchivedDestinationIdentity,CreateReplacementRepository,VerifyReplacementRepositoryIdentity') {
+        throw 'Archive identity must be verified before replacement creation.'
+    }
+    [pscustomobject] @{
+        ScenarioId = 'SCN-DEST-HAPPY-01'
+        MigrationReportedVerified = $happyResult.IsVerified
+        IndependentVerificationSucceeded = $verification.IsSuccessful
+        ArchiveIdentityPreserved = ($archivedRemote.id -eq $oldIdentity.id)
+        ReplacementIdentityDistinct = ($replacementRemote.id -ne $oldIdentity.id)
+        ArchiveTreeUnchanged = ($archivedTree -eq $oldTree)
+        ReplacementTreeEqualsSource = ($replacementCommit.commit.tree.sha -eq $sourceTree)
+        OneUnrelatedRootCommit = (@($replacementCommit.parents).Count -eq 0)
+    } | Format-List
 }
 finally {
     if (-not $KeepRepositories) {

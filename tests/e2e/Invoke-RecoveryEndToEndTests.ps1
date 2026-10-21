@@ -418,7 +418,7 @@ try {
     $replacementRemote = Get-RecoveryE2eRemoteRepository -Repository $happyDestination
     $archivedTree = (Get-RecoveryE2eRemoteCommit -Repository $happyArchive).commit.tree.sha
     $replacementCommit = Get-RecoveryE2eRemoteCommit -Repository $happyDestination
-    $verification = Test-GitHubRepositoryMigration -SourceRepository $happySource -DestinationRepository $happyDestination -ContentMode Snapshot -ApprovedPlan $happyResult.Plan
+    $verification = Test-GitHubRepositoryMigration -SourceRepository $happySource -DestinationRepository $happyDestination -ContentMode Snapshot
     if ($archivedRemote.id -ne $oldIdentity.id -or $replacementRemote.id -eq $oldIdentity.id -or
         $archivedTree -ne $oldTree -or $replacementCommit.commit.tree.sha -ne $sourceTree -or
         @($replacementCommit.parents).Count -ne 0 -or -not $verification.IsSuccessful) {

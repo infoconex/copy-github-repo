@@ -59,13 +59,25 @@ Describe 'Product scenario traceability contract' {
         }
     }
 
-    It 'requires an existing E2E harness for scenarios whose live validation is required' {
+    It 'requires genuine live evidence or an explicitly blocked Required-live fixture' {
+        $pending = @('SCN-DEST-PARTIAL-01', 'SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01', 'SCN-RETRY-RESILIENCE-02')
         foreach ($entry in $script:traceability.Scenarios.GetEnumerator()) {
             if ($entry.Value.LiveValidation -ne 'Required') {
                 continue
             }
-
-            @($entry.Value.LiveEvidence).Count | Should -BeGreaterThan 0 -Because "$($entry.Key) requires live validation"
+            if ($entry.Key -in $pending) {
+                $entry.Value.Classification | Should -Be 'Required'
+                @($entry.Value.LiveEvidence).Count | Should -Be 0 -Because "$($entry.Key) has no valid authenticated failure fixture"
+                $entry.Value.LiveEvidenceStatus | Should -Be 'PendingSafeFixture'
+                [string] $entry.Value.LiveReason | Should -Not -BeNullOrEmpty
+                continue
+            }
+            @($entry.Value.LiveEvidence).Count | Should -BeGreaterThan 0 -Because "$($entry.Key) requires a real live harness"
+        }
+        foreach ($entry in $script:traceability.Scenarios.GetEnumerator()) {
+            if ($entry.Value.LiveEvidenceStatus -eq 'PendingSafeFixture') {
+                $entry.Key | Should -BeIn $pending -Because 'pending required-live exceptions must be explicitly reviewed'
+            }
         }
     }
 
@@ -78,34 +90,44 @@ Describe 'Product scenario traceability contract' {
         }
     }
 
-    It 'ties existing-destination recovery live mappings to asserted scenario output, not just a named file' {
+    It 'does not advertise unimplemented post-mutation scenarios as live proof' {
         $harnessPath = 'tests/e2e/Invoke-RecoveryEndToEndTests.ps1'
         $source = Get-Content -LiteralPath (Join-Path $repositoryRoot $harnessPath) -Raw
 
-        foreach ($scenarioId in @('SCN-DEST-HAPPY-01', 'SCN-DEST-PARTIAL-01', 'SCN-RETRY-RESILIENCE-02')) {
-            $scenario = $script:traceability.Scenarios[$scenarioId]
-            $scenario.LiveValidation | Should -Be 'Required'
-            @($scenario.LiveEvidence) | Should -Contain $harnessPath
-            $marker = "ScenarioId\s*=\s*'$scenarioId'"
-            ([regex]::Matches($source, $marker)).Count | Should -Be 1 -Because "$scenarioId must emit a scenario-specific result after verification"
+        $happy = $script:traceability.Scenarios['SCN-DEST-HAPPY-01']
+        $happy.LiveValidation | Should -Be 'Required'
+        @($happy.LiveEvidence) | Should -Contain $harnessPath
+        ([regex]::Matches($source, "ScenarioId\s*=\s*'SCN-DEST-HAPPY-01'")).Count | Should -Be 1
+
+        $source | Should -Match "ScenarioId\s*=\s*'SCN-LFS-VALIDATION-01'"
+        $source | Should -Match 'SnapshotPlanningGitLfsFetchFailed,Get-CgrRepositoryDefaultBranchTree'
+        $source | Should -Match 'lfs-planning-validation\.json'
+        $source | Should -Match 'existing-destination-happy-result\.json'
+        $source | Should -Match 'required-live-evidence-pending\.json'
+        $source | Should -Match '\[switch\] \$SafeSubsetOnly'
+        $source | Should -Match 'if \(-not \$SafeSubsetOnly\)'
+        $source | Should -Match 'CompleteRequiredLiveQualification = \$false'
+        $source | Should -Match 'IndependentDestinationAbsenceVerified = \$true'
+        $source | Should -Match 'Assert-RecoveryE2eRepositoryAbsent -Repository \$destinationRepository'
+
+        foreach ($id in @('SCN-DEST-PARTIAL-01', 'SCN-SET-PARTIAL-01', 'SCN-RETRY-RESILIENCE-02', 'SCN-RECOVER-RECOVERY-01')) {
+            $entry = $script:traceability.Scenarios[$id]
+            $entry.LiveValidation | Should -Be 'Required'
+            @($entry.LiveEvidence).Count | Should -Be 0
+            $entry.LiveEvidenceStatus | Should -Be 'PendingSafeFixture'
+            $source | Should -Not -Match ("ScenarioId\s*=\s*'{0}'" -f $id)
         }
 
         $source | Should -Match 'Get-RecoveryE2eRemoteRepository'
         $source | Should -Match 'Get-RecoveryE2eRemoteCommit'
         $source | Should -Match 'ExistingDestinationArchiveName\s+\$happyArchiveName'
         $source | Should -Match 'ExistingDestinationConfirmation\s+\$confirmation'
-        $source | Should -Match 'ExistingDestinationArchiveName\s+\$partialArchiveName'
-        $source | Should -Match 'ExistingDestinationConfirmation\s+\$partialConfirmation'
         $source | Should -Match 'ArchivedOriginalIdentityPreserved'
-        $source | Should -Match 'AutomaticRollbackAttempted'
-        $source | Should -Match 'ExistingDestinationArchiveAlreadyExists'
         $source | Should -Match 'IndependentVerificationSucceeded'
+        $source | Should -Match 'OneUnrelatedRootCommit'
         $source | Should -Match 'Assert-RecoveryE2eCleanupCapability'
         $source | Should -Match 'Remove-RecoveryE2eRepository'
-
-        # No successful settings-failure live scenario is claimed. That separate
-        # Required-live fixture is still pending, not covered by these three cases.
-        $source | Should -Not -Match "ScenarioId\s*=\s*'SCN-SET-PARTIAL-01'"
+        $source | Should -Not -Match 'Copy-GitHubRepository -SourceRepository \$sourceRepository -DestinationRepository \$partialDestination'
     }
 
     It 'preserves opt-in live recovery reports outside destructive fixture cleanup' {
@@ -133,8 +155,6 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match '\[string\] \$liveRepository\.id -ne \$expectedId'
         $source | Should -Match '\$expectedRepositoryIds\[\$happyArchive\] = \[string\] \$oldIdentity\.id'
         $source | Should -Match '\$expectedRepositoryIds\[\$happyDestination\] = \$replacementId'
-        $source | Should -Match '\$expectedRepositoryIds\[\$partialArchive\] = \[string\] \$priorIdentity\.id'
-        $source | Should -Match '\$expectedRepositoryIds\[\$partialDestination\] = \$partialReplacementId'
         $source | Should -Match 'ExpectedRepositoryIds = \$expectedRepositoryIds'
         $source | Should -Match 'function Assert-RecoveryE2eRepositoryAbsent'
         $source | Should -Match 'gh api --include'

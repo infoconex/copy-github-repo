@@ -170,7 +170,10 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match '\$replacementCommitAfterRetry\.sha -ne \$faultReplacementCommit\.sha'
         $source | Should -Match 'if \(-not \$ReportWriteFailureProbe\)'
         $source | Should -Match '\$pendingRequiredLiveScenarios \+= ''SCN-RETRY-RESILIENCE-02'''
-        $source | Should -Match 'VerifiedRequiredLiveScenarios = if \(\$ReportWriteFailureProbe\)'
+        $source | Should -Match '\$verifiedRequiredLiveScenarios = @\(\)'
+        $source | Should -Match '\$verifiedRequiredLiveScenarios \+= ''SCN-RETRY-RESILIENCE-02'''
+        $source | Should -Match 'VerifiedRequiredLiveScenarios = @\(\$verifiedRequiredLiveScenarios\)'
+        $source | Should -Match 'PendingRequiredLiveScenarios = @\(\$pendingRequiredLiveScenarios\)'
         $source | Should -Match 'CompleteRequiredLiveQualification = \$false'
     }
 

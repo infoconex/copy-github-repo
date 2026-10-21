@@ -262,9 +262,9 @@
             Classification = 'Required'
             AutomatedEvidence = @('tests/integration/RetryIdempotency.Tests.ps1', 'tests/integration/Recovery.Tests.ps1')
             LiveValidation = 'Required'
-            LiveEvidence = @()
-            LiveEvidenceStatus = 'PendingSafeFixture'
-            LiveReason = 'Retry after genuine partial mutation cannot be validated using the pre-planning missing-LFS fixture. Safe live archive/replacement failure and independent retry proof are missing; issue #173.'
+            LiveEvidence = @('tests/e2e/Invoke-RecoveryEndToEndTests.ps1')
+            LiveEvidenceStatus = 'ScopedOptIn'
+            LiveReason = 'Requires -SafeSubsetOnly -ReportWriteFailureProbe: after authenticated archive/replacement, a local final-report error terminates execution, and a same-archive retry must fail in planning with unchanged independently re-read remote identities and trees. This is not a failed Snapshot transfer or settings-restoration fixture. Exact-candidate execution and cleanup evidence remain release-specific.'
         }
         'SCN-SCALE-RESILIENCE-01' = @{
             Classification = 'Required'

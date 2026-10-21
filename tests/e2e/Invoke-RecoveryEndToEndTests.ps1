@@ -143,6 +143,36 @@ function Remove-RecoveryE2eRepository {
     }
 }
 
+function Assert-RecoveryE2eRepositoryAbsent {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string] $Repository
+    )
+
+    $expectedPrefix = "$Owner/$repositoryPrefix-"
+    if (-not $Repository.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to verify cleanup outside the protected E2E prefix '$expectedPrefix'."
+    }
+
+    # A nonzero gh exit is not proof of deletion: 401, 403, 429 and transient
+    # network failures must never count as independent repository absence.
+    $response = @(& gh api --include "repos/$Repository" 2>&1 |
+            ForEach-Object { $_.ToString() })
+    $statusCodes = @($response | ForEach-Object {
+            if ($_ -match '^HTTP/\S+\s+(\d{3})(?:\s|$)') {
+                [int] $Matches[1]
+            }
+        })
+    if ($statusCodes.Count -ne 1) {
+        throw "Unable to independently verify GitHub HTTP status after cleanup of '$Repository'."
+    }
+    if ($statusCodes[0] -ne 404) {
+        throw "Repository '$Repository' is not verified absent after cleanup (HTTP $($statusCodes[0]))."
+    }
+}
+
 function Publish-RecoveryE2eSourceRepository {
     [CmdletBinding()]
     param(
@@ -448,18 +478,51 @@ try {
     } | Format-List
 }
 finally {
+    $cleanupResults = [System.Collections.Generic.List[object]]::new()
+    $cleanupFailures = [System.Collections.Generic.List[string]]::new()
     if (-not $KeepRepositories) {
         foreach ($repository in @($createdRepositories) | Select-Object -Unique | Sort-Object -Descending) {
             try {
                 Remove-RecoveryE2eRepository -Repository $repository -Confirm:$false
+                Assert-RecoveryE2eRepositoryAbsent -Repository $repository
+                $cleanupResults.Add([pscustomobject] @{
+                        Repository = $repository
+                        VerifiedAbsent = $true
+                    })
             }
             catch {
-                Write-Warning "Failed to clean up recovery E2E repository '$repository'. $($_.Exception.Message)"
+                $failure = "Cleanup or independent absence verification failed for '$repository': $($_.Exception.Message)"
+                $cleanupFailures.Add($failure)
+                $cleanupResults.Add([pscustomobject] @{
+                        Repository = $repository
+                        VerifiedAbsent = $false
+                        Error = $_.Exception.Message
+                    })
+                Write-Warning $failure
             }
         }
     }
     else {
         Write-Warning "Recovery E2E repositories were retained because -KeepRepositories was supplied: $(@($createdRepositories) -join ', ')"
+    }
+
+    $cleanupRecordWritten = $true
+    try {
+        [pscustomobject] @{
+            RunId = $runId
+            CheckedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
+            KeepRepositories = [bool] $KeepRepositories
+            CleanupAttempted = -not $KeepRepositories
+            CleanupVerified = -not $KeepRepositories -and $cleanupFailures.Count -eq 0
+            Results = @($cleanupResults)
+            Failures = @($cleanupFailures)
+            RegisteredRepositories = @($createdRepositories | Select-Object -Unique)
+        } | ConvertTo-Json -Depth 8 |
+            Set-Content -LiteralPath (Join-Path $tempRoot 'cleanup-verification.json') -Encoding utf8NoBOM -ErrorAction Stop
+    }
+    catch {
+        $cleanupRecordWritten = $false
+        Write-Warning "Unable to record independent cleanup verification: $($_.Exception.Message)"
     }
 
     $evidenceCopySucceeded = $true
@@ -476,10 +539,16 @@ finally {
         }
     }
 
-    if ($evidenceCopySucceeded) {
+    if ($cleanupFailures.Count -eq 0 -and $cleanupRecordWritten -and $evidenceCopySucceeded) {
         Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
     }
     else {
-        Write-Warning "Temporary fixture/report directory retained for manual evidence recovery: $tempRoot"
+        Write-Warning "Temporary fixture/report directory retained for manual cleanup or evidence recovery: $tempRoot"
+    }
+    if ($cleanupFailures.Count -gt 0) {
+        throw "Recovery E2E cleanup was not independently verified for $($cleanupFailures.Count) registered repository operation(s). Review the retained evidence and reconcile test-owned repositories."
+    }
+    if (-not $cleanupRecordWritten -or -not $evidenceCopySucceeded) {
+        throw 'Recovery E2E cleanup or evidence reporting is incomplete. Review the retained temporary fixture/report directory.'
     }
 }

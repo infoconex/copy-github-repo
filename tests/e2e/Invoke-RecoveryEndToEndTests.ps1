@@ -5,7 +5,10 @@ param(
     [ValidateNotNullOrEmpty()]
     [string] $Owner = 'infoconex',
 
-    [switch] $KeepRepositories
+    [switch] $KeepRepositories,
+
+    [ValidateNotNullOrEmpty()]
+    [string] $EvidenceDirectory
 )
 
 Set-StrictMode -Version Latest
@@ -19,6 +22,18 @@ $createdRepositories = [System.Collections.Generic.List[string]]::new()
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) $repositoryPrefix
 $sourcePath = Join-Path $tempRoot 'source'
 $reportPath = Join-Path $tempRoot 'migration-report.json'
+$evidenceRunPath = $null
+if ($PSBoundParameters.ContainsKey('EvidenceDirectory')) {
+    $evidenceRunPath = [System.IO.Path]::GetFullPath((Join-Path $EvidenceDirectory $repositoryPrefix))
+    $temporaryPath = [System.IO.Path]::GetFullPath($tempRoot)
+    if ($evidenceRunPath.Equals($temporaryPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $evidenceRunPath.StartsWith("$temporaryPath$([System.IO.Path]::DirectorySeparatorChar)", [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw 'EvidenceDirectory must keep recovery evidence outside the temporary fixture directory that cleanup deletes.'
+    }
+    if (Test-Path -LiteralPath $evidenceRunPath) {
+        throw "Refusing to overwrite existing recovery E2E evidence directory '$evidenceRunPath'."
+    }
+}
 
 function Invoke-RecoveryE2eNativeCommand {
     [CmdletBinding()]
@@ -238,6 +253,9 @@ $sourceRepository = "$Owner/$repositoryPrefix-source"
 $destinationRepository = "$Owner/$repositoryPrefix-destination"
 
 try {
+    if ($evidenceRunPath) {
+        New-Item -Path $evidenceRunPath -ItemType Directory -ErrorAction Stop | Out-Null
+    }
     New-RecoveryE2eRepository -Name "$repositoryPrefix-source" -Confirm:$false | Out-Null
     Publish-RecoveryE2eSourceRepository -Repository $sourceRepository
     $createdRepositories.Add($destinationRepository)
@@ -444,5 +462,24 @@ finally {
         Write-Warning "Recovery E2E repositories were retained because -KeepRepositories was supplied: $(@($createdRepositories) -join ', ')"
     }
 
-    Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    $evidenceCopySucceeded = $true
+    if ($evidenceRunPath) {
+        try {
+            foreach ($report in @(Get-ChildItem -LiteralPath $tempRoot -File -Filter '*.json' -ErrorAction Stop)) {
+                Copy-Item -LiteralPath $report.FullName -Destination $evidenceRunPath -ErrorAction Stop
+            }
+            Write-Information -MessageData "Recovery E2E JSON evidence directory: $evidenceRunPath" -InformationAction Continue
+        }
+        catch {
+            $evidenceCopySucceeded = $false
+            Write-Warning "Failed to copy recovery E2E evidence to '$evidenceRunPath': $($_.Exception.Message)"
+        }
+    }
+
+    if ($evidenceCopySucceeded) {
+        Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    else {
+        Write-Warning "Temporary fixture/report directory retained for manual evidence recovery: $tempRoot"
+    }
 }

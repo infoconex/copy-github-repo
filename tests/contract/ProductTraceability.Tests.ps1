@@ -75,7 +75,7 @@ Describe 'Product scenario traceability contract' {
             @($entry.Value.LiveEvidence).Count | Should -BeGreaterThan 0 -Because "$($entry.Key) requires a real live harness"
         }
         foreach ($entry in $script:traceability.Scenarios.GetEnumerator()) {
-            if ($entry.Value.LiveEvidenceStatus -eq 'PendingSafeFixture') {
+            if ($entry.Value.ContainsKey('LiveEvidenceStatus') -and $entry.Value.LiveEvidenceStatus -eq 'PendingSafeFixture') {
                 $entry.Key | Should -BeIn $pending -Because 'pending required-live exceptions must be explicitly reviewed'
             }
         }

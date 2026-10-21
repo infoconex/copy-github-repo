@@ -10,7 +10,11 @@ param(
     [ValidateNotNullOrEmpty()]
     [string] $EvidenceDirectory,
 
-    [switch] $SafeSubsetOnly
+    [switch] $SafeSubsetOnly,
+
+    # Optional fault after real verified GitHub archive/replace, before final
+    # success report. Not a simulation of failed Snapshot transfer or settings.
+    [switch] $ReportWriteFailureProbe
 )
 
 Set-StrictMode -Version Latest
@@ -434,13 +438,147 @@ try {
         Set-Content -LiteralPath (Join-Path $tempRoot 'existing-destination-happy-result.json') -Encoding utf8NoBOM -ErrorAction Stop
     $happyEvidence | Format-List
 
+    if ($ReportWriteFailureProbe) {
+        # This opt-in subcase uses only test-created private repositories and
+        # a local output-path error AFTER a real verified GitHub replacement.
+        Write-Information -MessageData 'Subcase: post-mutation completion-report I/O failure and fail-closed retry' -InformationAction Continue
+        $faultDestination = "$Owner/$repositoryPrefix-reportfault-destination"
+        $faultArchiveName = "$repositoryPrefix-reportfault-archive"
+        $faultArchive = "$Owner/$faultArchiveName"
+        New-RecoveryE2eRepository -Name "$repositoryPrefix-reportfault-destination" -Confirm:$false | Out-Null
+        Publish-RecoveryE2ePlainRepository -Repository $faultDestination -LocalPath (Join-Path $tempRoot 'reportfault-destination') -Marker 'Prior destination for report-write failure'
+        $original = Get-RecoveryE2eRemoteRepository -Repository $faultDestination
+        $originalId = [string] $original.id
+        $originalTree = (Get-RecoveryE2eRemoteCommit -Repository $faultDestination).commit.tree.sha
+        $faultSourceTree = (Get-RecoveryE2eRemoteCommit -Repository $happySource).commit.tree.sha
+        if ($originalTree -eq $faultSourceTree) { throw 'Report-fault fixture source and old destination trees must differ.' }
+
+        $faultConfirmation = "DESTINATION=$faultDestination;ARCHIVE=$faultArchive;REPLACEMENT=$faultDestination"
+        $faultPlan = Copy-GitHubRepository -SourceRepository $happySource -DestinationRepository $faultDestination -ExistingDestinationArchiveName $faultArchiveName -SkipSettings -PlanOnly
+        if ($faultPlan.Mode -ne 'ExistingDestinationReplacement' -or $faultPlan.ArchiveRepository -ne $faultArchive) {
+            throw 'Report-fault plan does not match exact reviewed archive/replacement names.'
+        }
+
+        # PRE-MUTATION OWNERSHIP HANDOFF: the old immutable ID can move from
+        # the destination name to the archive name. Do not retain that ID
+        # against the reused destination name; it may become a NEW repository.
+        $createdRepositories.Add($faultArchive)
+        $expectedRepositoryIds[$faultArchive] = $originalId
+        $expectedRepositoryIds.Remove($faultDestination) | Out-Null
+
+        $faultReportPath = Join-Path $tempRoot 'blocked-execution-report.json'
+        New-Item -ItemType Directory -Path $faultReportPath -ErrorAction Stop | Out-Null
+        $faultError = $null
+        try {
+            Copy-GitHubRepository -SourceRepository $happySource -DestinationRepository $faultDestination -ExistingDestinationArchiveName $faultArchiveName -ExistingDestinationConfirmation $faultConfirmation -SkipSettings -NonInteractive -Force -ReportPath $faultReportPath -ErrorAction Stop | Out-Null
+        }
+        catch { $faultError = $_ }
+        if ($null -eq $faultError) {
+            throw 'Report-fault fixture unexpectedly completed successfully; manual identity reconciliation is required before cleanup.'
+        }
+
+        $faultRecoveryPath = "$faultReportPath.recovery.json"
+        if (-not (Test-Path -LiteralPath $faultRecoveryPath -PathType Leaf)) {
+            throw 'Report-fault fixture did not persist its separate recovery JSON; identity-guarded cleanup will fail closed.'
+        }
+        $faultRecovery = Get-Content -LiteralPath $faultRecoveryPath -Raw -ErrorAction Stop | ConvertFrom-Json
+
+        # Independently read both real GitHub identities and compare them to
+        # immutable originals and the actual recovery report BEFORE binding
+        # the new destination name to its replacement identity for cleanup.
+        $faultArchiveRemote = Get-RecoveryE2eRemoteRepository -Repository $faultArchive
+        $faultReplacementRemote = Get-RecoveryE2eRemoteRepository -Repository $faultDestination
+        $replacementId = [string] $faultReplacementRemote.id
+        if ([string] $faultArchiveRemote.id -ne $originalId -or
+            $replacementId -eq $originalId -or
+            [string] $faultRecovery.OriginalDestinationRepositoryId -ne $originalId -or
+            [string] $faultRecovery.ArchiveRepositoryId -ne $originalId -or
+            [string] $faultRecovery.ReplacementRepositoryId -ne $replacementId) {
+            throw 'Report-fault recovery/remote immutable identities disagree; refusing to bind reused destination for automatic deletion.'
+        }
+        $expectedRepositoryIds[$faultDestination] = $replacementId
+
+        $faultArchiveTree = (Get-RecoveryE2eRemoteCommit -Repository $faultArchive).commit.tree.sha
+        $faultReplacementCommit = Get-RecoveryE2eRemoteCommit -Repository $faultDestination
+        $faultVerification = Test-GitHubRepositoryMigration -SourceRepository $happySource -DestinationRepository $faultDestination -ContentMode Snapshot
+        $faultStages = @($faultRecovery.CompletedSteps | ForEach-Object { $_.Name })
+        if ($faultRecovery.Status -ne 'ExistingDestinationReplacementFailed' -or
+            $faultRecovery.FailureStage -ne 'WriteCompletionReport' -or
+            $faultRecovery.ErrorId -ne $faultError.FullyQualifiedErrorId -or
+            -not $faultRecovery.Recovery.ExistingDestinationPreservedAsArchive -or
+            $faultRecovery.Recovery.AutomaticDeletionAttempted -or
+            $faultRecovery.Recovery.AutomaticRollbackAttempted -or
+            $faultStages.Count -lt 6 -or
+            ($faultStages[0..3] -join ',') -ne 'PreserveDestinationAsArchive,VerifyArchivedDestinationIdentity,CreateReplacementRepository,VerifyReplacementRepositoryIdentity' -or
+            $faultStages -notcontains 'CopySnapshot' -or
+            $faultStages -notcontains 'VerifySnapshot' -or
+            $faultArchiveTree -ne $originalTree -or
+            $faultReplacementCommit.commit.tree.sha -ne $faultSourceTree -or
+            @($faultReplacementCommit.parents).Count -ne 0 -or
+            -not $faultVerification.IsSuccessful) {
+            throw 'Actual post-mutation report-failure boundary, archived content, verified Snapshot, or durable recovery evidence did not match.'
+        }
+
+        # Retry the same approved archive name. It must fail during planning,
+        # before a second archive rename or accidental overwrite.
+        $retryFault = $null
+        try {
+            Copy-GitHubRepository -SourceRepository $happySource -DestinationRepository $faultDestination -ExistingDestinationArchiveName $faultArchiveName -ExistingDestinationConfirmation $faultConfirmation -SkipSettings -NonInteractive -Force -ErrorAction Stop | Out-Null
+        }
+        catch { $retryFault = $_ }
+        if ($null -eq $retryFault -or $retryFault.FullyQualifiedErrorId -notmatch 'ExistingDestinationArchiveAlreadyExists') {
+            throw 'Report-fault retry did not reject the occupied archive before mutation.'
+        }
+
+        $faultArchiveAfterRetry = Get-RecoveryE2eRemoteRepository -Repository $faultArchive
+        $faultDestinationAfterRetry = Get-RecoveryE2eRemoteRepository -Repository $faultDestination
+        $archiveTreeAfterRetry = (Get-RecoveryE2eRemoteCommit -Repository $faultArchive).commit.tree.sha
+        $replacementCommitAfterRetry = Get-RecoveryE2eRemoteCommit -Repository $faultDestination
+        if ([string] $faultArchiveAfterRetry.id -ne $originalId -or
+            [string] $faultDestinationAfterRetry.id -ne $replacementId -or
+            $archiveTreeAfterRetry -ne $originalTree -or
+            $replacementCommitAfterRetry.sha -ne $faultReplacementCommit.sha) {
+            throw 'Report-fault retry changed archive/replacement identities, archived tree or replacement commit.'
+        }
+
+        $faultEvidence = [pscustomobject] @{
+            Subcase = 'PostMutationCompletionReportWriteFailure'
+            RelatedRequiredLiveScenarios = @('SCN-DEST-PARTIAL-01', 'SCN-RETRY-RESILIENCE-02', 'SCN-RECOVER-RECOVERY-01')
+            QualifiesFailedSnapshotTransfer = $false
+            QualifiesSettingsRestoreFailure = $false
+            FailureStage = $faultRecovery.FailureStage
+            OriginalErrorId = $faultError.FullyQualifiedErrorId
+            RecoveryErrorId = $faultRecovery.ErrorId
+            RecoveryReport = $faultRecoveryPath
+            CompletedSteps = $faultStages
+            OriginalDestinationRepositoryId = $originalId
+            ArchiveRepositoryId = [string] $faultArchiveRemote.id
+            ReplacementRepositoryId = $replacementId
+            OriginalTree = $originalTree
+            ArchiveTree = $faultArchiveTree
+            SourceTree = $faultSourceTree
+            ReplacementTree = $faultReplacementCommit.commit.tree.sha
+            ArchiveIdentityAndTreePreserved = $true
+            ReplacementContentVerified = $faultVerification.IsSuccessful
+            SingleUnrelatedSnapshotRoot = (@($faultReplacementCommit.parents).Count -eq 0)
+            NoAutomaticDeletionOrRollback = (-not $faultRecovery.Recovery.AutomaticDeletionAttempted -and -not $faultRecovery.Recovery.AutomaticRollbackAttempted)
+            RetryRejectedBeforeMutation = $true
+            RetryErrorId = $retryFault.FullyQualifiedErrorId
+            IndependentRemoteStateUnchangedAfterRetry = $true
+        }
+        $faultEvidence | ConvertTo-Json -Depth 12 |
+            Set-Content -LiteralPath (Join-Path $tempRoot 'post-mutation-report-failure-probe.json') -Encoding utf8NoBOM -ErrorAction Stop
+        $faultEvidence | Format-List
+    }
+
     # Missing-LFS planning rejection cannot prove post-archive failure/retry.
     # Those authenticated GitHub boundary checks remain Required and UNVERIFIED.
     $pendingEvidence = [pscustomobject] @{
-        Scope = 'SafeSubsetOnly'
+        Scope = if ($ReportWriteFailureProbe) { 'SafeSubsetOnlyWithReportWriteFailureProbe' } else { 'SafeSubsetOnly' }
         CompleteRequiredLiveQualification = $false
         PendingRequiredLiveScenarios = @('SCN-DEST-PARTIAL-01', 'SCN-RETRY-RESILIENCE-02', 'SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')
-        Reason = 'No reviewed safe deterministic post-mutation failure fixture; issue #173 blocks release.'
+        EvaluatedReportWriteFailureSubcase = [bool] $ReportWriteFailureProbe
+        Reason = 'No complete required-live failed Snapshot-transfer or supported settings-failure fixture has been qualified; a local post-mutation report-write error is a narrower boundary. Issue #173 remains open.'
     }
     $pendingEvidence | ConvertTo-Json -Depth 5 |
         Set-Content -LiteralPath (Join-Path $tempRoot 'required-live-evidence-pending.json') -Encoding utf8NoBOM -ErrorAction Stop

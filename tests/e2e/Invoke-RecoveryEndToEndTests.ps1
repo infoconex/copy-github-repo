@@ -439,6 +439,85 @@ try {
         ReplacementTreeEqualsSource = ($replacementCommit.commit.tree.sha -eq $sourceTree)
         OneUnrelatedRootCommit = (@($replacementCommit.parents).Count -eq 0)
     } | Format-List
+
+    # SCN-DEST-PARTIAL-01: after the exact archive rename, a deliberately missing LFS
+    # source object fails Snapshot copy; archived remote identity/tree must survive.
+    Write-Information -MessageData 'Scenario: SCN-DEST-PARTIAL-01 preserve original archive after copy failure' -InformationAction Continue
+    $partialDestination = "$Owner/$repositoryPrefix-partial-destination"
+    $partialArchiveName = "$repositoryPrefix-partial-archive"
+    $partialArchive = "$Owner/$partialArchiveName"
+    New-RecoveryE2eRepository -Name "$repositoryPrefix-partial-destination" -Confirm:$false | Out-Null
+    Publish-RecoveryE2ePlainRepository -Repository $partialDestination -LocalPath (Join-Path $tempRoot 'partial-destination') -Marker 'Original destination preserved after failure'
+    $priorIdentity = Get-RecoveryE2eRemoteRepository -Repository $partialDestination
+    $priorTree = (Get-RecoveryE2eRemoteCommit -Repository $partialDestination).commit.tree.sha
+    $partialConfirmation = "DESTINATION=$partialDestination;ARCHIVE=$partialArchive;REPLACEMENT=$partialDestination"
+    $partialReport = Join-Path $tempRoot 'existing-partial.json'
+    $createdRepositories.Add($partialArchive)
+    $partialError = $null
+    try {
+        Copy-GitHubRepository -SourceRepository $sourceRepository -DestinationRepository $partialDestination -ExistingDestinationArchiveName $partialArchiveName -ExistingDestinationConfirmation $partialConfirmation -SkipSettings -NonInteractive -Force -ReportPath $partialReport | Out-Null
+    }
+    catch { $partialError = $_ }
+    if ($null -eq $partialError) { throw 'Expected a missing-LFS failure after archival of the disposable existing destination.' }
+    $partialRecoveryPath = "$partialReport.recovery.json"
+    if (-not (Test-Path -LiteralPath $partialRecoveryPath)) { throw 'Existing-destination recovery report was not produced.' }
+    $partialRecovery = Get-Content -LiteralPath $partialRecoveryPath -Raw | ConvertFrom-Json
+    $archiveState = Get-RecoveryE2eRemoteRepository -Repository $partialArchive
+    $partialReplacement = Get-RecoveryE2eRemoteRepository -Repository $partialDestination
+    $archiveTree = (Get-RecoveryE2eRemoteCommit -Repository $partialArchive).commit.tree.sha
+    if ($partialRecovery.Status -ne 'ExistingDestinationReplacementFailed' -or
+        $partialRecovery.FailureStage -ne 'CopySnapshot' -or
+        $partialRecovery.ErrorId -notmatch 'SourceGitLfsFetchFailed' -or
+        $partialRecovery.OriginalDestinationRepositoryId -ne $priorIdentity.id -or
+        $partialRecovery.ArchiveRepositoryId -ne $priorIdentity.id -or
+        $partialRecovery.ReplacementRepositoryId -ne $partialReplacement.id -or
+        -not $partialRecovery.Recovery.ExistingDestinationPreservedAsArchive -or
+        $partialRecovery.Recovery.AutomaticDeletionAttempted -or
+        $partialRecovery.Recovery.AutomaticRollbackAttempted -or
+        $archiveState.id -ne $priorIdentity.id -or
+        $partialReplacement.id -eq $priorIdentity.id -or
+        $archiveTree -ne $priorTree) {
+        throw 'Remote identity, preserved archive tree or durable partial-failure evidence did not match.'
+    }
+    $completed = @($partialRecovery.CompletedSteps | ForEach-Object { $_.Name })
+    if (($completed -join ',') -ne 'PreserveDestinationAsArchive,VerifyArchivedDestinationIdentity,CreateReplacementRepository,VerifyReplacementRepositoryIdentity') {
+        throw 'Partial recovery completed-step timeline was not the expected archive/copy boundary.'
+    }
+    [pscustomobject] @{
+        ScenarioId = 'SCN-DEST-PARTIAL-01'
+        ExpectedFailureObserved = $true
+        FailureStage = $partialRecovery.FailureStage
+        IndependentArchiveIdentityPreserved = ($archiveState.id -eq $priorIdentity.id)
+        IndependentArchiveTreePreserved = ($archiveTree -eq $priorTree)
+        ReplacementIdentityDistinct = ($partialReplacement.id -ne $priorIdentity.id)
+        RecoveryReport = $partialRecoveryPath
+    } | Format-List
+
+    # SCN-RETRY-RESILIENCE-02: do not blindly replay an ambiguous post-archive
+    # mutation; the approved archive name already exists and must block a new plan.
+    Write-Information -MessageData 'Scenario: SCN-RETRY-RESILIENCE-02 reject retry using preserved archive' -InformationAction Continue
+    $retryError = $null
+    try {
+        Copy-GitHubRepository -SourceRepository $sourceRepository -DestinationRepository $partialDestination -ExistingDestinationArchiveName $partialArchiveName -ExistingDestinationConfirmation $partialConfirmation -SkipSettings -NonInteractive -Force | Out-Null
+    }
+    catch { $retryError = $_ }
+    if ($null -eq $retryError -or $retryError.FullyQualifiedErrorId -notmatch 'ExistingDestinationArchiveAlreadyExists') {
+        throw 'Retry after partial mutation did not reject the unchanged occupied archive.'
+    }
+    $retryArchive = Get-RecoveryE2eRemoteRepository -Repository $partialArchive
+    $retryReplacement = Get-RecoveryE2eRemoteRepository -Repository $partialDestination
+    if ($retryArchive.id -ne $archiveState.id -or
+        $retryReplacement.id -ne $partialReplacement.id -or
+        (Get-RecoveryE2eRemoteCommit -Repository $partialArchive).commit.tree.sha -ne $priorTree) {
+        throw 'Retry changed the archived original, replacement identity or preserved tree.'
+    }
+    [pscustomobject] @{
+        ScenarioId = 'SCN-RETRY-RESILIENCE-02'
+        RetryRejectedBeforeMutation = $true
+        ErrorId = $retryError.FullyQualifiedErrorId
+        IndependentArchiveIdentityUnchanged = ($retryArchive.id -eq $archiveState.id)
+        IndependentReplacementIdentityUnchanged = ($retryReplacement.id -eq $partialReplacement.id)
+    } | Format-List
 }
 finally {
     if (-not $KeepRepositories) {

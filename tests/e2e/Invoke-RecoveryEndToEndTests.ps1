@@ -577,14 +577,18 @@ try {
     # Only the *opt-in successful real-GitHub retry* can prove this scenario.
     # Without that opt-in, the earlier missing-LFS planning failure does not.
     $pendingRequiredLiveScenarios = @('SCN-DEST-PARTIAL-01', 'SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')
-    if (-not $ReportWriteFailureProbe) {
+    $verifiedRequiredLiveScenarios = @()
+    if ($ReportWriteFailureProbe) {
+        $verifiedRequiredLiveScenarios += 'SCN-RETRY-RESILIENCE-02'
+    }
+    else {
         $pendingRequiredLiveScenarios += 'SCN-RETRY-RESILIENCE-02'
     }
     $pendingEvidence = [pscustomobject] @{
         Scope = if ($ReportWriteFailureProbe) { 'SafeSubsetOnlyWithReportWriteFailureProbe' } else { 'SafeSubsetOnly' }
         CompleteRequiredLiveQualification = $false
         PendingRequiredLiveScenarios = @($pendingRequiredLiveScenarios)
-        VerifiedRequiredLiveScenarios = if ($ReportWriteFailureProbe) { @('SCN-RETRY-RESILIENCE-02') } else { @() }
+        VerifiedRequiredLiveScenarios = @($verifiedRequiredLiveScenarios)
         EvaluatedReportWriteFailureSubcase = [bool] $ReportWriteFailureProbe
         Reason = 'The opt-in report-failure probe tests fail-closed retry after real archive/replacement; failed Snapshot transfer, settings restoration failure, and broader recovery evidence remain unqualified. No full Required-live suite claim.'
     }

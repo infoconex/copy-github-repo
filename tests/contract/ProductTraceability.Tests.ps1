@@ -165,7 +165,7 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match 'RegisteredNameWithoutIdentityVerifiedAbsent'
         $source | Should -Match 'DeletionAttempted = \$false'
         $source | Should -Match 'if \(\$scopeLines\.Count -ne 1\)'
-        $source | Should -Match "\$scopes -notcontains 'repo' -or \$scopes -notcontains 'delete_repo'"
+        $source | Should -Match '\$scopes -notcontains ''repo'' -or \$scopes -notcontains ''delete_repo'''
         $source | Should -Match '(?s)if \(-not \$expectedRepositoryIds\.ContainsKey\(\$repository\).*?Assert-RecoveryE2eRepositoryAbsent -Repository \$repository.*?DeletionAttempted = \$false.*?VerifiedAbsent = \$true.*?continue'
         $source | Should -Match 'Remove-RecoveryE2eRepository -Repository \$repository -Confirm:\$false\s+Assert-RecoveryE2eRepositoryAbsent -Repository \$repository'
         $source | Should -Match 'Refusing to delete.*without a recorded immutable test-created repository ID'

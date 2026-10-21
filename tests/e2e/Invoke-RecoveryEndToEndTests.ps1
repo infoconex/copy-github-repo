@@ -462,12 +462,14 @@ try {
         # PRE-MUTATION OWNERSHIP HANDOFF: the old immutable ID can move from
         # the destination name to the archive name. Do not retain that ID
         # against the reused destination name; it may become a NEW repository.
+        # Prepare the local report fault before transferring repository-ID
+        # ownership. A local setup failure must not complicate safe cleanup.
+        $faultReportPath = Join-Path $tempRoot 'blocked-execution-report.json'
+        New-Item -ItemType Directory -Path $faultReportPath -ErrorAction Stop | Out-Null
+
         $createdRepositories.Add($faultArchive)
         $expectedRepositoryIds[$faultArchive] = $originalId
         $expectedRepositoryIds.Remove($faultDestination) | Out-Null
-
-        $faultReportPath = Join-Path $tempRoot 'blocked-execution-report.json'
-        New-Item -ItemType Directory -Path $faultReportPath -ErrorAction Stop | Out-Null
         $faultError = $null
         try {
             Copy-GitHubRepository -SourceRepository $happySource -DestinationRepository $faultDestination -ExistingDestinationArchiveName $faultArchiveName -ExistingDestinationConfirmation $faultConfirmation -SkipSettings -NonInteractive -Force -ReportPath $faultReportPath -ErrorAction Stop | Out-Null

@@ -116,8 +116,23 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match 'Refusing to overwrite existing recovery E2E evidence directory'
         $source | Should -Match 'outside the temporary fixture directory that cleanup deletes'
         $source | Should -Match 'Copy-Item -LiteralPath \$report\.FullName -Destination \$evidenceRunPath -ErrorAction Stop'
-        $source | Should -Match 'if \(\$evidenceCopySucceeded\)'
-        $source | Should -Match 'Temporary fixture/report directory retained for manual evidence recovery'
+        $source | Should -Match 'if \(\$cleanupFailures\.Count -eq 0 -and \$cleanupRecordWritten -and \$evidenceCopySucceeded\)'
+        $source | Should -Match 'Temporary fixture/report directory retained for manual cleanup or evidence recovery'
+        $source | Should -Match 'cleanup-verification\.json'
+    }
+
+    It 'fails closed when live disposable-repository cleanup cannot prove HTTP 404 absence' {
+        $harnessPath = Join-Path $repositoryRoot 'tests/e2e/Invoke-RecoveryEndToEndTests.ps1'
+        $source = Get-Content -LiteralPath $harnessPath -Raw
+
+        $source | Should -Match 'function Assert-RecoveryE2eRepositoryAbsent'
+        $source | Should -Match 'gh api --include'
+        $source | Should -Match 'if \(\$statusCodes\.Count -ne 1\)'
+        $source | Should -Match 'if \(\$statusCodes\[0\] -ne 404\)'
+        $source | Should -Match 'Remove-RecoveryE2eRepository -Repository \$repository -Confirm:\$false\s+Assert-RecoveryE2eRepositoryAbsent -Repository \$repository'
+        $source | Should -Match 'CleanupVerified = -not \$KeepRepositories -and \$cleanupFailures\.Count -eq 0'
+        $source | Should -Match 'if \(\$cleanupFailures\.Count -gt 0\)'
+        $source | Should -Match 'Recovery E2E cleanup was not independently verified'
     }
 
     It 'requires an explicit reason for deferred unsupported or constrained scenario classifications' {

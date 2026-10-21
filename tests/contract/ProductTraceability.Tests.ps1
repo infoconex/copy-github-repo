@@ -78,6 +78,36 @@ Describe 'Product scenario traceability contract' {
         }
     }
 
+    It 'ties existing-destination recovery live mappings to asserted scenario output, not just a named file' {
+        $harnessPath = 'tests/e2e/Invoke-RecoveryEndToEndTests.ps1'
+        $source = Get-Content -LiteralPath (Join-Path $repositoryRoot $harnessPath) -Raw
+
+        foreach ($scenarioId in @('SCN-DEST-HAPPY-01', 'SCN-DEST-PARTIAL-01', 'SCN-RETRY-RESILIENCE-02')) {
+            $scenario = $script:traceability.Scenarios[$scenarioId]
+            $scenario.LiveValidation | Should -Be 'Required'
+            @($scenario.LiveEvidence) | Should -Contain $harnessPath
+            $marker = "ScenarioId\s*=\s*'$scenarioId'"
+            ([regex]::Matches($source, $marker)).Count | Should -Be 1 -Because "$scenarioId must emit a scenario-specific result after verification"
+        }
+
+        $source | Should -Match 'Get-RecoveryE2eRemoteRepository'
+        $source | Should -Match 'Get-RecoveryE2eRemoteCommit'
+        $source | Should -Match 'ExistingDestinationArchiveName\s+\$happyArchiveName'
+        $source | Should -Match 'ExistingDestinationConfirmation\s+\$confirmation'
+        $source | Should -Match 'ExistingDestinationArchiveName\s+\$partialArchiveName'
+        $source | Should -Match 'ExistingDestinationConfirmation\s+\$partialConfirmation'
+        $source | Should -Match 'ArchivedOriginalIdentityPreserved'
+        $source | Should -Match 'AutomaticRollbackAttempted'
+        $source | Should -Match 'ExistingDestinationArchiveAlreadyExists'
+        $source | Should -Match 'IndependentVerificationSucceeded'
+        $source | Should -Match 'Assert-RecoveryE2eCleanupCapability'
+        $source | Should -Match 'Remove-RecoveryE2eRepository'
+
+        # No successful settings-failure live scenario is claimed. That separate
+        # Required-live fixture is still pending, not covered by these three cases.
+        $source | Should -Not -Match "ScenarioId\s*=\s*'SCN-SET-PARTIAL-01'"
+    }
+
     It 'requires an explicit reason for deferred unsupported or constrained scenario classifications' {
         foreach ($entry in $script:traceability.Scenarios.GetEnumerator()) {
             if ($entry.Value.Classification -eq 'Required') {

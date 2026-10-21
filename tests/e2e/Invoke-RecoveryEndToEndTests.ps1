@@ -213,6 +213,7 @@ function Publish-RecoveryE2ePlainRepository {
     Set-Content -LiteralPath (Join-Path $LocalPath 'README.md') -Value "# $Marker" -Encoding utf8NoBOM
     Invoke-RecoveryE2eNativeCommand -FilePath 'git' -ArgumentList @('add', 'README.md') -WorkingDirectory $LocalPath | Out-Null
     Invoke-RecoveryE2eNativeCommand -FilePath 'git' -ArgumentList @('commit', '-m', 'Prepare isolated E2E fixture') -WorkingDirectory $LocalPath | Out-Null
+    Invoke-RecoveryE2eNativeCommand -FilePath 'git' -ArgumentList @('remote', 'add', 'origin', "https://github.com/$Repository.git") -WorkingDirectory $LocalPath | Out-Null
 
     $module = Get-Module CopyGitHubRepo
     if (-not $module) { throw 'CopyGitHubRepo module is not loaded.' }

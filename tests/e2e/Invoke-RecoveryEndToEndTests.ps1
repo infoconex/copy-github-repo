@@ -186,6 +186,18 @@ function Assert-RecoveryE2eRepositoryAbsent {
     if ($statusCodes[0] -ne 404) {
         throw "Repository '$Repository' is not verified absent after cleanup (HTTP $($statusCodes[0]))."
     }
+
+    # HTTP 404 is only trustworthy here when the GitHub CLI response confirms
+    # the same fully scoped authenticated API access used for fixture creation.
+    $scopeLines = @($response | Where-Object { $_ -match '^(?i)x-oauth-scopes:\s*' })
+    if ($scopeLines.Count -ne 1) {
+        throw "Unable to prove authenticated repository visibility when checking absence of '$Repository'."
+    }
+    $scopes = ($scopeLines[0] -replace '^(?i)x-oauth-scopes:\s*', '').Split(',') |
+        ForEach-Object { $_.Trim() }
+    if ($scopes -notcontains 'repo' -or $scopes -notcontains 'delete_repo') {
+        throw "Missing authenticated repository visibility or cleanup scope when checking absence of '$Repository'."
+    }
 }
 
 function Publish-RecoveryE2eSourceRepository {
@@ -317,6 +329,19 @@ try {
     }
     catch {
         $caughtError = $_
+        Write-Warning "Initial recovery E2E migration error (before cleanup): $($caughtError.Exception.Message)"
+        try {
+            [pscustomobject] @{
+                Scenario = 'InitialMissingLfsMigration'
+                ErrorId = $caughtError.FullyQualifiedErrorId
+                Message = $caughtError.Exception.Message
+                ScriptStackTrace = $caughtError.ScriptStackTrace
+            } | ConvertTo-Json -Depth 5 |
+                Set-Content -LiteralPath (Join-Path $tempRoot 'initial-migration-failure.json') -Encoding utf8NoBOM -ErrorAction Stop
+        }
+        catch {
+            Write-Warning "Unable to persist initial migration failure diagnostic: $($_.Exception.Message)"
+        }
     }
 
     if ($null -eq $caughtError) {
@@ -509,17 +534,50 @@ try {
         IndependentReplacementIdentityUnchanged = ($retryReplacement.id -eq $partialReplacement.id)
     } | Format-List
 }
+catch {
+    # Preserve the first meaningful failure before cleanup can throw a second
+    # error. Diagnostic failures must not override the actual test error.
+    $primaryFailure = $_
+    Write-Warning "Recovery E2E primary failure before cleanup: $($primaryFailure.Exception.Message)"
+    try {
+        [pscustomobject] @{
+            ErrorId = $primaryFailure.FullyQualifiedErrorId
+            Message = $primaryFailure.Exception.Message
+            ScriptStackTrace = $primaryFailure.ScriptStackTrace
+        } | ConvertTo-Json -Depth 5 |
+            Set-Content -LiteralPath (Join-Path $tempRoot 'primary-failure.json') -Encoding utf8NoBOM -ErrorAction Stop
+    }
+    catch {
+        Write-Warning "Unable to persist primary E2E failure diagnostic: $($_.Exception.Message)"
+    }
+    throw
+}
 finally {
     $cleanupResults = [System.Collections.Generic.List[object]]::new()
     $cleanupFailures = [System.Collections.Generic.List[string]]::new()
     if (-not $KeepRepositories) {
         foreach ($repository in @($createdRepositories) | Select-Object -Unique | Sort-Object -Descending) {
             try {
+                if (-not $expectedRepositoryIds.ContainsKey($repository) -or
+                    [string]::IsNullOrWhiteSpace([string] $expectedRepositoryIds[$repository])) {
+                    # Pre-registered names may never have been created. Never
+                    # delete without an ID; require an authenticated HTTP 404.
+                    Assert-RecoveryE2eRepositoryAbsent -Repository $repository
+                    $cleanupResults.Add([pscustomobject] @{
+                            Repository = $repository
+                            ExpectedId = $null
+                            DeletionAttempted = $false
+                            VerifiedAbsent = $true
+                            Disposition = 'RegisteredNameWithoutIdentityVerifiedAbsent'
+                        })
+                    continue
+                }
                 Remove-RecoveryE2eRepository -Repository $repository -Confirm:$false
                 Assert-RecoveryE2eRepositoryAbsent -Repository $repository
                 $cleanupResults.Add([pscustomobject] @{
                         Repository = $repository
                         ExpectedId = [string] $expectedRepositoryIds[$repository]
+                        DeletionAttempted = $true
                         VerifiedAbsent = $true
                     })
             }

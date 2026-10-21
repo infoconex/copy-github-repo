@@ -168,7 +168,7 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match '\[string\] \$faultArchiveAfterRetry\.id -ne \$originalId'
         $source | Should -Match '\[string\] \$faultDestinationAfterRetry\.id -ne \$replacementId'
         $source | Should -Match '\$replacementCommitAfterRetry\.sha -ne \$faultReplacementCommit\.sha'
-        $source | Should -Match 'if \(-not \$ReportWriteFailureProbe\)'
+        $source | Should -Match '(?s)if \(\$ReportWriteFailureProbe\) \{\s*\$verifiedRequiredLiveScenarios \+= ''SCN-RETRY-RESILIENCE-02''\s*\}\s*else \{\s*\$pendingRequiredLiveScenarios \+= ''SCN-RETRY-RESILIENCE-02'''
         $source | Should -Match '\$pendingRequiredLiveScenarios \+= ''SCN-RETRY-RESILIENCE-02'''
         $source | Should -Match '\$verifiedRequiredLiveScenarios = @\(\)'
         $source | Should -Match '\$verifiedRequiredLiveScenarios \+= ''SCN-RETRY-RESILIENCE-02'''

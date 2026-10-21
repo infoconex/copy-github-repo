@@ -83,7 +83,7 @@ Manual dispatch from `main` is the only supported automated stable-publication e
 4. Reconfirm `main` still equals the qualified SHA and that no conflicting stable tag, GitHub Release, or Gallery version exists.
 5. Open **Actions -> Publish Release -> Run workflow**.
 6. Select **main**.
-7. Enter the approved stable tag, for example `v0.4.1`.
+7. Read `ModuleVersion` in `src/CopyGitHubRepo/CopyGitHubRepo.psd1` from the exact approved current `main` commit, and enter the matching stable tag in the format `vX.Y.Z` (for manifest `X.Y.Z`). Do not reuse a previously published version.
 8. Select `confirm_publish`.
 9. Start the workflow.
 10. Record the workflow run ID and captured `${{ github.sha }}` in the release evidence record.

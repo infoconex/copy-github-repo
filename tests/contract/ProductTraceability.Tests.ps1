@@ -125,6 +125,17 @@ Describe 'Product scenario traceability contract' {
         $harnessPath = Join-Path $repositoryRoot 'tests/e2e/Invoke-RecoveryEndToEndTests.ps1'
         $source = Get-Content -LiteralPath $harnessPath -Raw
 
+        $source | Should -Match '\$expectedRepositoryIds\s*=\s*@\{\}'
+        $source | Should -Match '\$createdRemote = Get-RecoveryE2eRemoteRepository -Repository \$fullName'
+        $source | Should -Match '\$expectedRepositoryIds\[\$fullName\] = \[string\] \$createdRemote\.id'
+        $source | Should -Match 'Refusing to delete.*without a recorded immutable test-created repository ID'
+        $source | Should -Match '\$liveRepository = Get-RecoveryE2eRemoteRepository -Repository \$Repository'
+        $source | Should -Match '\[string\] \$liveRepository\.id -ne \$expectedId'
+        $source | Should -Match '\$expectedRepositoryIds\[\$happyArchive\] = \[string\] \$oldIdentity\.id'
+        $source | Should -Match '\$expectedRepositoryIds\[\$happyDestination\] = \$replacementId'
+        $source | Should -Match '\$expectedRepositoryIds\[\$partialArchive\] = \[string\] \$priorIdentity\.id'
+        $source | Should -Match '\$expectedRepositoryIds\[\$partialDestination\] = \$partialReplacementId'
+        $source | Should -Match 'ExpectedRepositoryIds = \$expectedRepositoryIds'
         $source | Should -Match 'function Assert-RecoveryE2eRepositoryAbsent'
         $source | Should -Match 'gh api --include'
         $source | Should -Match 'if \(\$statusCodes\.Count -ne 1\)'

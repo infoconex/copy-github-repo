@@ -128,6 +128,20 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match 'Assert-RecoveryE2eCleanupCapability'
         $source | Should -Match 'Remove-RecoveryE2eRepository'
         $source | Should -Not -Match 'Copy-GitHubRepository -SourceRepository \$sourceRepository -DestinationRepository \$partialDestination'
+        # The optional post-mutation probe proves a real archive/replacement
+        # mutation followed by local reporting I/O failure, NOT failed copy.
+        $source | Should -Match '\[switch\] \$ReportWriteFailureProbe'
+        $source | Should -Match 'if \(\$ReportWriteFailureProbe\)'
+        $source | Should -Match 'post-mutation-report-failure-probe\.json'
+        $source | Should -Match 'WriteCompletionReport'
+        $source | Should -Match 'ExistingDestinationArchiveAlreadyExists'
+        $source | Should -Match 'QualifiesFailedSnapshotTransfer = \$false'
+        $source | Should -Match 'QualifiesSettingsRestoreFailure = \$false'
+        $source | Should -Match 'EvaluatedReportWriteFailureSubcase = \[bool\] \$ReportWriteFailureProbe'
+        $source | Should -Match '\$expectedRepositoryIds.Remove\(\$faultDestination\)'
+        $source | Should -Match '\$expectedRepositoryIds\[\$faultDestination\] = \$replacementId'
+        $source | Should -Match '\[string\] \$faultRecovery.ReplacementRepositoryId -ne \$replacementId'
+        $source | Should -Match 'IndependentRemoteStateUnchangedAfterRetry = \$true'
     }
 
     It 'preserves opt-in live recovery reports outside destructive fixture cleanup' {

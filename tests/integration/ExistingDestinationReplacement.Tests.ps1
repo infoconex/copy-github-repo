@@ -177,3 +177,30 @@ Describe 'Existing destination durable recovery report I/O boundary' {
         }
     }
 }
+
+Describe 'Local-only native Git commit failure fixture' {
+    It 'rejects a real commit-tree with invalid scoped author date without publishing a ref' {
+        InModuleScope CopyGitHubRepo {
+            $probeRoot = Join-Path ([System.IO.Path]::GetTempPath()) "cgr-commit-tree-probe-$([guid]::NewGuid().ToString('N'))"
+            New-Item -ItemType Directory -Path $probeRoot -ErrorAction Stop | Out-Null
+            try {
+                $init = Invoke-CgrNativeCommand -FilePath 'git' -ArgumentList @('init', '-b', 'main', $probeRoot)
+                $init.ExitCode | Should -Be 0
+                Set-Content -LiteralPath (Join-Path $probeRoot 'probe.txt') -Value 'No remote mutation' -Encoding utf8NoBOM
+                $add = Invoke-CgrNativeCommand -FilePath 'git' -ArgumentList @('-C', $probeRoot, 'add', 'probe.txt')
+                $add.ExitCode | Should -Be 0
+                $treeResult = Invoke-CgrNativeCommand -FilePath 'git' -ArgumentList @('-C', $probeRoot, 'write-tree')
+                $treeResult.ExitCode | Should -Be 0
+                $treeSha = [string] @($treeResult.Output)[0]
+                $result = Invoke-CgrNativeCommand -FilePath 'git' -ArgumentList @('-C', $probeRoot, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit-tree', $treeSha, '-m', 'Expected local Git failure') -Environment @{ GIT_AUTHOR_DATE = 'not-a-valid-date'; GIT_COMMITTER_DATE = 'not-a-valid-date' }
+                $result.ExitCode | Should -Not -Be 0
+                $result.ErrorText | Should -Match 'invalid date format'
+                $heads = Invoke-CgrNativeCommand -FilePath 'git' -ArgumentList @('-C', $probeRoot, 'show-ref', '--heads')
+                @($heads.Output).Count | Should -Be 0
+            }
+            finally {
+                Remove-Item -LiteralPath $probeRoot -Recurse -Force -ErrorAction Stop
+            }
+        }
+    }
+}

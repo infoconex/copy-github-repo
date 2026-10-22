@@ -122,9 +122,9 @@
             Classification = 'Required'
             AutomatedEvidence = @('tests/integration/ExistingDestinationReplacement.Tests.ps1', 'tests/integration/Recovery.Tests.ps1')
             LiveValidation = 'Required'
-            LiveEvidence = @()
-            LiveEvidenceStatus = 'PendingSafeFixture'
-            LiveReason = 'Missing LFS is rejected before archive. The guarded post-copy final-report I/O probe proves preservation after successful replacement, not a failed replacement transfer after archive; a deterministic safe authenticated failed-copy fixture and Required-live release evidence remain pending under #173.'
+            LiveEvidence = @('tests/e2e/Invoke-RecoveryEndToEndTests.ps1')
+            LiveEvidenceStatus = 'ScopedOptIn'
+            LiveReason = 'Requires -SafeSubsetOnly -LocalGitCommitFailureProbe: after authenticated preservation of the original archive and creation of the distinct replacement, native local git commit-tree fails from a process-local invalid author date. Migration-authored recovery and independent remote ID/tree/empty-branch checks must pass. This proves the post-archive CopySnapshot failure boundary, not failed remote push or settings restoration. Exact-candidate authenticated execution/cleanup evidence remains release-specific (#173/#172).'
         }
         'SCN-SAME-HAPPY-01' = @{
             Classification = 'Required'

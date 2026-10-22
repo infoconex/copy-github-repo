@@ -40,6 +40,7 @@ function Invoke-CgrExistingDestinationReplacement {
     $completedSteps = [System.Collections.Generic.List[object]]::new()
     $archive = $null
     $replacement = $null
+    $result = $null
     $failureStage = 'ValidateApprovedSourceState'
     $originalRepositoryId = Get-CgrObjectProperty -InputObject $ExistingDestinationRepository -Name 'Id'
     $originalRepositoryNodeId = Get-CgrObjectProperty -InputObject $ExistingDestinationRepository -Name 'NodeId'
@@ -180,6 +181,7 @@ function Invoke-CgrExistingDestinationReplacement {
                 -ErrorRecord $_ `
                 -CompletedSteps @($completedSteps) `
                 -ReleasePreservation $releasePreservation `
+                -SnapshotResult $(if ($Plan.ContentMode -eq 'Snapshot') { $result } else { $null }) `
                 -PreferredReportPath $ReportPath
         }
         catch {

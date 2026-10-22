@@ -762,8 +762,8 @@ try {
         }
 
         $newChildReports = if (Test-Path -LiteralPath $childRecoveryDir -PathType Container) {
-            @(Get-ChildItem -LiteralPath $childRecoveryDir -File -Filter $childReportPattern |
-            Where-Object { $_.FullName -cnotin $existingChildReports })
+            $childReportCandidates = @(Get-ChildItem -LiteralPath $childRecoveryDir -File -Filter $childReportPattern)
+            @($childReportCandidates | Where-Object { $_.FullName -cnotin $existingChildReports })
         }
         else { @() }
         if ($newChildReports.Count -ne 1) {

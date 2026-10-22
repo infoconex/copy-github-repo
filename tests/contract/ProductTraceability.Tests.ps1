@@ -60,8 +60,8 @@ Describe 'Product scenario traceability contract' {
     }
 
     It 'requires genuine live evidence or an explicitly blocked Required-live fixture' {
-        $pending = @('SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')
-        $scoped = @('SCN-DEST-PARTIAL-01', 'SCN-RETRY-RESILIENCE-02')
+        $pending = @('SCN-RECOVER-RECOVERY-01')
+        $scoped = @('SCN-DEST-PARTIAL-01', 'SCN-RETRY-RESILIENCE-02', 'SCN-SET-PARTIAL-01')
         foreach ($entry in $script:traceability.Scenarios.GetEnumerator()) {
             if ($entry.Value.LiveValidation -ne 'Required') {
                 continue
@@ -80,6 +80,10 @@ Describe 'Product scenario traceability contract' {
                 if ($entry.Key -eq 'SCN-DEST-PARTIAL-01') {
                     $entry.Value.LiveReason | Should -Match 'LocalGitCommitFailureProbe'
                     $entry.Value.LiveReason | Should -Match 'not failed remote push'
+                }
+                elseif ($entry.Key -eq 'SCN-SET-PARTIAL-01') {
+                    $entry.Value.LiveReason | Should -Match 'SettingsReadbackFailureProbe'
+                    $entry.Value.LiveReason | Should -Match 'does not simulate a rejected GitHub PATCH'
                 }
                 else {
                     $entry.Value.LiveReason | Should -Match 'ReportWriteFailureProbe'
@@ -129,13 +133,41 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match 'IndependentDestinationAbsenceVerified = \$true'
         $source | Should -Match 'Assert-RecoveryE2eRepositoryAbsent -Repository \$destinationRepository'
 
-        foreach ($id in @('SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')) {
+        foreach ($id in @('SCN-RECOVER-RECOVERY-01')) {
             $entry = $script:traceability.Scenarios[$id]
             $entry.LiveValidation | Should -Be 'Required'
             @($entry.LiveEvidence).Count | Should -Be 0
             $entry.LiveEvidenceStatus | Should -Be 'PendingSafeFixture'
             $source | Should -Not -Match ("ScenarioId\s*=\s*'{0}'" -f $id)
         }
+
+        # Settings is now E2E-capable through an explicit opt-in real
+        # GitHub readback-drift fixture. A passing source check or Pester test
+        # alone is NOT an authenticated live execution on a candidate SHA.
+        $settingsPartial = $script:traceability.Scenarios['SCN-SET-PARTIAL-01']
+        $settingsPartial.LiveValidation | Should -Be 'Required'
+        $settingsPartial.LiveEvidenceStatus | Should -Be 'ScopedOptIn'
+        @($settingsPartial.LiveEvidence) | Should -Contain $harnessPath
+        ([regex]::Matches($source, "ScenarioId\s*=\s*'SCN-SET-PARTIAL-01'")).Count | Should -Be 1
+        $source | Should -Match '\[switch\] \$SettingsReadbackFailureProbe'
+        $source | Should -Match 'if \(\$SettingsReadbackFailureProbe\)'
+        $source | Should -Match 'Invoke-RecoveryE2eScopedSettingsReadbackDrift @probeArguments'
+        $source | Should -Match 'GitHubRepositorySettingsVerificationFailed'
+        $source | Should -Match 'post-verified-settings-readback-failure-probe\.json'
+        $source | Should -Match 'QualifiesRejectedGitHubSettingsPatch = \$false'
+        $source | Should -Match 'QualifiesBroaderAmbiguousRecovery = \$false'
+        $source | Should -Match '\$expectedRepositoryIds\[\$settingsDestination\] = \$settingsReplacementId'
+        $source | Should -Match 'Assert-RecoveryE2eRepositoryAbsent -Repository \$settingsArchive'
+        $source | Should -Match 'settingsfault-primary-error\.json'
+        $source | Should -Match 'settingsfault-child-recovery\.json'
+        $source | Should -Match '\$settingsChildRecovery\.FailureStage -ne ''RestoreSupportedSettings'''
+        $source | Should -Match 'EvaluatedSettingsReadbackFailureSubcase = \[bool\] \$SettingsReadbackFailureProbe'
+        $settingsHelper = Get-Content -LiteralPath (Join-Path $repositoryRoot 'tests/support/Invoke-RecoveryE2eScopedSettingsReadbackDrift.ps1') -Raw
+        $settingsHelper | Should -Match 'Function:script:Invoke-CgrNativeCommand'
+        $settingsHelper | Should -Match 'RecoveryE2eSettingsOriginalNativeCommand'
+        $settingsHelper | Should -Match 'Scoped settings fault remote identity/private-state preflight failed'
+        $settingsHelper | Should -Match 'Real disposable settings-drift PATCH failed'
+        $settingsHelper | Should -Match 'Set-Item -Path Function:script:Invoke-CgrNativeCommand -Value \$script:RecoveryE2eSettingsOriginalNativeCommand'
 
         # The post-archive failure is a native *local* Git commit-tree failure,
         # not a forged network response, remote push failure or settings fault.

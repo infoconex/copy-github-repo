@@ -326,6 +326,34 @@ try {
     if ($evidenceRunPath) {
         New-Item -Path $evidenceRunPath -ItemType Directory -ErrorAction Stop | Out-Null
     }
+    if ($LocalGitCommitFailureProbe) {
+        # Fail closed BEFORE creating ANY remote test fixture if this host
+        # cannot reliably reproduce the exact native Git failure.
+        $dateProbePath = Join-Path $tempRoot 'date-preflight'
+        New-Item -ItemType Directory -Path $dateProbePath -ErrorAction Stop | Out-Null
+        Invoke-RecoveryE2eNativeCommand -FilePath 'git' -ArgumentList @('init', '-b', 'main') -WorkingDirectory $dateProbePath | Out-Null
+        Set-Content -LiteralPath (Join-Path $dateProbePath 'probe.txt') -Value 'Local-only Git date probe' -Encoding utf8NoBOM
+        Invoke-RecoveryE2eNativeCommand -FilePath 'git' -ArgumentList @('add', 'probe.txt') -WorkingDirectory $dateProbePath | Out-Null
+        $dateProbeTree = @(Invoke-RecoveryE2eNativeCommand -FilePath 'git' -ArgumentList @('write-tree') -WorkingDirectory $dateProbePath)[0]
+        $priorAuthor = [Environment]::GetEnvironmentVariable('GIT_AUTHOR_DATE', 'Process')
+        $priorCommitter = [Environment]::GetEnvironmentVariable('GIT_COMMITTER_DATE', 'Process')
+        $dateProbeError = $null
+        try {
+            [Environment]::SetEnvironmentVariable('GIT_AUTHOR_DATE', 'not-a-valid-date', 'Process')
+            [Environment]::SetEnvironmentVariable('GIT_COMMITTER_DATE', 'not-a-valid-date', 'Process')
+            try {
+                Invoke-RecoveryE2eNativeCommand -FilePath 'git' -ArgumentList @('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit-tree', $dateProbeTree, '-m', 'Expected native Git failure') -WorkingDirectory $dateProbePath | Out-Null
+            }
+            catch { $dateProbeError = $_ }
+        }
+        finally {
+            [Environment]::SetEnvironmentVariable('GIT_AUTHOR_DATE', $priorAuthor, 'Process')
+            [Environment]::SetEnvironmentVariable('GIT_COMMITTER_DATE', $priorCommitter, 'Process')
+        }
+        if ($null -eq $dateProbeError -or $dateProbeError.Exception.Message -notmatch 'invalid date format') {
+            throw 'The scoped Git date failure was not reproducible on this host. No GitHub fixture was created.'
+        }
+    }
     New-RecoveryE2eRepository -Name "$repositoryPrefix-source" -Confirm:$false | Out-Null
     Publish-RecoveryE2eSourceRepository -Repository $sourceRepository
     $createdRepositories.Add($destinationRepository)
@@ -619,7 +647,8 @@ try {
             [Environment]::SetEnvironmentVariable('GIT_AUTHOR_DATE', $originalAuthorDate, 'Process')
             [Environment]::SetEnvironmentVariable('GIT_COMMITTER_DATE', $originalCommitterDate, 'Process')
         }
-        if ($null -eq $copyFaultError -or $copyFaultError.FullyQualifiedErrorId -notmatch 'DestinationRepositorySnapshotCommitFailed') {
+        if ($null -eq $copyFaultError -or $copyFaultError.FullyQualifiedErrorId -notmatch 'DestinationRepositorySnapshotCommitFailed' -or
+            $copyFaultError.Exception.Message -notmatch 'invalid date format') {
             throw 'Copy-fault did not fail at local Git commit-tree; refusing scenario qualification.'
         }
         $copyFaultRecoveryPath = "$copyFaultReportPath.recovery.json"

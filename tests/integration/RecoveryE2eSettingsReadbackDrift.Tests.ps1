@@ -16,18 +16,14 @@ Describe 'Recovery E2E scoped settings readback drift' {
             param($destinationName, $archiveName)
             $script:RecoverySettingsFixtureOriginalNative = (Get-Item Function:Invoke-CgrNativeCommand).ScriptBlock
             $script:RecoverySettingsFixtureRequests = [System.Collections.Generic.List[string]]::new()
+            $script:RecoverySettingsFixtureDestination = $destinationName
+            $script:RecoverySettingsFixtureArchive = $archiveName
             $script:RecoverySettingsFixtureRepositories = @{
-                "repos/$archiveName" = @{
-                    full_name = $archiveName
+                "repos/$destinationName" = @{
+                    full_name = $destinationName
                     id = 12345
                     private = $true
                     description = 'Old destination remains preserved'
-                }
-                "repos/$destinationName" = @{
-                    full_name = $destinationName
-                    id = 67890
-                    private = $true
-                    description = $null
                 }
             }
             Set-Item -Path Function:script:Invoke-CgrNativeCommand -Value {
@@ -57,11 +53,33 @@ Describe 'Recovery E2E scoped settings readback drift' {
                 $target = $script:RecoverySettingsFixtureRepositories[$repoPath]
                 if ($arguments.Count -ge 8 -and $arguments[3] -ceq '-X' -and
                     $arguments[4] -ceq 'PATCH') {
-                    if ($arguments[6] -cne '-f' -or $arguments[7] -cnotmatch '^description=') {
-                        throw 'Fixture supports only a test-owned description PATCH.'
+                    if ($arguments.Count -ne 8 -or $arguments[6] -cne '-f') {
+                        throw 'Fixture supports only test-owned single-field PATCH.'
                     }
-                    $target.description = [string] $arguments[7].Substring('description='.Length)
-                    $script:RecoverySettingsFixtureRequests.Add("PATCH:$($target.description)")
+                    if ($arguments[7] -ceq "name=$($script:RecoverySettingsFixtureArchive.Split('/')[1])" -and
+                        $repoPath -ceq "repos/$($script:RecoverySettingsFixtureDestination)") {
+                        if ([string] $target.id -ne '12345' -or
+                            $script:RecoverySettingsFixtureRepositories.ContainsKey("repos/$($script:RecoverySettingsFixtureArchive)")) {
+                            throw 'Fixture archive rename must preserve one original immutable ID.'
+                        }
+                        $target.full_name = $script:RecoverySettingsFixtureArchive
+                        [void] $script:RecoverySettingsFixtureRepositories.Remove($repoPath)
+                        $script:RecoverySettingsFixtureRepositories["repos/$($script:RecoverySettingsFixtureArchive)"] = $target
+                        $script:RecoverySettingsFixtureRepositories[$repoPath] = @{
+                            full_name = $script:RecoverySettingsFixtureDestination
+                            id = 67890
+                            private = $true
+                            description = $null
+                        }
+                        $script:RecoverySettingsFixtureRequests.Add("RENAME:$($target.full_name)")
+                    }
+                    elseif ($arguments[7] -cmatch '^description=' -and
+                        $repoPath -ceq "repos/$($script:RecoverySettingsFixtureDestination)" -and
+                        [string] $target.id -eq '67890') {
+                        $target.description = [string] $arguments[7].Substring('description='.Length)
+                        $script:RecoverySettingsFixtureRequests.Add("PATCH:$($target.description)")
+                    }
+                    else { throw 'Fixture rejected unexpected GitHub PATCH target or field.' }
                 }
                 else { $script:RecoverySettingsFixtureRequests.Add("GET:$repoPath") }
                 [pscustomobject] @{
@@ -82,6 +100,14 @@ Describe 'Recovery E2E scoped settings readback drift' {
                 DriftDescription = $drift
                 HostName = 'github.com'
                 Action = {
+                    $archivePatch = & $module {
+                        param($name, $archiveName)
+                        Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @(
+                            'api', '--hostname', 'github.com', '-X', 'PATCH',
+                            "repos/$name", '-f', "name=$archiveName"
+                        )
+                    } $destination $archive.Split('/')[1]
+                    if ($archivePatch.ExitCode -ne 0) { throw 'Fixture archive rename failed.' }
                     $patch = & $module {
                         param($name, $description)
                         Invoke-CgrNativeCommand -FilePath 'gh' -ArgumentList @(
@@ -104,6 +130,7 @@ Describe 'Recovery E2E scoped settings readback drift' {
             }
             $result = Invoke-RecoveryE2eScopedSettingsReadbackDrift @probeArgs
             $result.OriginalError | Should -BeNullOrEmpty
+            $result.ArchiveRenameCalls | Should -Be 1
             $result.ProductionPatchCalls | Should -Be 1
             $result.AuthenticatedDriftWrites | Should -Be 1
             $result.ReplacementRepositoryId | Should -Be '67890'
@@ -111,6 +138,8 @@ Describe 'Recovery E2E scoped settings readback drift' {
             $result.Output[0].ProductionPatchExitCode | Should -Be 0
             $result.Output[0].ActualDescription | Should -BeExactly $drift
             $requests = & $module { @($script:RecoverySettingsFixtureRequests) }
+            @($requests | Where-Object { $_ -like 'RENAME:*' }).Count | Should -Be 1
+            @($requests | Where-Object { $_ -ceq "RENAME:$archive" }).Count | Should -Be 1
             @($requests | Where-Object { $_ -like 'PATCH:*' }).Count | Should -Be 2
             @($requests | Where-Object { $_ -ceq "PATCH:$approved" }).Count | Should -Be 1
             @($requests | Where-Object { $_ -ceq "PATCH:$drift" }).Count | Should -Be 1
@@ -122,6 +151,8 @@ Describe 'Recovery E2E scoped settings readback drift' {
                 if ($script:RecoverySettingsFixtureOriginalNative) {
                     Set-Item -Path Function:script:Invoke-CgrNativeCommand -Value $script:RecoverySettingsFixtureOriginalNative
                 }
+                Remove-Variable -Name RecoverySettingsFixtureDestination -Scope Script -ErrorAction SilentlyContinue
+                Remove-Variable -Name RecoverySettingsFixtureArchive -Scope Script -ErrorAction SilentlyContinue
                 Remove-Variable -Name RecoverySettingsFixtureOriginalNative -Scope Script -ErrorAction SilentlyContinue
                 Remove-Variable -Name RecoverySettingsFixtureRequests -Scope Script -ErrorAction SilentlyContinue
                 Remove-Variable -Name RecoverySettingsFixtureRepositories -Scope Script -ErrorAction SilentlyContinue

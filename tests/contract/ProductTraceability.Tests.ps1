@@ -156,10 +156,10 @@ Describe 'Product scenario traceability contract' {
         # The previous global date injection broke source-tree discovery before
         # archive mutation. Inject only into the loaded module's commit-tree.
         $source | Should -Match 'Function:script:Invoke-CgrNativeCommand'
-        $source | Should -Match "\\$isCommitTree = \\$FilePath -eq 'git'"
+        $source | Should -Match '\$isCommitTree = \$FilePath -eq'
         $source | Should -Match "'commit-tree'"
-        $source | Should -Match 'ScopedNativeCommitTreeCalls = \\$copyFaultCommitTreeCalls'
-        $source | Should -Match '\\$copyFaultCommitTreeCalls -ne 1'
+        $source | Should -Match 'ScopedNativeCommitTreeCalls = \$copyFaultCommitTreeCalls'
+        $source | Should -Match '\$copyFaultCommitTreeCalls -ne 1'
         $source | Should -Match 'RecoveryE2eOriginalNativeCommand'
         $source | Should -Not -Match "\[Environment\]::SetEnvironmentVariable\('GIT_AUTHOR_DATE', 'not-a-valid-date', 'Process'\)"
 

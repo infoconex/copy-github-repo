@@ -699,13 +699,16 @@ try {
             OriginalErrorId = $settingsErrorId
             OriginalMessage = if ($settingsError) { $settingsError.Exception.Message } else { $null }
             OriginalStack = if ($settingsError) { $settingsError.ScriptStackTrace } else { $null }
+            ArchiveRenameCalls = $settingsProbe.ArchiveRenameCalls
+            ArchiveRenameCalls = $settingsProbe.ArchiveRenameCalls
             ProductionPatchCalls = $settingsProbe.ProductionPatchCalls
             AuthenticatedDriftWrites = $settingsProbe.AuthenticatedDriftWrites
             InterceptedReplacementRepositoryId = $settingsProbe.ReplacementRepositoryId
         } | ConvertTo-Json -Depth 5 |
             Set-Content -LiteralPath (Join-Path $tempRoot 'settingsfault-primary-error.json') -Encoding utf8NoBOM -ErrorAction Stop
 
-        if ($settingsProbe.ProductionPatchCalls -ne 1 -or $settingsProbe.AuthenticatedDriftWrites -ne 1 -or
+        if ($settingsProbe.ArchiveRenameCalls -ne 1 -or
+            $settingsProbe.ProductionPatchCalls -ne 1 -or $settingsProbe.AuthenticatedDriftWrites -ne 1 -or
             $null -eq $settingsError -or $settingsErrorId -notmatch 'GitHubRepositorySettingsVerificationFailed') {
             # Unexpected pre-rename errors cannot retain old archive ownership.
             # Reassign the original only after verified archive absence and

@@ -161,7 +161,7 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match 'ScopedNativeCommitTreeCalls = \$copyFaultCommitTreeCalls'
         $source | Should -Match '\$copyFaultCommitTreeCalls -ne 1'
         $source | Should -Match 'RecoveryE2eOriginalNativeCommand'
-        $source | Should -Match "\$scopedEnvironment\['GIT_AUTHOR_DATE'\] = 'not-a-valid-date'"
+        $source | Should -Match '\$scopedEnvironment\[''GIT_AUTHOR_DATE''\] = ''not-a-valid-date'''
 
         # A failed run must preserve the real primary error rather than
         # substituting the harness's expected-error assertion.

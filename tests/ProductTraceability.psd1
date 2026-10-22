@@ -124,7 +124,7 @@
             LiveValidation = 'Required'
             LiveEvidence = @()
             LiveEvidenceStatus = 'PendingSafeFixture'
-            LiveReason = 'The former missing-LFS source fails immutable planning before archive; no safe authenticated deterministic post-archive failure fixture has been reviewed. Required-live release evidence is missing; issue #173.'
+            LiveReason = 'Missing LFS is rejected before archive. The guarded post-copy final-report I/O probe proves preservation after successful replacement, not a failed replacement transfer after archive; a deterministic safe authenticated failed-copy fixture and Required-live release evidence remain pending under #173.'
         }
         'SCN-SAME-HAPPY-01' = @{
             Classification = 'Required'
@@ -232,7 +232,7 @@
             LiveValidation = 'Required'
             LiveEvidence = @()
             LiveEvidenceStatus = 'PendingSafeFixture'
-            LiveReason = 'The missing-LFS source fails before mutation and cannot prove durable post-mutation recovery. No safe authenticated post-mutation fault fixture has been reviewed; issue #173.'
+            LiveReason = 'The missing-LFS source fails before mutation. An authenticated post-copy final-report I/O fault has verified narrow migration-authored provenance and archive/replacement identities (#175), but not failed Snapshot transfer, settings failure, or full planned-versus-actual partial recovery. Broader Required-live evidence remains pending under #173/#168/#172.'
         }
         'SCN-API-RESILIENCE-01' = @{
             Classification = 'Required'

@@ -72,8 +72,8 @@ function Invoke-RecoveryE2eScopedSettingsReadbackDrift {
                 $expectedPath = "repos/$($fault.Destination)"
                 $expectedArchiveName = $fault.Archive.Split('/')[1]
                 $isArchiveRename = $argsList.Count -eq 8 -and
-                    $argsList[5] -ceq $expectedPath -and $argsList[6] -ceq '-f' -and
-                    $argsList[7] -ceq "name=$expectedArchiveName"
+                $argsList[5] -ceq $expectedPath -and $argsList[6] -ceq '-f' -and
+                $argsList[7] -ceq "name=$expectedArchiveName"
                 if ($isArchiveRename) {
                     # The legitimate archive-first rename is a separate PATCH
                     # to the same original name. Never inject settings drift

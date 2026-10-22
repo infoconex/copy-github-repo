@@ -165,6 +165,10 @@ Describe 'Product scenario traceability contract' {
         $settingsHelper = Get-Content -LiteralPath (Join-Path $repositoryRoot 'tests/support/Invoke-RecoveryE2eScopedSettingsReadbackDrift.ps1') -Raw
         $settingsHelper | Should -Match 'Function:script:Invoke-CgrNativeCommand'
         $settingsHelper | Should -Match 'RecoveryE2eSettingsOriginalNativeCommand'
+        $settingsHelper | Should -Match '\$isArchiveRename = '
+        $settingsHelper | Should -Match 'name=\$expectedArchiveName'
+        $settingsHelper | Should -Match '\$fault\.RenameCalls\+\+'
+        $source | Should -Match '\$settingsProbe\.ArchiveRenameCalls -ne 1'
         $settingsHelper | Should -Match 'Scoped settings fault remote identity/private-state preflight failed'
         $settingsHelper | Should -Match 'Real disposable settings-drift PATCH failed'
         $settingsHelper | Should -Match 'Set-Item -Path Function:script:Invoke-CgrNativeCommand -Value \$script:RecoveryE2eSettingsOriginalNativeCommand'

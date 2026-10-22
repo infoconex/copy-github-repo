@@ -632,20 +632,60 @@ try {
         $expectedRepositoryIds[$copyFaultArchive] = $copyFaultOriginalId
         $expectedRepositoryIds.Remove($copyFaultDestination) | Out-Null
         $copyFaultReportPath = Join-Path $tempRoot 'copyfault-execution-report.json'
-        $originalAuthorDate = [Environment]::GetEnvironmentVariable('GIT_AUTHOR_DATE', 'Process')
-        $originalCommitterDate = [Environment]::GetEnvironmentVariable('GIT_COMMITTER_DATE', 'Process')
+        # Intercept only the Snapshot commit-tree command inside the loaded
+        # test module. Source-state discovery, source clone, GitHub API and
+        # archive operations continue through the unmodified native executor.
+        # Never change the process-wide Git date environment.
         $copyFaultError = $null
+        $copyFaultCommitTreeCalls = 0
+        $module = Get-Module CopyGitHubRepo -ErrorAction Stop
+        if (-not $module) { throw 'Copy-fault probe requires the loaded CopyGitHubRepo module.' }
         try {
-            [Environment]::SetEnvironmentVariable('GIT_AUTHOR_DATE', 'not-a-valid-date', 'Process')
-            [Environment]::SetEnvironmentVariable('GIT_COMMITTER_DATE', 'not-a-valid-date', 'Process')
+            & $module {
+                $script:RecoveryE2eOriginalNativeCommand = (Get-Item Function:Invoke-CgrNativeCommand -ErrorAction Stop).ScriptBlock
+                $script:RecoveryE2eCommitTreeCalls = 0
+                Set-Item -Path Function:script:Invoke-CgrNativeCommand -Value {
+                    [CmdletBinding()]
+                    param(
+                        [Parameter(Mandatory)][string] $FilePath,
+                        [string[]] $ArgumentList = @(),
+                        [string[]] $PrefixArgumentList = @(),
+                        [hashtable] $Environment = @{},
+                        [TimeSpan] $Timeout = [System.Threading.Timeout]::InfiniteTimeSpan,
+                        [System.Threading.CancellationToken] $CancellationToken = [System.Threading.CancellationToken]::None
+                    )
+                    $isCommitTree = $FilePath -eq 'git' -and @($ArgumentList) -contains 'commit-tree'
+                    if ($isCommitTree) {
+                        $script:RecoveryE2eCommitTreeCalls++
+                        if ($script:RecoveryE2eCommitTreeCalls -ne 1) {
+                            throw 'Copy-fault probe encountered more than one native Git commit-tree invocation.'
+                        }
+                        $nativeArgs = @{} + $PSBoundParameters
+                        $scopedEnvironment = @{} + $Environment
+                        $scopedEnvironment['GIT_AUTHOR_DATE'] = 'not-a-valid-date'
+                        $scopedEnvironment['GIT_COMMITTER_DATE'] = 'not-a-valid-date'
+                        $nativeArgs['Environment'] = $scopedEnvironment
+                        return & $script:RecoveryE2eOriginalNativeCommand @nativeArgs
+                    }
+                    return & $script:RecoveryE2eOriginalNativeCommand @PSBoundParameters
+                }
+            }
             try {
                 Copy-GitHubRepository -SourceRepository $happySource -DestinationRepository $copyFaultDestination -ExistingDestinationArchiveName $copyFaultArchiveName -ExistingDestinationConfirmation $copyFaultConfirmation -SkipSettings -NonInteractive -Force -ReportPath $copyFaultReportPath -ErrorAction Stop | Out-Null
             }
             catch { $copyFaultError = $_ }
         }
         finally {
-            [Environment]::SetEnvironmentVariable('GIT_AUTHOR_DATE', $originalAuthorDate, 'Process')
-            [Environment]::SetEnvironmentVariable('GIT_COMMITTER_DATE', $originalCommitterDate, 'Process')
+            $copyFaultCommitTreeCalls = & $module {
+                try { $script:RecoveryE2eCommitTreeCalls }
+                finally {
+                    if ($script:RecoveryE2eOriginalNativeCommand) {
+                        Set-Item -Path Function:script:Invoke-CgrNativeCommand -Value $script:RecoveryE2eOriginalNativeCommand
+                    }
+                    Remove-Variable -Name RecoveryE2eOriginalNativeCommand -Scope Script -ErrorAction SilentlyContinue
+                    Remove-Variable -Name RecoveryE2eCommitTreeCalls -Scope Script -ErrorAction SilentlyContinue
+                }
+            }
         }
         # Always persist the ORIGINAL migration exception before asserting the
         # expected native Git error. The previous generic assertion hid an
@@ -663,6 +703,7 @@ try {
                 OriginalDestinationRepositoryId = $copyFaultOriginalId
                 IntendedArchive = $copyFaultArchive
                 FaultEnvironmentRestored = $true
+                ScopedNativeCommitTreeCalls = $copyFaultCommitTreeCalls
             } | ConvertTo-Json -Depth 6 |
                 Set-Content -LiteralPath (Join-Path $tempRoot 'copyfault-primary-migration-error.json') -Encoding utf8NoBOM -ErrorAction Stop
         }
@@ -670,7 +711,7 @@ try {
             Write-Warning "Unable to preserve the primary copy-fault diagnostic: $($_.Exception.Message)"
         }
 
-        if ($null -eq $copyFaultError -or $copyFaultErrorId -notmatch 'DestinationRepositorySnapshotCommitFailed' -or
+        if ($copyFaultCommitTreeCalls -ne 1 -or $null -eq $copyFaultError -or $copyFaultErrorId -notmatch 'DestinationRepositorySnapshotCommitFailed' -or
             $copyFaultErrorMessage -notmatch 'invalid date format') {
             Write-Warning "Copy-fault occurred outside expected native Git commit-tree boundary. Original error: $copyFaultErrorId; message: $copyFaultErrorMessage"
 

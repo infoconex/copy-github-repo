@@ -647,9 +647,61 @@ try {
             [Environment]::SetEnvironmentVariable('GIT_AUTHOR_DATE', $originalAuthorDate, 'Process')
             [Environment]::SetEnvironmentVariable('GIT_COMMITTER_DATE', $originalCommitterDate, 'Process')
         }
-        if ($null -eq $copyFaultError -or $copyFaultError.FullyQualifiedErrorId -notmatch 'DestinationRepositorySnapshotCommitFailed' -or
-            $copyFaultError.Exception.Message -notmatch 'invalid date format') {
-            throw 'Copy-fault did not fail at local Git commit-tree; refusing scenario qualification.'
+        # Always persist the ORIGINAL migration exception before asserting the
+        # expected native Git error. The previous generic assertion hid an
+        # unexpected pre-mutation failure and complicated cleanup diagnosis.
+        $copyFaultErrorId = if ($copyFaultError) { [string] $copyFaultError.FullyQualifiedErrorId } else { $null }
+        $copyFaultErrorMessage = if ($copyFaultError) { [string] $copyFaultError.Exception.Message } else { $null }
+        try {
+            [pscustomobject] @{
+                Scenario = 'PostArchiveNativeGitCommitFailureAttempt'
+                OriginalErrorId = $copyFaultErrorId
+                OriginalMessage = $copyFaultErrorMessage
+                OriginalScriptStackTrace = if ($copyFaultError) { [string] $copyFaultError.ScriptStackTrace } else { $null }
+                ExpectedErrorId = 'DestinationRepositorySnapshotCommitFailed'
+                OriginalDestinationRepository = $copyFaultDestination
+                OriginalDestinationRepositoryId = $copyFaultOriginalId
+                IntendedArchive = $copyFaultArchive
+                FaultEnvironmentRestored = $true
+            } | ConvertTo-Json -Depth 6 |
+                Set-Content -LiteralPath (Join-Path $tempRoot 'copyfault-primary-migration-error.json') -Encoding utf8NoBOM -ErrorAction Stop
+        }
+        catch {
+            Write-Warning "Unable to preserve the primary copy-fault diagnostic: $($_.Exception.Message)"
+        }
+
+        if ($null -eq $copyFaultError -or $copyFaultErrorId -notmatch 'DestinationRepositorySnapshotCommitFailed' -or
+            $copyFaultErrorMessage -notmatch 'invalid date format') {
+            Write-Warning "Copy-fault occurred outside expected native Git commit-tree boundary. Original error: $copyFaultErrorId; message: $copyFaultErrorMessage"
+
+            # The old ID has been provisionally assigned to the archive name.
+            # Restore its ownership to the ORIGINAL destination name only if
+            # authenticated GitHub readback proves the archive never appeared
+            # AND the original private, test-owned repository and tree remain
+            # byte-identical. Otherwise leave IDs unbound and fail closed.
+            try {
+                Assert-RecoveryE2eRepositoryAbsent -Repository $copyFaultArchive
+                $originalNameReadback = Get-RecoveryE2eRemoteRepository -Repository $copyFaultDestination
+                $originalTreeReadback = (Get-RecoveryE2eRemoteCommit -Repository $copyFaultDestination).commit.tree.sha
+                if ([string] $originalNameReadback.id -eq $copyFaultOriginalId -and
+                    [string] $originalNameReadback.full_name -ceq $copyFaultDestination -and
+                    $originalNameReadback.private -eq $true -and
+                    [string] $originalNameReadback.default_branch -eq 'main' -and
+                    $originalTreeReadback -eq $copyFaultOriginalTree) {
+                    $expectedRepositoryIds.Remove($copyFaultArchive) | Out-Null
+                    $expectedRepositoryIds[$copyFaultDestination] = $copyFaultOriginalId
+                    Write-Warning 'No archive mutation observed; verified old identity/tree restored to original name for existing guarded fixture cleanup.'
+                }
+                else {
+                    Write-Warning 'Copy-fault repository state differs from original fixture; no automatic ID reassignment or unverified deletion.'
+                }
+            }
+            catch {
+                Write-Warning "Unable to prove exact pre-mutation remote state for safe cleanup: $($_.Exception.Message)"
+            }
+
+            if ($copyFaultError) { throw $copyFaultError }
+            throw 'Copy-fault migration unexpectedly completed. Refusing scenario qualification or unverified cleanup.'
         }
         $copyFaultRecoveryPath = "$copyFaultReportPath.recovery.json"
         if (-not (Test-Path -LiteralPath $copyFaultRecoveryPath -PathType Leaf)) {

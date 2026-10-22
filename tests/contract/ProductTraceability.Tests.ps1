@@ -153,6 +153,22 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match 'GIT_COMMITTER_DATE'
         $source | Should -Match 'DestinationRepositorySnapshotCommitFailed'
         $source | Should -Match 'post-archive-git-commit-failure-probe\.json'
+        # A failed run must preserve the real primary error rather than
+        # substituting the harness's expected-error assertion.
+        $source | Should -Match 'copyfault-primary-migration-error\.json'
+        $source | Should -Match 'OriginalErrorId = \$copyFaultErrorId'
+        $source | Should -Match 'OriginalMessage = \$copyFaultErrorMessage'
+        $source | Should -Match 'if \(\$copyFaultError\) \{ throw \$copyFaultError \}'
+        # Automatic cleanup may reclaim the original disposable destination
+        # ONLY after independently proving the intended archive absent and
+        # the exact old ID, private full name and original tree unchanged.
+        $source | Should -Match 'Assert-RecoveryE2eRepositoryAbsent -Repository \$copyFaultArchive'
+        $source | Should -Match '\$originalNameReadback\.id -eq \$copyFaultOriginalId'
+        $source | Should -Match '\$originalNameReadback\.full_name -ceq \$copyFaultDestination'
+        $source | Should -Match '\$originalNameReadback\.private -eq \$true'
+        $source | Should -Match '\$originalTreeReadback -eq \$copyFaultOriginalTree'
+        $source | Should -Match '\$expectedRepositoryIds\.Remove\(\$copyFaultArchive\)'
+        $source | Should -Match '\$expectedRepositoryIds\[\$copyFaultDestination\] = \$copyFaultOriginalId'
         $source | Should -Match '\$copyFaultRecovery\.FailureStage -ne ''CopySnapshot'''
         $source | Should -Match '\$copyFaultBranchCount\.Trim\(\) -ne ''0'''
         $source | Should -Match '\$copyFaultRecovery\.Provenance\.PlannedSourceState\.CommitSha'

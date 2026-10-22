@@ -700,7 +700,6 @@ try {
             OriginalMessage = if ($settingsError) { $settingsError.Exception.Message } else { $null }
             OriginalStack = if ($settingsError) { $settingsError.ScriptStackTrace } else { $null }
             ArchiveRenameCalls = $settingsProbe.ArchiveRenameCalls
-            ArchiveRenameCalls = $settingsProbe.ArchiveRenameCalls
             ProductionPatchCalls = $settingsProbe.ProductionPatchCalls
             AuthenticatedDriftWrites = $settingsProbe.AuthenticatedDriftWrites
             InterceptedReplacementRepositoryId = $settingsProbe.ReplacementRepositoryId
@@ -803,6 +802,7 @@ try {
             ReplacementTree = $settingsCopied.commit.tree.sha
             ApprovedDescription = $approvedDescription
             ActualDescription = [string] $settingsReplacement.description
+            ArchiveRenameCalls = $settingsProbe.ArchiveRenameCalls
             ProductionPatchCalls = $settingsProbe.ProductionPatchCalls
             AuthenticatedDriftWrites = $settingsProbe.AuthenticatedDriftWrites
             ChildCompletedSteps = $settingsChildSteps

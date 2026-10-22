@@ -14,7 +14,11 @@ param(
 
     # Optional fault after real verified GitHub archive/replace, before final
     # success report. Not a simulation of failed Snapshot transfer or settings.
-    [switch] $ReportWriteFailureProbe
+    [switch] $ReportWriteFailureProbe,
+
+    # Explicit opt-in: native Git commit-tree failure after real archive
+    # and replacement creation, with NO simulated GitHub API outage.
+    [switch] $LocalGitCommitFailureProbe
 )
 
 Set-StrictMode -Version Latest
@@ -574,10 +578,124 @@ try {
         $faultEvidence | Format-List
     }
 
+    if ($LocalGitCommitFailureProbe) {
+        # Test-only process environment, restored even on error. Native git
+        # commit-tree rejects this date before any remote Snapshot push.
+        Write-Information -MessageData 'Subcase: SCN-DEST-PARTIAL-01 native Git commit failure after archive' -InformationAction Continue
+        $copyFaultDestination = "$Owner/$repositoryPrefix-copyfault-destination"
+        $copyFaultArchiveName = "$repositoryPrefix-copyfault-archive"
+        $copyFaultArchive = "$Owner/$copyFaultArchiveName"
+        New-RecoveryE2eRepository -Name "$repositoryPrefix-copyfault-destination" -Confirm:$false | Out-Null
+        Publish-RecoveryE2ePlainRepository -Repository $copyFaultDestination -LocalPath (Join-Path $tempRoot 'copyfault-original') -Marker 'Prior destination to preserve after copy failure'
+        $copyFaultOriginal = Get-RecoveryE2eRemoteRepository -Repository $copyFaultDestination
+        $copyFaultOriginalId = [string] $copyFaultOriginal.id
+        $copyFaultOriginalTree = (Get-RecoveryE2eRemoteCommit -Repository $copyFaultDestination).commit.tree.sha
+        $copyFaultSource = Get-RecoveryE2eRemoteCommit -Repository $happySource
+        if ($copyFaultOriginalTree -eq $copyFaultSource.commit.tree.sha) { throw 'Copy-fault fixture trees unexpectedly match.' }
+        $copyFaultConfirmation = "DESTINATION=$copyFaultDestination;ARCHIVE=$copyFaultArchive;REPLACEMENT=$copyFaultDestination"
+        $copyFaultPlan = Copy-GitHubRepository -SourceRepository $happySource -DestinationRepository $copyFaultDestination -ExistingDestinationArchiveName $copyFaultArchiveName -SkipSettings -PlanOnly
+        if ($copyFaultPlan.Mode -ne 'ExistingDestinationReplacement' -or $copyFaultPlan.ArchiveRepository -ne $copyFaultArchive) {
+            throw 'Copy-fault reviewed plan did not match the exact disposable archive/replacement names.'
+        }
+
+        # Old immutable ID must move to archive; destination ownership is
+        # re-established only after independent GitHub readback of the NEW ID.
+        $createdRepositories.Add($copyFaultArchive)
+        $expectedRepositoryIds[$copyFaultArchive] = $copyFaultOriginalId
+        $expectedRepositoryIds.Remove($copyFaultDestination) | Out-Null
+        $copyFaultReportPath = Join-Path $tempRoot 'copyfault-execution-report.json'
+        $originalAuthorDate = [Environment]::GetEnvironmentVariable('GIT_AUTHOR_DATE', 'Process')
+        $originalCommitterDate = [Environment]::GetEnvironmentVariable('GIT_COMMITTER_DATE', 'Process')
+        $copyFaultError = $null
+        try {
+            [Environment]::SetEnvironmentVariable('GIT_AUTHOR_DATE', 'not-a-valid-date', 'Process')
+            [Environment]::SetEnvironmentVariable('GIT_COMMITTER_DATE', 'not-a-valid-date', 'Process')
+            try {
+                Copy-GitHubRepository -SourceRepository $happySource -DestinationRepository $copyFaultDestination -ExistingDestinationArchiveName $copyFaultArchiveName -ExistingDestinationConfirmation $copyFaultConfirmation -SkipSettings -NonInteractive -Force -ReportPath $copyFaultReportPath -ErrorAction Stop | Out-Null
+            }
+            catch { $copyFaultError = $_ }
+        }
+        finally {
+            [Environment]::SetEnvironmentVariable('GIT_AUTHOR_DATE', $originalAuthorDate, 'Process')
+            [Environment]::SetEnvironmentVariable('GIT_COMMITTER_DATE', $originalCommitterDate, 'Process')
+        }
+        if ($null -eq $copyFaultError -or $copyFaultError.FullyQualifiedErrorId -notmatch 'DestinationRepositorySnapshotCommitFailed') {
+            throw 'Copy-fault did not fail at local Git commit-tree; refusing scenario qualification.'
+        }
+        $copyFaultRecoveryPath = "$copyFaultReportPath.recovery.json"
+        if (-not (Test-Path -LiteralPath $copyFaultRecoveryPath -PathType Leaf)) {
+            throw 'Copy-fault migration did not create the required sibling recovery JSON.'
+        }
+        $copyFaultRecovery = Get-Content -LiteralPath $copyFaultRecoveryPath -Raw -ErrorAction Stop | ConvertFrom-Json
+        $copyFaultArchiveRemote = Get-RecoveryE2eRemoteRepository -Repository $copyFaultArchive
+        $copyFaultReplacementRemote = Get-RecoveryE2eRemoteRepository -Repository $copyFaultDestination
+        $copyFaultReplacementId = [string] $copyFaultReplacementRemote.id
+        if ([string] $copyFaultArchiveRemote.id -ne $copyFaultOriginalId -or
+            $copyFaultReplacementId -eq $copyFaultOriginalId -or
+            [string] $copyFaultRecovery.OriginalDestinationRepositoryId -ne $copyFaultOriginalId -or
+            [string] $copyFaultRecovery.ArchiveRepositoryId -ne $copyFaultOriginalId -or
+            [string] $copyFaultRecovery.ReplacementRepositoryId -ne $copyFaultReplacementId) {
+            throw 'Copy-fault migration/remote immutable identity mismatch; cleanup fails closed.'
+        }
+        $expectedRepositoryIds[$copyFaultDestination] = $copyFaultReplacementId
+        $copyFaultArchiveTree = (Get-RecoveryE2eRemoteCommit -Repository $copyFaultArchive).commit.tree.sha
+        $copyFaultBranchCount = @(Invoke-RecoveryE2eNativeCommand -FilePath 'gh' -ArgumentList @('api', "repos/$copyFaultDestination/branches", '--jq', 'length')) -join ''
+        $copyFaultStages = @($copyFaultRecovery.CompletedSteps | ForEach-Object { $_.Name })
+        if ($copyFaultArchiveTree -ne $copyFaultOriginalTree -or $copyFaultBranchCount.Trim() -ne '0' -or
+            $copyFaultRecovery.FailureStage -ne 'CopySnapshot' -or
+            $copyFaultRecovery.Status -ne 'ExistingDestinationReplacementFailed' -or
+            $copyFaultRecovery.ErrorId -ne $copyFaultError.FullyQualifiedErrorId -or
+            ($copyFaultStages -join ',') -ne 'PreserveDestinationAsArchive,VerifyArchivedDestinationIdentity,CreateReplacementRepository,VerifyReplacementRepositoryIdentity' -or
+            $copyFaultRecovery.Recovery.AutomaticDeletionAttempted -or
+            $copyFaultRecovery.Recovery.AutomaticRollbackAttempted -or
+            $copyFaultRecovery.Provenance.PlannedSourceState.CommitSha -ne $copyFaultSource.sha -or
+            $copyFaultRecovery.Provenance.PlannedSourceState.TreeSha -ne $copyFaultSource.commit.tree.sha -or
+            $null -ne $copyFaultRecovery.Provenance.CopiedSourceCommitSha -or
+            $null -ne $copyFaultRecovery.Provenance.CopiedSourceTreeSha -or
+            $null -ne $copyFaultRecovery.Provenance.DestinationRootCommitSha -or
+            $null -ne $copyFaultRecovery.Provenance.DestinationTreeSha -or
+            $null -ne $copyFaultRecovery.Provenance.VerificationSuccessful -or
+            $copyFaultRecovery.Provenance.ActualEvidenceAvailable -ne $false) {
+            throw 'Copy-fault remote archive/empty replacement or migration-authored unknown-state recovery did not verify.'
+        }
+        $copyFaultEvidence = [pscustomobject] @{
+            ScenarioId = 'SCN-DEST-PARTIAL-01'
+            Subcase = 'LocalGitCommitFailureAfterArchive'
+            FailureStage = $copyFaultRecovery.FailureStage
+            OriginalErrorId = $copyFaultError.FullyQualifiedErrorId
+            RecoveryErrorId = $copyFaultRecovery.ErrorId
+            RecoveryReport = $copyFaultRecoveryPath
+            OriginalDestinationRepositoryId = $copyFaultOriginalId
+            ArchiveRepositoryId = [string] $copyFaultArchiveRemote.id
+            ReplacementRepositoryId = $copyFaultReplacementId
+            OriginalTree = $copyFaultOriginalTree
+            ArchiveTree = $copyFaultArchiveTree
+            ApprovedSourceCommit = $copyFaultSource.sha
+            ApprovedSourceTree = $copyFaultSource.commit.tree.sha
+            ReplacementBranchCount = [int] $copyFaultBranchCount.Trim()
+            CompletedSteps = $copyFaultStages
+            NoAutomaticDeletionOrRollback = $true
+            ActualCopyEvidenceUnknown = $true
+            QualifiesLocalGitCommitFailure = $true
+            QualifiesFailedRemotePush = $false
+            QualifiesSettingsRestoreFailure = $false
+            QualifiesBroaderRecovery = $false
+        }
+        $copyFaultEvidence | ConvertTo-Json -Depth 12 |
+            Set-Content -LiteralPath (Join-Path $tempRoot 'post-archive-git-commit-failure-probe.json') -Encoding utf8NoBOM -ErrorAction Stop
+        $copyFaultEvidence | Format-List
+    }
+
     # Only the *opt-in successful real-GitHub retry* can prove this scenario.
     # Without that opt-in, the earlier missing-LFS planning failure does not.
-    $pendingRequiredLiveScenarios = @('SCN-DEST-PARTIAL-01', 'SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')
+    $pendingRequiredLiveScenarios = @('SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')
     $verifiedRequiredLiveScenarios = @()
+    if ($LocalGitCommitFailureProbe) {
+        $verifiedRequiredLiveScenarios += 'SCN-DEST-PARTIAL-01'
+    }
+    else {
+        $pendingRequiredLiveScenarios += 'SCN-DEST-PARTIAL-01'
+    }
     if ($ReportWriteFailureProbe) {
         $verifiedRequiredLiveScenarios += 'SCN-RETRY-RESILIENCE-02'
     }
@@ -585,12 +703,13 @@ try {
         $pendingRequiredLiveScenarios += 'SCN-RETRY-RESILIENCE-02'
     }
     $pendingEvidence = [pscustomobject] @{
-        Scope = if ($ReportWriteFailureProbe) { 'SafeSubsetOnlyWithReportWriteFailureProbe' } else { 'SafeSubsetOnly' }
+        Scope = if ($ReportWriteFailureProbe -and $LocalGitCommitFailureProbe) { 'SafeSubsetOnlyWithBothOptInProbes' } elseif ($ReportWriteFailureProbe) { 'SafeSubsetOnlyWithReportWriteFailureProbe' } elseif ($LocalGitCommitFailureProbe) { 'SafeSubsetOnlyWithLocalGitCommitFailureProbe' } else { 'SafeSubsetOnly' }
         CompleteRequiredLiveQualification = $false
         PendingRequiredLiveScenarios = @($pendingRequiredLiveScenarios)
         VerifiedRequiredLiveScenarios = @($verifiedRequiredLiveScenarios)
         EvaluatedReportWriteFailureSubcase = [bool] $ReportWriteFailureProbe
-        Reason = 'The opt-in report-failure probe tests fail-closed retry after real archive/replacement; failed Snapshot transfer, settings restoration failure, and broader recovery evidence remain unqualified. No full Required-live suite claim.'
+        EvaluatedLocalGitCommitFailureSubcase = [bool] $LocalGitCommitFailureProbe
+        Reason = 'The opt-in local Git commit-tree fault proves a failed post-archive Snapshot-copy stage before any remote push, not failed remote transfer. The separate report-write fault proves scoped retry; settings failure and broader recovery remain unqualified. No full Required-live suite claim.'
     }
     $pendingEvidence | ConvertTo-Json -Depth 5 |
         Set-Content -LiteralPath (Join-Path $tempRoot 'required-live-evidence-pending.json') -Encoding utf8NoBOM -ErrorAction Stop

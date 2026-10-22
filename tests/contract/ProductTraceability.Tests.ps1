@@ -153,6 +153,16 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match 'GIT_COMMITTER_DATE'
         $source | Should -Match 'DestinationRepositorySnapshotCommitFailed'
         $source | Should -Match 'post-archive-git-commit-failure-probe\.json'
+        # The previous global date injection broke source-tree discovery before
+        # archive mutation. Inject only into the loaded module's commit-tree.
+        $source | Should -Match 'Function:script:Invoke-CgrNativeCommand'
+        $source | Should -Match "\\$isCommitTree = \\$FilePath -eq 'git'"
+        $source | Should -Match "'commit-tree'"
+        $source | Should -Match 'ScopedNativeCommitTreeCalls = \\$copyFaultCommitTreeCalls'
+        $source | Should -Match '\\$copyFaultCommitTreeCalls -ne 1'
+        $source | Should -Match 'RecoveryE2eOriginalNativeCommand'
+        $source | Should -Not -Match "\[Environment\]::SetEnvironmentVariable\('GIT_AUTHOR_DATE', 'not-a-valid-date', 'Process'\)"
+
         # A failed run must preserve the real primary error rather than
         # substituting the harness's expected-error assertion.
         $source | Should -Match 'copyfault-primary-migration-error\.json'

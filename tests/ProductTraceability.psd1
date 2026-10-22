@@ -158,11 +158,11 @@
         }
         'SCN-SET-PARTIAL-01' = @{
             Classification = 'Required'
-            AutomatedEvidence = @('tests/integration/RepositorySettings.Tests.ps1', 'tests/integration/Recovery.Tests.ps1')
+            AutomatedEvidence = @('tests/integration/RepositorySettings.Tests.ps1', 'tests/integration/Recovery.Tests.ps1', 'tests/integration/RecoveryE2eSettingsReadbackDrift.Tests.ps1')
             LiveValidation = 'Required'
-            LiveEvidence = @()
-            LiveEvidenceStatus = 'PendingSafeFixture'
-            LiveReason = 'No safe deterministic authenticated post-content settings-restoration failure fixture has been reviewed. Required-live release evidence is missing; issue #173.'
+            LiveEvidence = @('tests/e2e/Invoke-RecoveryEndToEndTests.ps1')
+            LiveEvidenceStatus = 'ScopedOptIn'
+            LiveReason = 'The SettingsReadbackFailureProbe is a gated opt-in real GitHub description readback mismatch only on a disposable private replacement after verified Snapshot; it does not simulate a rejected GitHub PATCH or a service outage. No authenticated result on the new exact head is yet recorded; do not treat E2E-capable as live-validated.'
         }
         'SCN-PROT-HAPPY-01' = @{
             Classification = 'Required'

@@ -320,6 +320,16 @@ When an archive exists and a later stage failed:
 
 The tool does not automatically rename an archive back or automatically reclaim a custom domain because doing so after partial replacement can overwrite useful evidence, collide with a new replacement, or make uncertain ownership worse.
 
+### Plain Snapshot evidence in an existing-destination recovery report
+
+For an existing-destination archive-and-replace failure using plain `Snapshot`, the sibling `*.recovery.json` report retains immutable original/archive/replacement identities, completed steps, and a `Provenance` object. `Provenance.PlannedSourceState` and its source repository ID, default branch, commit and tree identify the **approved source state from the reviewed plan**, not proof that those bytes reached the replacement.
+
+When the child Snapshot operation returns observed copy and verification results, `CopiedSourceCommitSha`, `CopiedSourceTreeSha`, `DestinationRootCommitSha`, and `DestinationTreeSha` describe the known results; the destination tree is recorded only when the child verification returned a destination-tree readback. `VerificationSuccessful` distinguishes a verified result from an observed-but-unverified one. `ActualEvidenceAvailable` and `EvidenceLimitation` explain what was and was not available when the report was written.
+
+If the copy failed **without returning a child result**, actual copied/destination commit and tree fields and verification outcome remain null. This is **unknown, not evidence of an empty repository or a successful migration**: GitHub mutation may already have occurred. Inspect both archive and replacement identities and GitHub state independently before any manual action or fresh plan. A report-write failure can also prevent the recovery JSON itself from being saved; preserve console diagnostics and do not assume no mutation occurred.
+
+This report describes Git content; it does not imply that GitHub-side settings, Pages, custom-domain ownership, protection or GitHub Releases were preserved unless their separate evidence shows so.
+
 ## Evidence to preserve
 
 When troubleshooting a post-mutation failure, preserve as much of the following as is available:

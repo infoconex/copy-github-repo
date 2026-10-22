@@ -40,6 +40,10 @@ Describe 'Recovery E2E scoped settings readback drift' {
                     [TimeSpan] $Timeout = [System.Threading.Timeout]::InfiniteTimeSpan,
                     [System.Threading.CancellationToken] $CancellationToken = [System.Threading.CancellationToken]::None
                 )
+                if (@($PrefixArgumentList).Count -ne 0 -or $Environment.Count -ne 0 -or
+                    $Timeout -ne [System.Threading.Timeout]::InfiniteTimeSpan -or $CancellationToken.CanBeCanceled) {
+                    throw 'Fixture rejects unexpected native options.'
+                }
                 $arguments = @($ArgumentList)
                 if ($FilePath -cne 'gh' -or $arguments.Count -lt 4 -or
                     $arguments[0] -cne 'api' -or $arguments[1] -cne '--hostname' -or

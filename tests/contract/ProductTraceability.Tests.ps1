@@ -154,14 +154,21 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match 'DestinationRepositorySnapshotCommitFailed'
         $source | Should -Match 'post-archive-git-commit-failure-probe\.json'
         # The previous global date injection broke source-tree discovery before
-        # archive mutation. Inject only into the loaded module's commit-tree.
-        $source | Should -Match 'Function:script:Invoke-CgrNativeCommand'
-        $source | Should -Match '\$isCommitTree = \$FilePath -eq'
-        $source | Should -Match "'commit-tree'"
-        $source | Should -Match 'ScopedNativeCommitTreeCalls = \$copyFaultCommitTreeCalls'
+        # archive mutation. Invoke the scoped helper rather than altering the
+        # entire Copy-GitHubRepository process environment.
+        $source | Should -Match 'Invoke-RecoveryE2eScopedGitCommitTreeFault -Action'
+        $source | Should -Match '\$copyFaultCommitTreeCalls = \$copyFaultProbe\.ScopedNativeCommitTreeCalls'
         $source | Should -Match '\$copyFaultCommitTreeCalls -ne 1'
-        $source | Should -Match 'RecoveryE2eOriginalNativeCommand'
-        $source | Should -Match '\$scopedEnvironment\[''GIT_AUTHOR_DATE''\] = ''not-a-valid-date'''
+        $supportPath = Join-Path $repositoryRoot 'tests/support/Invoke-RecoveryE2eScopedGitCommitTreeFault.ps1'
+        $support = Get-Content -LiteralPath $supportPath -Raw
+        $source | Should -Match 'tests/support/Invoke-RecoveryE2eScopedGitCommitTreeFault\.ps1'
+        $support | Should -Match 'Function:script:Invoke-CgrNativeCommand'
+        $support | Should -Match '\$isCommitTree = \$FilePath -eq'
+        $support | Should -Match "'commit-tree'"
+        $support | Should -Match 'RecoveryE2eOriginalNativeCommand'
+        $support | Should -Match '\$scopedEnvironment\[''GIT_AUTHOR_DATE''\] = ''not-a-valid-date'''
+        $support | Should -Match '\$scopedEnvironment\[''GIT_COMMITTER_DATE''\] = ''not-a-valid-date'''
+        $support | Should -Match 'Set-Item -Path Function:script:Invoke-CgrNativeCommand -Value \$script:RecoveryE2eOriginalNativeCommand'
 
         # A failed run must preserve the real primary error rather than
         # substituting the harness's expected-error assertion.

@@ -28,6 +28,7 @@ function Invoke-RecoveryE2eScopedSettingsReadbackDrift {
 
     $capturedError = $null
     $actionOutput = @()
+    $renameCalls = 0
     $patchCalls = 0
     $driftWrites = 0
     $replacementId = $null
@@ -42,6 +43,7 @@ function Invoke-RecoveryE2eScopedSettingsReadbackDrift {
                 Approved = $approved
                 Drift = $drift
                 HostName = $hostName
+                RenameCalls = 0
                 PatchCalls = 0
                 DriftWrites = 0
                 ReplacementId = $null
@@ -67,9 +69,24 @@ function Invoke-RecoveryE2eScopedSettingsReadbackDrift {
                 }
 
                 $fault = $script:RecoveryE2eSettingsFault
-                if ($argsList[5] -cne "repos/$($fault.Destination)" -or
+                $expectedPath = "repos/$($fault.Destination)"
+                $expectedArchiveName = $fault.Archive.Split('/')[1]
+                $isArchiveRename = $argsList.Count -eq 8 -and
+                    $argsList[5] -ceq $expectedPath -and $argsList[6] -ceq '-f' -and
+                    $argsList[7] -ceq "name=$expectedArchiveName"
+                if ($isArchiveRename) {
+                    # The legitimate archive-first rename is a separate PATCH
+                    # to the same original name. Never inject settings drift
+                    # into this preservation boundary, and allow it only once.
+                    if ($fault.RenameCalls -ne 0 -or $fault.PatchCalls -ne 0) {
+                        throw 'Scoped settings fault rejected a repeated or reordered archive rename.'
+                    }
+                    $fault.RenameCalls++
+                    return & $script:RecoveryE2eSettingsOriginalNativeCommand @PSBoundParameters
+                }
+                if ($argsList[5] -cne $expectedPath -or
                     $argsList -cnotcontains "description=$($fault.Approved)" -or
-                    $fault.PatchCalls -ne 0) {
+                    $fault.RenameCalls -ne 1 -or $fault.PatchCalls -ne 0) {
                     throw 'Scoped settings fault rejected an unexpected PATCH target, payload or repeated call.'
                 }
                 $fault.PatchCalls++
@@ -134,6 +151,7 @@ function Invoke-RecoveryE2eScopedSettingsReadbackDrift {
         $finalState = & $module {
             try {
                 [pscustomobject] @{
+                    RenameCalls = $script:RecoveryE2eSettingsFault.RenameCalls
                     PatchCalls = $script:RecoveryE2eSettingsFault.PatchCalls
                     DriftWrites = $script:RecoveryE2eSettingsFault.DriftWrites
                     ReplacementId = $script:RecoveryE2eSettingsFault.ReplacementId
@@ -148,6 +166,7 @@ function Invoke-RecoveryE2eScopedSettingsReadbackDrift {
             }
         }
         if ($finalState) {
+            $renameCalls = $finalState.RenameCalls
             $patchCalls = $finalState.PatchCalls
             $driftWrites = $finalState.DriftWrites
             $replacementId = $finalState.ReplacementId
@@ -156,6 +175,7 @@ function Invoke-RecoveryE2eScopedSettingsReadbackDrift {
 
     [pscustomobject] @{
         OriginalError = $capturedError
+        ArchiveRenameCalls = $renameCalls
         ProductionPatchCalls = $patchCalls
         AuthenticatedDriftWrites = $driftWrites
         ReplacementRepositoryId = $replacementId

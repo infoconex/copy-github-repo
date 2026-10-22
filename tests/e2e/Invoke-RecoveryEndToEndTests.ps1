@@ -26,6 +26,7 @@ $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $modulePath = Join-Path $repositoryRoot 'src/CopyGitHubRepo/CopyGitHubRepo.psd1'
+. (Join-Path $repositoryRoot 'tests/support/Invoke-RecoveryE2eScopedGitCommitTreeFault.ps1')
 $runId = [guid]::NewGuid().ToString('N').Substring(0, 10)
 $repositoryPrefix = "copy-github-repo-recovery-e2e-$runId"
 $createdRepositories = [System.Collections.Generic.List[string]]::new()
@@ -632,63 +633,13 @@ try {
         $expectedRepositoryIds[$copyFaultArchive] = $copyFaultOriginalId
         $expectedRepositoryIds.Remove($copyFaultDestination) | Out-Null
         $copyFaultReportPath = Join-Path $tempRoot 'copyfault-execution-report.json'
-        # Intercept only the Snapshot commit-tree command inside the loaded
-        # test module. Source-state discovery, source clone, GitHub API and
-        # archive operations continue through the unmodified native executor.
-        # Never change the process-wide Git date environment.
-        $copyFaultError = $null
-        $copyFaultCommitTreeCalls = 0
-        $module = Get-Module CopyGitHubRepo -ErrorAction Stop
-        if (-not $module) { throw 'Copy-fault probe requires the loaded CopyGitHubRepo module.' }
-        try {
-            & $module {
-                $script:RecoveryE2eOriginalNativeCommand = (Get-Item Function:Invoke-CgrNativeCommand -ErrorAction Stop).ScriptBlock
-                $script:RecoveryE2eCommitTreeCalls = 0
-                Set-Item -Path Function:script:Invoke-CgrNativeCommand -Value {
-                    [CmdletBinding()]
-                    param(
-                        [Parameter(Mandatory)][string] $FilePath,
-                        [string[]] $ArgumentList = @(),
-                        [string[]] $PrefixArgumentList = @(),
-                        [hashtable] $Environment = @{},
-                        [TimeSpan] $Timeout = [System.Threading.Timeout]::InfiniteTimeSpan,
-                        [System.Threading.CancellationToken] $CancellationToken = [System.Threading.CancellationToken]::None
-                    )
-                    $isCommitTree = $FilePath -eq 'git' -and @($ArgumentList) -contains 'commit-tree'
-                    if ($isCommitTree) {
-                        $script:RecoveryE2eCommitTreeCalls++
-                        if ($script:RecoveryE2eCommitTreeCalls -ne 1) {
-                            throw 'Copy-fault probe encountered more than one native Git commit-tree invocation.'
-                        }
-                        $nativeArgs = @{}
-                        foreach ($name in $PSBoundParameters.Keys) { $nativeArgs[$name] = $PSBoundParameters[$name] }
-                        $scopedEnvironment = @{}
-                        foreach ($name in $Environment.Keys) { $scopedEnvironment[$name] = $Environment[$name] }
-                        $scopedEnvironment['GIT_AUTHOR_DATE'] = 'not-a-valid-date'
-                        $scopedEnvironment['GIT_COMMITTER_DATE'] = 'not-a-valid-date'
-                        $nativeArgs['Environment'] = $scopedEnvironment
-                        return & $script:RecoveryE2eOriginalNativeCommand @nativeArgs
-                    }
-                    return & $script:RecoveryE2eOriginalNativeCommand @PSBoundParameters
-                }
-            }
-            try {
-                Copy-GitHubRepository -SourceRepository $happySource -DestinationRepository $copyFaultDestination -ExistingDestinationArchiveName $copyFaultArchiveName -ExistingDestinationConfirmation $copyFaultConfirmation -SkipSettings -NonInteractive -Force -ReportPath $copyFaultReportPath -ErrorAction Stop | Out-Null
-            }
-            catch { $copyFaultError = $_ }
+        # The shared test-only helper scopes the invalid date to a single
+        # native Git commit-tree child process and restores module state.
+        $copyFaultProbe = Invoke-RecoveryE2eScopedGitCommitTreeFault -Action {
+            Copy-GitHubRepository -SourceRepository $happySource -DestinationRepository $copyFaultDestination -ExistingDestinationArchiveName $copyFaultArchiveName -ExistingDestinationConfirmation $copyFaultConfirmation -SkipSettings -NonInteractive -Force -ReportPath $copyFaultReportPath -ErrorAction Stop | Out-Null
         }
-        finally {
-            $copyFaultCommitTreeCalls = & $module {
-                try { $script:RecoveryE2eCommitTreeCalls }
-                finally {
-                    if ($script:RecoveryE2eOriginalNativeCommand) {
-                        Set-Item -Path Function:script:Invoke-CgrNativeCommand -Value $script:RecoveryE2eOriginalNativeCommand
-                    }
-                    Remove-Variable -Name RecoveryE2eOriginalNativeCommand -Scope Script -ErrorAction SilentlyContinue
-                    Remove-Variable -Name RecoveryE2eCommitTreeCalls -Scope Script -ErrorAction SilentlyContinue
-                }
-            }
-        }
+        $copyFaultError = $copyFaultProbe.OriginalError
+        $copyFaultCommitTreeCalls = $copyFaultProbe.ScopedNativeCommitTreeCalls
         # Always persist the ORIGINAL migration exception before asserting the
         # expected native Git error. The previous generic assertion hid an
         # unexpected pre-mutation failure and complicated cleanup diagnosis.

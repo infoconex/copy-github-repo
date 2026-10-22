@@ -18,7 +18,10 @@ param(
 
     # Explicit opt-in: native Git commit-tree failure after real archive
     # and replacement creation, with NO simulated GitHub API outage.
-    [switch] $LocalGitCommitFailureProbe
+    [switch] $LocalGitCommitFailureProbe,
+
+    # Only run-owned private GitHub setting readback drift, never a simulated outage.
+    [switch] $SettingsReadbackFailureProbe
 )
 
 Set-StrictMode -Version Latest
@@ -27,6 +30,7 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $modulePath = Join-Path $repositoryRoot 'src/CopyGitHubRepo/CopyGitHubRepo.psd1'
 . (Join-Path $repositoryRoot 'tests/support/Invoke-RecoveryE2eScopedGitCommitTreeFault.ps1')
+. (Join-Path $repositoryRoot 'tests/support/Invoke-RecoveryE2eScopedSettingsReadbackDrift.ps1')
 $runId = [guid]::NewGuid().ToString('N').Substring(0, 10)
 $repositoryPrefix = "copy-github-repo-recovery-e2e-$runId"
 $createdRepositories = [System.Collections.Generic.List[string]]::new()
@@ -314,6 +318,10 @@ if ($Owner -notmatch '^[A-Za-z0-9_.-]+$') {
 }
 if (-not $SafeSubsetOnly) {
     throw 'Full recovery E2E cannot be claimed without a safely reviewed post-mutation fault fixture. Use -SafeSubsetOnly to run only the missing-LFS planning guard and existing-destination happy path; Required-live partial, retry, settings and recovery scenarios remain UNVERIFIED.'
+}
+
+if ($SettingsReadbackFailureProbe -and $Owner -cne 'infoconex') {
+    throw 'Scoped settings drift is limited to the reviewed infoconex test owner.'
 }
 
 Assert-RecoveryE2eCleanupCapability
@@ -607,6 +615,205 @@ try {
         $faultEvidence | Format-List
     }
 
+    if ($SettingsReadbackFailureProbe) {
+        # Induce an actual server-side supported setting mismatch only on a
+        # private, registered test replacement after genuine content verification.
+        Write-Information -MessageData 'Subcase: SCN-SET-PARTIAL-01 real GitHub settings readback drift after verified Snapshot' -InformationAction Continue
+        $settingsDestination = "$Owner/$repositoryPrefix-settingsfault-destination"
+        $settingsArchiveName = "$repositoryPrefix-settingsfault-archive"
+        $settingsArchive = "$Owner/$settingsArchiveName"
+        $approvedDescription = "CGR approved settings source $runId"
+        $driftDescription = "CGR injected settings mismatch $runId"
+        $settingsSource = Get-RecoveryE2eRemoteRepository -Repository $happySource
+        if ([string] $settingsSource.id -cne [string] $expectedRepositoryIds[$happySource] -or
+            $settingsSource.full_name -cne $happySource -or $settingsSource.private -ne $true) {
+            throw 'Settings-fault source identity or private ownership mismatch.'
+        }
+        Invoke-RecoveryE2eNativeCommand -FilePath 'gh' -ArgumentList @(
+            'api', '--hostname', 'github.com', '-X', 'PATCH', "repos/$happySource",
+            '-f', "description=$approvedDescription"
+        ) | Out-Null
+        $settingsSourceAfter = Get-RecoveryE2eRemoteRepository -Repository $happySource
+        if ([string] $settingsSourceAfter.id -cne [string] $settingsSource.id -or
+            [string] $settingsSourceAfter.description -cne $approvedDescription) {
+            throw 'Approved source setting was not independently verified before planning.'
+        }
+
+        New-RecoveryE2eRepository -Name "$repositoryPrefix-settingsfault-destination" -Confirm:$false | Out-Null
+        Publish-RecoveryE2ePlainRepository -Repository $settingsDestination -LocalPath (Join-Path $tempRoot 'settingsfault-original') -Marker 'Old test destination for settings failure'
+        $settingsOld = Get-RecoveryE2eRemoteRepository -Repository $settingsDestination
+        $settingsOldId = [string] $settingsOld.id
+        $settingsOldTree = (Get-RecoveryE2eRemoteCommit -Repository $settingsDestination).commit.tree.sha
+        $settingsSourceCommit = Get-RecoveryE2eRemoteCommit -Repository $happySource
+        if ($settingsSourceCommit.commit.tree.sha -eq $settingsOldTree) { throw 'Settings fixture trees unexpectedly match.' }
+        $settingsConfirmation = "DESTINATION=$settingsDestination;ARCHIVE=$settingsArchive;REPLACEMENT=$settingsDestination"
+        $settingsPlanArgs = @{
+            SourceRepository = $happySource
+            DestinationRepository = $settingsDestination
+            ExistingDestinationArchiveName = $settingsArchiveName
+            PlanOnly = $true
+        }
+        $settingsPlan = Copy-GitHubRepository @settingsPlanArgs
+        if ($settingsPlan.Mode -ne 'ExistingDestinationReplacement' -or
+            $settingsPlan.ArchiveRepository -cne $settingsArchive -or $settingsPlan.SkipSettings) {
+            throw 'Settings-fault plan does not approve exact archive names and settings restore.'
+        }
+
+        # Ownership moves from original destination to archive only after the
+        # planned rename; the replacement name must receive a new verified ID.
+        $createdRepositories.Add($settingsArchive)
+        $expectedRepositoryIds[$settingsArchive] = $settingsOldId
+        $expectedRepositoryIds.Remove($settingsDestination) | Out-Null
+        $settingsReportPath = Join-Path $tempRoot 'settingsfault-execution-report.json'
+        $childRecoveryDir = Join-Path (Get-Location) '.copy-github-repo/recovery'
+        $childReportPattern = "$Owner-$repositoryPrefix-settingsfault-destination-*.json"
+        $existingChildReports = if (Test-Path -LiteralPath $childRecoveryDir -PathType Container) {
+            @(Get-ChildItem -LiteralPath $childRecoveryDir -File -Filter $childReportPattern | ForEach-Object { $_.FullName })
+        }
+        else { @() }
+        $probeArguments = @{
+            ExpectedDestination = $settingsDestination
+            ExpectedArchive = $settingsArchive
+            ExpectedOriginalRepositoryId = $settingsOldId
+            ApprovedDescription = $approvedDescription
+            DriftDescription = $driftDescription
+            HostName = 'github.com'
+            Action = {
+                $copyArguments = @{
+                    SourceRepository = $happySource
+                    DestinationRepository = $settingsDestination
+                    ExistingDestinationArchiveName = $settingsArchiveName
+                    ExistingDestinationConfirmation = $settingsConfirmation
+                    NonInteractive = $true
+                    Force = $true
+                    ReportPath = $settingsReportPath
+                    ErrorAction = 'Stop'
+                }
+                Copy-GitHubRepository @copyArguments | Out-Null
+            }
+        }
+        $settingsProbe = Invoke-RecoveryE2eScopedSettingsReadbackDrift @probeArguments
+        $settingsError = $settingsProbe.OriginalError
+        $settingsErrorId = if ($settingsError) { [string] $settingsError.FullyQualifiedErrorId } else { $null }
+        [pscustomobject] @{
+            OriginalErrorId = $settingsErrorId
+            OriginalMessage = if ($settingsError) { $settingsError.Exception.Message } else { $null }
+            OriginalStack = if ($settingsError) { $settingsError.ScriptStackTrace } else { $null }
+            ProductionPatchCalls = $settingsProbe.ProductionPatchCalls
+            AuthenticatedDriftWrites = $settingsProbe.AuthenticatedDriftWrites
+            InterceptedReplacementRepositoryId = $settingsProbe.ReplacementRepositoryId
+        } | ConvertTo-Json -Depth 5 |
+            Set-Content -LiteralPath (Join-Path $tempRoot 'settingsfault-primary-error.json') -Encoding utf8NoBOM -ErrorAction Stop
+
+        if ($settingsProbe.ProductionPatchCalls -ne 1 -or $settingsProbe.AuthenticatedDriftWrites -ne 1 -or
+            $null -eq $settingsError -or $settingsErrorId -notmatch 'GitHubRepositorySettingsVerificationFailed') {
+            # Unexpected pre-rename errors cannot retain old archive ownership.
+            # Reassign the original only after verified archive absence and
+            # same original immutable ID, private name and unchanged tree.
+            try {
+                Assert-RecoveryE2eRepositoryAbsent -Repository $settingsArchive
+                $originalStillHere = Get-RecoveryE2eRemoteRepository -Repository $settingsDestination
+                $originalTreeStillHere = (Get-RecoveryE2eRemoteCommit -Repository $settingsDestination).commit.tree.sha
+                if ([string] $originalStillHere.id -eq $settingsOldId -and
+                    $originalStillHere.full_name -ceq $settingsDestination -and
+                    $originalStillHere.private -eq $true -and
+                    $originalTreeStillHere -eq $settingsOldTree) {
+                    $expectedRepositoryIds.Remove($settingsArchive) | Out-Null
+                    $expectedRepositoryIds[$settingsDestination] = $settingsOldId
+                }
+            }
+            catch { Write-Warning "Settings-fault cleanup ownership remains uncertain: $($_.Exception.Message)" }
+            if ($settingsError) { throw $settingsError }
+            throw "Settings fault was not detected at approved real GitHub readback boundary: '$settingsErrorId'."
+        }
+
+        $settingsRecoveryPath = "$settingsReportPath.recovery.json"
+        if (-not (Test-Path -LiteralPath $settingsRecoveryPath -PathType Leaf)) {
+            throw 'Settings-fault existing-destination recovery report is missing.'
+        }
+        $settingsRecovery = Get-Content -LiteralPath $settingsRecoveryPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        $settingsArchived = Get-RecoveryE2eRemoteRepository -Repository $settingsArchive
+        $settingsReplacement = Get-RecoveryE2eRemoteRepository -Repository $settingsDestination
+        $settingsReplacementId = [string] $settingsReplacement.id
+        if ([string] $settingsArchived.id -ne $settingsOldId -or
+            $settingsArchived.full_name -cne $settingsArchive -or $settingsArchived.private -ne $true -or
+            $settingsReplacement.full_name -cne $settingsDestination -or $settingsReplacement.private -ne $true -or
+            $settingsReplacementId -eq $settingsOldId -or
+            $settingsReplacementId -cne [string] $settingsProbe.ReplacementRepositoryId -or
+            [string] $settingsRecovery.OriginalDestinationRepositoryId -ne $settingsOldId -or
+            [string] $settingsRecovery.ArchiveRepositoryId -ne $settingsOldId -or
+            [string] $settingsRecovery.ReplacementRepositoryId -ne $settingsReplacementId) {
+            throw 'Settings-fault remote/recovery immutable IDs disagree; deletion remains unbound.'
+        }
+        $expectedRepositoryIds[$settingsDestination] = $settingsReplacementId
+        $settingsArchiveTree = (Get-RecoveryE2eRemoteCommit -Repository $settingsArchive).commit.tree.sha
+        $settingsCopied = Get-RecoveryE2eRemoteCommit -Repository $settingsDestination
+        $settingsCopyVerified = Test-GitHubRepositoryMigration -SourceRepository $happySource -DestinationRepository $settingsDestination -ContentMode Snapshot
+        if ($settingsArchiveTree -ne $settingsOldTree -or
+            $settingsCopied.commit.tree.sha -ne $settingsSourceCommit.commit.tree.sha -or
+            @($settingsCopied.parents).Count -ne 0 -or -not $settingsCopyVerified.IsSuccessful -or
+            [string] $settingsReplacement.description -cne $driftDescription -or
+            [string] $settingsArchived.description -cne [string] $settingsOld.description -or
+            $settingsRecovery.Status -ne 'ExistingDestinationReplacementFailed' -or
+            $settingsRecovery.ErrorId -ne $settingsErrorId -or
+            $settingsRecovery.Recovery.AutomaticDeletionAttempted -or
+            $settingsRecovery.Recovery.AutomaticRollbackAttempted) {
+            throw 'Settings-fault archived content, independently copied Snapshot or durable recovery mismatched.'
+        }
+
+        $newChildReports = if (Test-Path -LiteralPath $childRecoveryDir -PathType Container) {
+            @(Get-ChildItem -LiteralPath $childRecoveryDir -File -Filter $childReportPattern |
+                Where-Object { $_.FullName -cnotin $existingChildReports })
+        }
+        else { @() }
+        if ($newChildReports.Count -ne 1) {
+            throw "Expected exactly one migration-authored child recovery report; found $($newChildReports.Count)."
+        }
+        $settingsChildRecovery = Get-Content -LiteralPath $newChildReports[0].FullName -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        Copy-Item -LiteralPath $newChildReports[0].FullName -Destination (Join-Path $tempRoot 'settingsfault-child-recovery.json') -ErrorAction Stop
+        $settingsChildSteps = @($settingsChildRecovery.CompletedSteps | ForEach-Object { $_.Name })
+        if ($settingsChildRecovery.FailureStage -ne 'RestoreSupportedSettings' -or
+            $settingsChildRecovery.ErrorId -ne $settingsErrorId -or
+            $settingsChildSteps -notcontains 'CopySnapshot' -or
+            $settingsChildSteps -notcontains 'VerifySnapshot' -or
+            $settingsChildRecovery.Provenance.PlannedSourceState.CommitSha -ne $settingsSourceCommit.sha -or
+            $settingsChildRecovery.Provenance.PlannedSourceState.TreeSha -ne $settingsSourceCommit.commit.tree.sha -or
+            $settingsRecovery.FailureStage -ne 'CopySnapshot') {
+            throw 'Settings child/parent migration recovery stage or approved source evidence mismatched.'
+        }
+        $settingsEvidence = [pscustomobject] @{
+            ScenarioId = 'SCN-SET-PARTIAL-01'
+            Subcase = 'RealPostSnapshotSettingsReadbackMismatch'
+            ParentFailureStage = $settingsRecovery.FailureStage
+            ChildFailureStage = $settingsChildRecovery.FailureStage
+            OriginalErrorId = $settingsErrorId
+            ParentRecoveryErrorId = $settingsRecovery.ErrorId
+            ChildRecoveryErrorId = $settingsChildRecovery.ErrorId
+            ParentRecoveryReport = $settingsRecoveryPath
+            ChildRecoveryReport = $newChildReports[0].FullName
+            OriginalDestinationRepositoryId = $settingsOldId
+            ArchiveRepositoryId = [string] $settingsArchived.id
+            ReplacementRepositoryId = $settingsReplacementId
+            OriginalTree = $settingsOldTree
+            ArchiveTree = $settingsArchiveTree
+            SourceTree = $settingsSourceCommit.commit.tree.sha
+            ReplacementTree = $settingsCopied.commit.tree.sha
+            ApprovedDescription = $approvedDescription
+            ActualDescription = [string] $settingsReplacement.description
+            ProductionPatchCalls = $settingsProbe.ProductionPatchCalls
+            AuthenticatedDriftWrites = $settingsProbe.AuthenticatedDriftWrites
+            ChildCompletedSteps = $settingsChildSteps
+            IndependentCopyVerificationSucceeded = $settingsCopyVerified.IsSuccessful
+            NoAutomaticDeletionOrRollback = $true
+            QualifiesActualSettingsReadbackFailure = $true
+            QualifiesRejectedGitHubSettingsPatch = $false
+            QualifiesBroaderAmbiguousRecovery = $false
+        }
+        $settingsEvidence | ConvertTo-Json -Depth 12 |
+            Set-Content -LiteralPath (Join-Path $tempRoot 'post-verified-settings-readback-failure-probe.json') -Encoding utf8NoBOM -ErrorAction Stop
+        $settingsEvidence | Format-List
+    }
+
     if ($LocalGitCommitFailureProbe) {
         # Test-only process environment, restored even on error. Native git
         # commit-tree rejects this date before any remote Snapshot push.
@@ -763,8 +970,10 @@ try {
 
     # Only the *opt-in successful real-GitHub retry* can prove this scenario.
     # Without that opt-in, the earlier missing-LFS planning failure does not.
-    $pendingRequiredLiveScenarios = @('SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')
+    $pendingRequiredLiveScenarios = @('SCN-RECOVER-RECOVERY-01')
+    if (-not $SettingsReadbackFailureProbe) { $pendingRequiredLiveScenarios += 'SCN-SET-PARTIAL-01' }
     $verifiedRequiredLiveScenarios = @()
+    if ($SettingsReadbackFailureProbe) { $verifiedRequiredLiveScenarios += 'SCN-SET-PARTIAL-01' }
     if ($LocalGitCommitFailureProbe) {
         $verifiedRequiredLiveScenarios += 'SCN-DEST-PARTIAL-01'
     }
@@ -784,11 +993,15 @@ try {
         VerifiedRequiredLiveScenarios = @($verifiedRequiredLiveScenarios)
         EvaluatedReportWriteFailureSubcase = [bool] $ReportWriteFailureProbe
         EvaluatedLocalGitCommitFailureSubcase = [bool] $LocalGitCommitFailureProbe
-        Reason = 'The opt-in local Git commit-tree fault proves a failed post-archive Snapshot-copy stage before any remote push, not failed remote transfer. The separate report-write fault proves scoped retry; settings failure and broader recovery remain unqualified. No full Required-live suite claim.'
+        EvaluatedSettingsReadbackFailureSubcase = [bool] $SettingsReadbackFailureProbe
+        Reason = 'The native Git fault proves only pre-push failure, the report-write fault proves scoped retry, and optional settings drift proves only genuine remote settings readback mismatch. Broader ambiguous recovery remains unqualified. No full Required-live suite claim.'
     }
     $pendingEvidence | ConvertTo-Json -Depth 5 |
         Set-Content -LiteralPath (Join-Path $tempRoot 'required-live-evidence-pending.json') -Encoding utf8NoBOM -ErrorAction Stop
-    if ($ReportWriteFailureProbe) {
+    if ($SettingsReadbackFailureProbe) {
+        Write-Warning 'Scoped real GitHub settings readback failure verified; rejected remote PATCH and broader ambiguous recovery remain UNQUALIFIED.'
+    }
+    elseif ($ReportWriteFailureProbe) {
         Write-Warning 'Scoped live retry verified; Required-live failed replacement, settings failure and broader recovery scenarios remain UNQUALIFIED.'
     }
     else {

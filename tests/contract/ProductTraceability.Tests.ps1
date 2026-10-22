@@ -60,8 +60,8 @@ Describe 'Product scenario traceability contract' {
     }
 
     It 'requires genuine live evidence or an explicitly blocked Required-live fixture' {
-        $pending = @('SCN-DEST-PARTIAL-01', 'SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')
-        $scoped = @('SCN-RETRY-RESILIENCE-02')
+        $pending = @('SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')
+        $scoped = @('SCN-DEST-PARTIAL-01', 'SCN-RETRY-RESILIENCE-02')
         foreach ($entry in $script:traceability.Scenarios.GetEnumerator()) {
             if ($entry.Value.LiveValidation -ne 'Required') {
                 continue
@@ -77,8 +77,14 @@ Describe 'Product scenario traceability contract' {
                 $entry.Value.Classification | Should -Be 'Required'
                 $entry.Value.LiveEvidenceStatus | Should -Be 'ScopedOptIn'
                 @($entry.Value.LiveEvidence) | Should -Contain 'tests/e2e/Invoke-RecoveryEndToEndTests.ps1'
-                $entry.Value.LiveReason | Should -Match 'ReportWriteFailureProbe'
-                $entry.Value.LiveReason | Should -Match 'not a failed Snapshot transfer'
+                if ($entry.Key -eq 'SCN-DEST-PARTIAL-01') {
+                    $entry.Value.LiveReason | Should -Match 'LocalGitCommitFailureProbe'
+                    $entry.Value.LiveReason | Should -Match 'not failed remote push'
+                }
+                else {
+                    $entry.Value.LiveReason | Should -Match 'ReportWriteFailureProbe'
+                    $entry.Value.LiveReason | Should -Match 'not a failed Snapshot transfer'
+                }
                 continue
             }
             @($entry.Value.LiveEvidence).Count | Should -BeGreaterThan 0 -Because "$($entry.Key) requires a real live harness"
@@ -123,13 +129,39 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match 'IndependentDestinationAbsenceVerified = \$true'
         $source | Should -Match 'Assert-RecoveryE2eRepositoryAbsent -Repository \$destinationRepository'
 
-        foreach ($id in @('SCN-DEST-PARTIAL-01', 'SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')) {
+        foreach ($id in @('SCN-SET-PARTIAL-01', 'SCN-RECOVER-RECOVERY-01')) {
             $entry = $script:traceability.Scenarios[$id]
             $entry.LiveValidation | Should -Be 'Required'
             @($entry.LiveEvidence).Count | Should -Be 0
             $entry.LiveEvidenceStatus | Should -Be 'PendingSafeFixture'
             $source | Should -Not -Match ("ScenarioId\s*=\s*'{0}'" -f $id)
         }
+
+        # The post-archive failure is a native *local* Git commit-tree failure,
+        # not a forged network response, remote push failure or settings fault.
+        # Merely having this script never satisfies Required-live qualification:
+        # the stable ID is emitted only after the opted-in real GitHub boundary.
+        $partial = $script:traceability.Scenarios['SCN-DEST-PARTIAL-01']
+        $partial.Classification | Should -Be 'Required'
+        $partial.LiveValidation | Should -Be 'Required'
+        $partial.LiveEvidenceStatus | Should -Be 'ScopedOptIn'
+        @($partial.LiveEvidence) | Should -Contain $harnessPath
+        ([regex]::Matches($source, "ScenarioId\s*=\s*'SCN-DEST-PARTIAL-01'")).Count | Should -Be 1
+        $source | Should -Match '\[switch\] \$LocalGitCommitFailureProbe'
+        $source | Should -Match 'if \(\$LocalGitCommitFailureProbe\)'
+        $source | Should -Match 'GIT_AUTHOR_DATE'
+        $source | Should -Match 'GIT_COMMITTER_DATE'
+        $source | Should -Match 'DestinationRepositorySnapshotCommitFailed'
+        $source | Should -Match 'post-archive-git-commit-failure-probe\.json'
+        $source | Should -Match '\$copyFaultRecovery\.FailureStage -ne ''CopySnapshot'''
+        $source | Should -Match '\$copyFaultBranchCount\.Trim\(\) -ne ''0'''
+        $source | Should -Match '\$copyFaultRecovery\.Provenance\.PlannedSourceState\.CommitSha'
+        $source | Should -Match '\$copyFaultRecovery\.Provenance\.ActualEvidenceAvailable -ne \$false'
+        $source | Should -Match '\$expectedRepositoryIds.Remove\(\$copyFaultDestination\)'
+        $source | Should -Match '\$expectedRepositoryIds\[\$copyFaultDestination\] = \$copyFaultReplacementId'
+        $source | Should -Match '(?s)if \(\$LocalGitCommitFailureProbe\) \{\s*\$verifiedRequiredLiveScenarios \+= ''SCN-DEST-PARTIAL-01''\s*\}\s*else \{\s*\$pendingRequiredLiveScenarios \+= ''SCN-DEST-PARTIAL-01'''
+        $source | Should -Match 'QualifiesFailedRemotePush = \$false'
+        $source | Should -Match 'QualifiesSettingsRestoreFailure = \$false'
 
         $source | Should -Match 'Get-RecoveryE2eRemoteRepository'
         $source | Should -Match 'Get-RecoveryE2eRemoteCommit'

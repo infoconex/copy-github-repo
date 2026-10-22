@@ -660,8 +660,10 @@ try {
                         if ($script:RecoveryE2eCommitTreeCalls -ne 1) {
                             throw 'Copy-fault probe encountered more than one native Git commit-tree invocation.'
                         }
-                        $nativeArgs = @{} + $PSBoundParameters
-                        $scopedEnvironment = @{} + $Environment
+                        $nativeArgs = @{}
+                        foreach ($name in $PSBoundParameters.Keys) { $nativeArgs[$name] = $PSBoundParameters[$name] }
+                        $scopedEnvironment = @{}
+                        foreach ($name in $Environment.Keys) { $scopedEnvironment[$name] = $Environment[$name] }
                         $scopedEnvironment['GIT_AUTHOR_DATE'] = 'not-a-valid-date'
                         $scopedEnvironment['GIT_COMMITTER_DATE'] = 'not-a-valid-date'
                         $nativeArgs['Environment'] = $scopedEnvironment

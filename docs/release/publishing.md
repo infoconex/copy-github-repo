@@ -65,13 +65,16 @@ Where practical, configure the `powershell-gallery` environment with required re
 
 ## Release-readiness validation
 
-Before requesting a stable release, run:
+After the release branch is integrated and the **exact current `main` SHA** is selected for qualification, run this from that checked-out repository root:
 
 ```powershell
-./build/Test-ReleaseReadiness.ps1 -Tag v0.4.1 -RequireEmptyUnreleased
+$manifest = Import-PowerShellDataFile -LiteralPath ./src/CopyGitHubRepo/CopyGitHubRepo.psd1
+$version = [string] $manifest.ModuleVersion
+$tag = "v$version"
+./build/Test-ReleaseReadiness.ps1 -Tag $tag -RequireEmptyUnreleased
 ```
 
-Replace `v0.4.1` with the intended release tag. The command must succeed on the exact `main` SHA being qualified before publication.
+This derives the intended stable tag directly from the reviewed manifest, so a stale example cannot accidentally qualify the wrong published version. The readiness command **must succeed on the exact `main` SHA being qualified** before publication; a release-branch pass does not replace that requirement.
 
 This check intentionally does not create, move, or publish a tag. **Publish Release** remains the deliberate publication boundary.
 
@@ -85,7 +88,7 @@ A maintainer can publish a stable release without a local Git checkout by using 
 4. Select **Publish Release**.
 5. Choose **Run workflow**.
 6. Ensure the branch selector is **main**.
-7. Enter the intended stable tag, for example `v0.4.1`.
+7. Open `src/CopyGitHubRepo/CopyGitHubRepo.psd1` at the exact approved **current `main` commit**, read `ModuleVersion`, and enter `v` followed by that exact version (format `vX.Y.Z`) as the intended stable tag. Do not copy an older published tag.
 8. Select `confirm_publish`.
 9. Run the workflow.
 
@@ -119,14 +122,17 @@ The **Validate Project Quality** workflow is authoritative for Pester and broad 
 
 Automation is preferred. If GitHub Actions is unavailable and a maintainer must publish manually, use the exact approved `main` revision and the same staged package produced by `New-PowerShellGalleryPackage.ps1`.
 
-First validate without publishing:
+Only if the normal release workflow is unavailable **and a separate manual recovery/publication decision has been approved**, validate without publishing from the exact qualified `main` commit:
 
 ```powershell
+$manifest = Import-PowerShellDataFile -LiteralPath ./src/CopyGitHubRepo/CopyGitHubRepo.psd1
+$version = [string] $manifest.ModuleVersion
+$tag = "v$version"
 ./build/Test-Project.ps1
-./build/Test-ReleaseReadiness.ps1 -Tag v0.4.1 -RequireEmptyUnreleased
+./build/Test-ReleaseReadiness.ps1 -Tag $tag -RequireEmptyUnreleased
 ./build/New-PowerShellGalleryPackage.ps1
 Test-ModuleManifest ./dist/PSGallery/CopyGitHubRepo/CopyGitHubRepo.psd1
-Find-PSResource CopyGitHubRepo -Version 0.4.1 -Repository PSGallery
+Find-PSResource CopyGitHubRepo -Version $version -Repository PSGallery
 Publish-PSResource `
     -Path ./dist/PSGallery/CopyGitHubRepo `
     -Repository PSGallery `
@@ -134,13 +140,13 @@ Publish-PSResource `
     -WhatIf
 ```
 
-Replace `0.4.1` and `v0.4.1` with the manifest version and tag being released. If `Find-PSResource` returns that exact version, stop; released versions are treated as immutable and must not be overwritten. If it reports that the exact package/version cannot be found, that is the expected pre-publication state. Other lookup errors should be investigated rather than treated as proof that the version is absent.
+If `Find-PSResource` returns **that exact `$version`**, stop: stable Gallery versions are immutable and must not be overwritten. A recognized exact-version *not-found* result is the expected prepublication state; any other lookup error needs investigation, not an assumption that publication is safe. `$apiKey` must come from an approved secure credential source and must never be printed or committed. The `-WhatIf` call is non-publishing; it is not a substitute for independent exact-candidate release authorization.
 
 When the dry run and all validation are satisfactory, rerun `Publish-PSResource` without `-WhatIf`. Keep the API key in memory or a secure secret store and do not echo it.
 
 ## Prereleases
 
-Prerelease Gallery publication is intentionally not enabled by the stable publication workflow. Tags such as `v0.4.1-beta1` are rejected rather than guessed or published as stable. If prerelease support is added later, the manifest prerelease metadata, tag convention, Gallery lookup, documentation, and workflow tests must be introduced together.
+Prerelease Gallery publication is intentionally not enabled by the stable publication workflow. Tags such as `vX.Y.Z-beta1` are rejected rather than guessed or published as stable. If prerelease support is added later, the manifest prerelease metadata, tag convention, Gallery lookup, documentation, and workflow tests must be introduced together.
 
 ## Signing policy
 

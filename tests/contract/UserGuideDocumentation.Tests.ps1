@@ -25,7 +25,9 @@ Describe 'User capabilities and scenario documentation' {
         $script:userGuide | Should -Match 'Install-PSResource CopyGitHubRepo'
         $script:userGuide | Should -Match 'Import-Module CopyGitHubRepo'
         $script:userGuide | Should -Match 'gh auth login --hostname github\.com'
-        $script:userGuide | Should -Match 'Install-PSResource CopyGitHubRepo -Version 0\.1\.0'
+        $script:userGuide | Should -Match 'latest \*\*published\*\* stable Gallery version'
+        $script:userGuide | Should -Match 'version that is already published'
+        $script:userGuide | Should -Not -Match 'Install-PSResource CopyGitHubRepo -Version \d+\.\d+\.\d+'
         $script:userGuide | Should -Match 'installation-security\.md'
     }
 

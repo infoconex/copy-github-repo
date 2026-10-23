@@ -19,10 +19,10 @@ Install-PSResource CopyGitHubRepo
 Import-Module CopyGitHubRepo
 ```
 
-`Install-PSResource` installs the latest stable version available from PSGallery by default. To deliberately install the initial stable release:
+`Install-PSResource` installs the latest **published** stable version available from PSGallery by default. After `0.4.2` is published to PSGallery, you can install that exact version:
 
 ```powershell
-Install-PSResource CopyGitHubRepo -Version 0.1.0
+Install-PSResource CopyGitHubRepo -Version 0.4.2
 ```
 
 For environments using the older PowerShellGet command surface, the compatible alternative is:
@@ -66,16 +66,16 @@ The repository-hosted stable convenience bootstrap is an alternative to the norm
 irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1 | iex
 ```
 
-Without parameters, the bootstrap resolves the latest stable GitHub release. A specific stable version can be requested from the same bootstrap; for example, after `v0.4.0` is published:
+Without parameters, the bootstrap resolves the latest **published** stable GitHub release. To install the specific `v0.4.2` version, use the following command **after its GitHub Release, versioned ZIP, checksum, and provenance attestation are published**:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1))) -Version 0.4.0
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1))) -Version 0.4.2
 ```
 
 If the selected version is already installed and intentional replacement is required, supply `-Force`:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1))) -Version 0.4.0 -Force
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/infoconex/copy-github-repo/main/install-release.ps1))) -Version 0.4.2 -Force
 ```
 
 The stable bootstrap requires GitHub CLI (`gh`) because it performs cryptographic provenance verification before extraction. It:
@@ -110,12 +110,10 @@ Therefore the convenience bootstrap remains inside the trust boundary even thoug
 
 For a higher-assurance stable install using the project's GitHub Release evidence, avoid executing mutable branch content. Pin a stable release and download its versioned artifact/checksum directly, then verify both checksum and GitHub artifact attestation before extraction.
 
-The initial stable version is `v0.1.0`; the following pattern pins version `v0.4.0` after that release is published:
-
-To pin the module's `v0.4.1` release, set `$version = '0.4.1'` **only after that release has been published**. A module manifest version or release-candidate branch does not establish that the corresponding stable ZIP, checksum, and provenance attestation are available. Until then, use a version that is already published, such as the `v0.4.0` example below.
+The following pinned procedure targets `v0.4.2` as the intended stable release. **Run it only after that exact GitHub Release contains the versioned ZIP and checksum and has a valid GitHub provenance attestation.** Before publication, use the latest already-published stable version instead; merely merging the `0.4.2` module manifest into `main` does not make a release artifact available.
 
 ```powershell
-$version = '0.4.0'
+$version = '0.4.2'
 $repository = 'infoconex/copy-github-repo'
 $tag = "v$version"
 $releaseBase = "https://github.com/$repository/releases/download/$tag"

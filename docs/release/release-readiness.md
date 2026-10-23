@@ -154,6 +154,8 @@ Before tagging/publishing, create or update a release-specific record containing
 
 The decision applies only to the recorded candidate. **A later commit requires a new readiness review**; approval of an earlier SHA must never be inferred to cover mutable `main`.
 
+For replacement recovery and `SCN-RECOVER-RECOVERY-01`, distinguish **migration-authored** durable approved-versus-actual copy evidence from a separate E2E harness's independent remote readbacks. A passing identity-preservation/retry subcase does not alone prove complete partial-copy or settings recovery. If the recovery report omits available provenance, or a Required-live failure scenario remains unverified without authorized risk disposition, record it as a release blocker; do not promote historical or narrower live evidence to exact-candidate qualification.
+
 ## Release decision algorithm
 
 A release decision can be `GO` only when:

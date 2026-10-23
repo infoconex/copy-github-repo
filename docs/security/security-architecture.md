@@ -39,7 +39,7 @@ The project is designed to:
 - **CopyGitHubRepo module** is trusted to enforce the product contract, safety checks, execution ordering, verification, and evidence semantics.
 - **PowerShell runtime** is trusted to load and execute the module and helper scripts.
 - **Git, Git LFS, and GitHub CLI** are external native prerequisites whose executables and behavior are outside the module's direct control.
-- **GitHub.com** is the supported remote platform for v0.1.0. API and Git transport availability, authorization, repository identity, and platform-side mutation are external trust dependencies.
+- **GitHub.com** is the supported remote platform for the current release line. API and Git transport availability, authorization, repository identity, and platform-side mutation are external trust dependencies.
 - **GitHub Actions / release environment** is trusted for CI and release automation subject to repository permissions, workflow integrity, and configured secrets/environments.
 - **PowerShell Gallery** and **GitHub Releases** are distribution services, not runtime dependencies of an installed module.
 
@@ -134,8 +134,8 @@ Status vocabulary:
 | Dedicated PowerShell code security analysis | expose PowerShell-specific security failures separately from general quality | `.github/workflows/analyze-code-security.yml` using `PSScriptAnalyzerSecuritySettings.psd1`, `Measure-CgrSecurity`, selected built-in rules, and targeted Pester evidence | `CodeSecurityWorkflow.Tests.ps1`, `PSScriptAnalyzerSecurityRules.Tests.ps1`, safety/recovery tests | Implemented + automatically verified when the dedicated workflow passes |
 | CodeQL for GitHub Actions | workflow-code static analysis | `.github/workflows/analyze-github-actions-security.yml`, language `actions`, `security-extended` queries | `CodeQLWorkflow.Tests.ps1` + successful live CodeQL workflow execution | Implemented + automatically verified for GitHub Actions workflows; does not scan PowerShell source |
 | Automated dependency/supply-chain monitoring | outdated/vulnerable dependency visibility | `.github/dependabot.yml`, `.github/workflows/monitor-dependencies.yml`, [`dependency-monitoring.md`](dependency-monitoring.md) | `DevelopmentDependencies.Tests.ps1` + scheduled/manual workflow contract | Implemented + automatically verified |
-| Live GitHub security-setting baseline | secret scanning, push protection, Dependabot/code scanning settings and main-branch ruleset expectations | [`repository-security-baseline.md`](repository-security-baseline.md) | live repository settings and owner-side verification | Platform-provided / live verification required; required v0.1.0 baseline restored and verified during release qualification |
-| Independent release authenticity/signing | authenticate release artifact origin beyond an adjacent checksum | GitHub artifact attestations produced by `.github/workflows/publish-release.yml` and verified against repository/workflow/source identity | release workflow attestation records, `install-release.ps1`, [`installation-security.md`](installation-security.md) | Implemented for v0.1.0 with GitHub artifact attestations; Authenticode publisher signing remains optional/not implemented |
+| Live GitHub security-setting baseline | secret scanning, push protection, Dependabot/code scanning settings and main-branch ruleset expectations | [`repository-security-baseline.md`](repository-security-baseline.md) | live repository settings and owner-side verification | Platform-provided / live verification required; the v0.1.0 baseline was historically verified, and each new release candidate must assess current GitHub-side state |
+| Independent release authenticity/signing | authenticate release artifact origin beyond an adjacent checksum | GitHub artifact attestations produced by `.github/workflows/publish-release.yml` and verified against repository/workflow/source identity | release workflow attestation records, `install-release.ps1`, [`installation-security.md`](installation-security.md) | Implemented as the stable-release workflow's GitHub artifact-attestation contract; Authenticode publisher signing remains unimplemented |
 | PSGallery trust-policy preservation | avoid persistent development-host trust mutation | dependency installer does not call `Set-PSRepository`; exact versions are installed from explicit `PSGallery` source | `DevelopmentDependencies.Tests.ps1`, cross-platform project-quality validation | Implemented + automatically verified |
 | SBOM / provenance evidence | component/release assurance | `build/New-ReleaseSbom.ps1`, `.github/workflows/publish-release.yml`, [`release-sbom.md`](release-sbom.md) | `ReleaseSbom.Tests.ps1`, release workflow contracts, cross-platform project-quality evidence | Implemented + automatically verified |
 
@@ -145,7 +145,7 @@ Stable release automation generates **SPDX 2.3 JSON** from the completed determi
 
 The stable publication workflow publishes the `.spdx.json` sidecar and uses immutable-pinned `actions/attest` steps for build provenance and **SBOM attestation** of the same versioned ZIP. Required attestation failures fail publication before PowerShell Gallery or GitHub Release publication. See [`release-sbom.md`](release-sbom.md) for retrieval, verification, classification, and reproducibility details.
 
-For v0.1.0, GitHub artifact attestation is the selected independent release-authenticity mechanism. Verification binds the artifact digest to the expected repository, `publish-release.yml` signer workflow, and exact release source commit. This is independent of trusting the adjacent `.sha256` file, but it is not Authenticode publisher signing and does not use a separately managed project private signing key. It also does not prove vulnerability absence or make semantic SBOM classification infallible.
+GitHub artifact attestation remains the selected release-authenticity mechanism for the current stable-release workflow. Verification binds the artifact digest to the expected repository, `publish-release.yml` signer workflow, and exact release source commit. This is independent of trusting the adjacent `.sha256` file, but it is not Authenticode publisher signing and does not use a separately managed project private signing key. It also does not prove vulnerability absence or make semantic SBOM classification infallible.
 
 ## Dependency and trust inventory
 
@@ -158,7 +158,7 @@ For v0.1.0, GitHub artifact attestation is the selected independent release-auth
 | Runtime PowerShell modules | none declared by the module manifest | no third-party PowerShell runtime dependency currently shipped |
 | Development modules | Pester 6.2.0, PSScriptAnalyzer 1.25.0 | exact-version pinned; weekly freshness/advisory monitoring is documented in [`dependency-monitoring.md`](dependency-monitoring.md) |
 | CI actions | GitHub Actions referenced by workflows | immutable SHA pinning is repository policy; Dependabot proposes reviewed updates and CodeQL analyzes workflow code |
-| Runtime remote service | GitHub.com | v0.1.0 supported host and primary external service |
+| Runtime remote service | GitHub.com | Current supported host and primary external service |
 | Distribution | GitHub Releases, PowerShell Gallery | release/distribution trust boundaries; not installed-module runtime dependencies |
 
 ## Security static-analysis policy
@@ -227,7 +227,7 @@ Repository content necessarily crosses Git/GitHub transport boundaries as part o
 The following remain explicit for release review:
 
 - live repository security settings are platform-provided state and must be reverified for future release candidates when configuration may have changed;
-- Authenticode publisher signing is not implemented; v0.1.0 instead uses GitHub artifact attestations as its independent authenticity mechanism;
+- Authenticode publisher signing is not implemented; the stable-release workflow instead uses GitHub artifact attestations as its release-authenticity mechanism, subject to exact-release verification;
 - native prerequisite compromise (PowerShell, Git, Git LFS, GitHub CLI) remains outside the module's direct enforcement boundary;
 - GitHub.com availability, authorization, API behavior, and remote-side consistency are external dependencies;
 - no static-analysis combination is proof of vulnerability absence;

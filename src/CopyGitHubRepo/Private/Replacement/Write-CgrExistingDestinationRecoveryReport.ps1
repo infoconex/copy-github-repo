@@ -25,6 +25,9 @@ function Write-CgrExistingDestinationRecoveryReport {
 
         [psobject] $ReleasePreservation,
 
+        [AllowNull()]
+        [psobject] $SnapshotResult,
+
         [string] $PreferredReportPath
     )
 
@@ -135,6 +138,70 @@ function Write-CgrExistingDestinationRecoveryReport {
     }
     else { $null }
 
+    # Snapshot provenance is split between the immutable reviewed plan and
+    # evidence returned by the child migration. A failed child call might have
+    # partially mutated GitHub without returning any observed destination state.
+    # Never infer a copied commit or a destination tree from the source plan.
+    $sourceState = Get-CgrObjectProperty -InputObject $Plan -Name 'SourceState'
+    $snapshotEvidence = if ($Plan.ContentMode -eq 'Snapshot') {
+        Get-CgrObjectProperty -InputObject $SnapshotResult -Name 'Provenance'
+    }
+    else { $null }
+    $snapshotVerification = if ($Plan.ContentMode -eq 'Snapshot') {
+        Get-CgrObjectProperty -InputObject $SnapshotResult -Name 'Verification'
+    }
+    else { $null }
+    $verificationSuccessful = Get-CgrObjectProperty -InputObject $snapshotVerification -Name 'IsSuccessful'
+    if ($null -eq $verificationSuccessful) {
+        $verificationSuccessful = Get-CgrObjectProperty -InputObject $snapshotEvidence -Name 'VerificationSuccessful'
+    }
+    $destinationTree = Get-CgrObjectProperty -InputObject $snapshotVerification -Name 'DestinationTree'
+    if ($null -eq $destinationTree) {
+        $destinationTree = Get-CgrObjectProperty -InputObject $snapshotVerification -Name 'DestinationHeadTreeSha'
+    }
+    $sourceDefaultBranch = Get-CgrObjectProperty -InputObject $Plan -Name 'SourceDefaultBranch'
+    if ([string]::IsNullOrWhiteSpace([string] $sourceDefaultBranch)) {
+        $sourceDefaultBranch = Get-CgrObjectProperty -InputObject $sourceState -Name 'DefaultBranch'
+    }
+    $provenance = if ($Plan.ContentMode -eq 'Snapshot') {
+        [pscustomobject] @{
+            ContentMode = 'Snapshot'
+            SourceRepository = $Plan.SourceRepository
+            SourceRepositoryId = Get-CgrObjectProperty -InputObject $sourceState -Name 'RepositoryId'
+            SourceRepositoryNodeId = Get-CgrObjectProperty -InputObject $sourceState -Name 'RepositoryNodeId'
+            SourceDefaultBranch = $sourceDefaultBranch
+            SourceCommitSha = Get-CgrObjectProperty -InputObject $sourceState -Name 'CommitSha'
+            SourceTreeSha = Get-CgrObjectProperty -InputObject $sourceState -Name 'TreeSha'
+            PlannedSourceState = $sourceState
+            CopiedSourceCommitSha = Get-CgrObjectProperty -InputObject $snapshotEvidence -Name 'CopiedSourceCommitSha'
+            CopiedSourceTreeSha = Get-CgrObjectProperty -InputObject $snapshotEvidence -Name 'CopiedSourceTreeSha'
+            DestinationRepository = if ($DestinationRepository) { $DestinationRepository.FullName } else { $null }
+            DestinationRepositoryId = $replacementRepositoryId
+            DestinationRepositoryNodeId = $replacementRepositoryNodeId
+            DestinationRootCommitSha = Get-CgrObjectProperty -InputObject $snapshotEvidence -Name 'DestinationRootCommitSha'
+            DestinationTreeSha = $destinationTree
+            VerificationSuccessful = $verificationSuccessful
+            ActualEvidenceAvailable = $null -ne $snapshotEvidence -or $null -ne $snapshotVerification
+            EvidenceLimitation = if ($null -eq $SnapshotResult) {
+                'The child Snapshot migration did not return a result. Content may be partial; copied and verified destination state are unknown.'
+            }
+            elseif ($null -eq $snapshotEvidence) {
+                'No child Snapshot provenance was returned. Do not infer copied commit or tree identities from the approved source.'
+            }
+            elseif ($null -eq $verificationSuccessful) {
+                'The child did not report a Snapshot verification outcome. Copied identifiers alone do not prove destination equivalence.'
+            }
+            elseif ($verificationSuccessful -ne $true) {
+                'Snapshot verification was not successful. Observed copied identities do not prove destination equivalence.'
+            }
+            elseif ([string]::IsNullOrWhiteSpace([string] $destinationTree)) {
+                'No destination tree was returned by child verification; it is not inferred from the approved source tree.'
+            }
+            else { $null }
+        }
+    }
+    else { $null }
+
     $recoveryResult = [pscustomobject] @{
         PSTypeName = 'CopyGitHubRepo.ExistingDestinationRecoveryResult'
         SchemaVersion = 1
@@ -154,6 +221,7 @@ function Write-CgrExistingDestinationRecoveryReport {
         ReplacementRepositoryNodeId = $replacementRepositoryNodeId
         ReplacementHasDistinctIdentity = $replacementDistinct
         ContentMode = $Plan.ContentMode
+        Provenance = $provenance
         FailureStage = $FailureStage
         LastCompletedStep = $lastCompletedStep
         ErrorId = $ErrorRecord.FullyQualifiedErrorId

@@ -25,7 +25,7 @@ A repository being functionally supported does not imply that every possible rep
 
 | Area | Current expectation | Evidence / status |
 | --- | --- | --- |
-| Host | GitHub.com only for v0.1.0 | Implemented and tested; other hosts fail closed. |
+| Host | GitHub.com only for the current release line | Implemented and tested; other hosts fail closed. |
 | PowerShell | PowerShell 7.4+ | Implemented baseline. |
 | OS | Windows, macOS, Linux | Cross-platform Quality Gate coverage. |
 | Git / `gh` | Required native prerequisites | Implemented prerequisite checks/usage. |

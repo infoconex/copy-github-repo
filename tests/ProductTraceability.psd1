@@ -123,6 +123,8 @@
             AutomatedEvidence = @('tests/integration/ExistingDestinationReplacement.Tests.ps1', 'tests/integration/Recovery.Tests.ps1')
             LiveValidation = 'Required'
             LiveEvidence = @('tests/e2e/Invoke-RecoveryEndToEndTests.ps1')
+            LiveEvidenceStatus = 'ScopedOptIn'
+            LiveReason = 'Requires -SafeSubsetOnly -LocalGitCommitFailureProbe: after authenticated preservation of the original archive and creation of the distinct replacement, native local git commit-tree fails from a process-local invalid author date. Migration-authored recovery and independent remote ID/tree/empty-branch checks must pass. This proves the post-archive CopySnapshot failure boundary, not failed remote push or settings restoration. Exact-candidate authenticated execution/cleanup evidence remains release-specific (#173/#172).'
         }
         'SCN-SAME-HAPPY-01' = @{
             Classification = 'Required'
@@ -156,9 +158,11 @@
         }
         'SCN-SET-PARTIAL-01' = @{
             Classification = 'Required'
-            AutomatedEvidence = @('tests/integration/RepositorySettings.Tests.ps1', 'tests/integration/Recovery.Tests.ps1')
+            AutomatedEvidence = @('tests/integration/RepositorySettings.Tests.ps1', 'tests/integration/Recovery.Tests.ps1', 'tests/integration/RecoveryE2eSettingsReadbackDrift.Tests.ps1')
             LiveValidation = 'Required'
             LiveEvidence = @('tests/e2e/Invoke-RecoveryEndToEndTests.ps1')
+            LiveEvidenceStatus = 'ScopedOptIn'
+            LiveReason = 'The SettingsReadbackFailureProbe is a gated opt-in real GitHub description readback mismatch only on a disposable private replacement after verified Snapshot; it does not simulate a rejected GitHub PATCH or a service outage. No authenticated result on the new exact head is yet recorded; do not treat E2E-capable as live-validated.'
         }
         'SCN-PROT-HAPPY-01' = @{
             Classification = 'Required'
@@ -226,7 +230,9 @@
             Classification = 'Required'
             AutomatedEvidence = @('tests/integration/Recovery.Tests.ps1', 'tests/integration/ReplacementExecutionEvidence.Tests.ps1', 'tests/unit/FullHistoryReleaseOrchestration.Tests.ps1')
             LiveValidation = 'Required'
-            LiveEvidence = @('tests/e2e/Invoke-RecoveryEndToEndTests.ps1')
+            LiveEvidence = @()
+            LiveEvidenceStatus = 'PendingSafeFixture'
+            LiveReason = 'The missing-LFS source fails before mutation. An authenticated post-copy final-report I/O fault has verified narrow migration-authored provenance and archive/replacement identities (#175), but not failed Snapshot transfer, settings failure, or full planned-versus-actual partial recovery. Broader Required-live evidence remains pending under #173/#168/#172.'
         }
         'SCN-API-RESILIENCE-01' = @{
             Classification = 'Required'
@@ -257,6 +263,8 @@
             AutomatedEvidence = @('tests/integration/RetryIdempotency.Tests.ps1', 'tests/integration/Recovery.Tests.ps1')
             LiveValidation = 'Required'
             LiveEvidence = @('tests/e2e/Invoke-RecoveryEndToEndTests.ps1')
+            LiveEvidenceStatus = 'ScopedOptIn'
+            LiveReason = 'Requires -SafeSubsetOnly -ReportWriteFailureProbe: after authenticated archive/replacement, a local final-report error terminates execution, and a same-archive retry must fail in planning with unchanged independently re-read remote identities and trees. This is not a failed Snapshot transfer or settings-restoration fixture. Exact-candidate execution and cleanup evidence remain release-specific.'
         }
         'SCN-SCALE-RESILIENCE-01' = @{
             Classification = 'Required'

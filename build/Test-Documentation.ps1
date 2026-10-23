@@ -13,14 +13,19 @@ $executionRoot = Join-Path $repositoryRoot '.documentation-test-execution'
 $testResultsPath = Join-Path $repositoryRoot 'TestResults'
 $testResultPath = Join-Path $testResultsPath 'documentation-test-results.xml'
 
+$versionAuditPath = Join-Path $repositoryRoot 'build/Test-DocumentationVersionReferences.ps1'
+& $versionAuditPath | Out-Null
+
 $documentationTestNames = @(
     'AccessibilityDocumentation.Tests.ps1'
     'CapabilityReadinessDocumentation.Tests.ps1'
     'CommandReferenceDocumentation.Tests.ps1'
     'DocumentationContract.Tests.ps1'
     'DocumentationStrategy.Tests.ps1'
+    'DocumentationVersionReferences.Tests.ps1'
     'DurableDocumentationIssueReferences.Tests.ps1'
     'GitHubPagesDocumentation.Tests.ps1'
+    'GettingStartedDiscoverability.Tests.ps1'
     'GovernanceDocumentation.Tests.ps1'
     'IncidentResponseDocumentation.Tests.ps1'
     'ProductModelDocumentation.Tests.ps1'

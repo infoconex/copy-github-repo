@@ -14,6 +14,17 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 No unreleased product changes.
 
+## [0.4.2] - 2026-10-20
+
+### Changed
+
+- Added the canonical documentation URL to the PowerShell Gallery package description, preserving existing Snapshot and FullHistory discovery language and validating the documentation link in source and staged package manifests.
+- Moved PowerShell Gallery installation, GitHub CLI authentication, guided wizard launch, and safe scripted `-PlanOnly` preview to the beginning of the README and user guide; exposed Get Started in GitHub Pages navigation while preserving detailed installation options and migration safety guidance.
+
+### Fixed
+
+- Preserved reviewed source commit/tree identity and available copied-content verification in existing-destination Snapshot replacement recovery reports; when a child migration fails without returning a result, actual copied state remains explicitly unknown rather than being inferred from the source plan.
+
 ## [0.4.1] - 2026-10-14
 
 ### Fixed

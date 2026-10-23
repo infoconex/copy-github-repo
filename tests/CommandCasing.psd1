@@ -63,6 +63,7 @@
         'Resolve-Path'
         'Select-Object'
         'Set-Content'
+        'Set-Item'
         'Set-Location'
         'Set-StrictMode'
         'Set-Variable'

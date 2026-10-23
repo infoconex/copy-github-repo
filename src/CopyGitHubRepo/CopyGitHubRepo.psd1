@@ -1,11 +1,11 @@
 @{
     RootModule = 'CopyGitHubRepo.psm1'
-    ModuleVersion = '0.4.1'
+    ModuleVersion = '0.4.2'
     GUID = 'c428210d-c7a4-49db-81d1-830606e16fa6'
     Author = 'infoconex'
     CompanyName = 'infoconex'
     Copyright = '(c) 2026 infoconex. Licensed under the MIT License.'
-    Description = 'PowerShell module for safely copying and migrating GitHub repositories with clean Snapshot or history-preserving FullHistory modes.'
+    Description = 'PowerShell module for safely copying and migrating GitHub repositories with clean Snapshot or history-preserving FullHistory modes. For documentation, visit https://infoconex.github.io/copy-github-repo/'
     PowerShellVersion = '7.4'
     CompatiblePSEditions = @('Core')
     FormatsToProcess = @('CopyGitHubRepo.format.ps1xml')

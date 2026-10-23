@@ -31,7 +31,7 @@ $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $modulePath = Join-Path $repositoryRoot 'src/CopyGitHubRepo/CopyGitHubRepo.psd1'
 . (Join-Path $repositoryRoot 'tests/support/Invoke-RecoveryE2eScopedGitCommitTreeFault.ps1')
 . (Join-Path $repositoryRoot 'tests/support/Invoke-RecoveryE2eScopedSettingsReadbackDrift.ps1')
-. (Join-Path $repositoryRoot 'tests/support/Get-RecoveryE2eNewChildRecoveryReports.ps1')
+. (Join-Path $repositoryRoot 'tests/support/Get-RecoveryE2eChildRecoveryReportInventory.ps1')
 $runId = [guid]::NewGuid().ToString('N').Substring(0, 10)
 $repositoryPrefix = "copy-github-repo-recovery-e2e-$runId"
 $createdRepositories = [System.Collections.Generic.List[string]]::new()
@@ -764,7 +764,7 @@ try {
             throw 'Settings-fault archived content, independently copied Snapshot or durable recovery mismatched.'
         }
 
-        $childDiscovery = Get-RecoveryE2eNewChildRecoveryReports -Directory $childRecoveryDir `
+        $childDiscovery = Get-RecoveryE2eChildRecoveryReportInventory -Directory $childRecoveryDir `
             -FilePattern $childReportPattern -PreviouslyObservedPaths $existingChildReports
         if ($childDiscovery.Count -ne 1) {
             throw "Expected exactly one migration-authored child recovery report; found $($childDiscovery.Count)."

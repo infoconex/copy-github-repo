@@ -12,7 +12,7 @@ Describe 'Uninstall documentation contract' {
         $script:readme | Should -Match '-AllVersions'
         $script:readme | Should -Match '-WhatIf'
         $script:security | Should -Match 'interactive by default'
-        $script:security | Should -Match '-Version 0\.1\.0'
+        $script:security | Should -Match ([regex]::Escape("./uninstall.ps1 -Version 'X.Y.Z'"))
         $script:security | Should -Match '-AllVersions'
         $script:security | Should -Match '-Confirm:\$false'
         $script:security | Should -Match 'does not require network access'

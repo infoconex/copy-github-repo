@@ -45,7 +45,7 @@ Content mode is `Snapshot`.
 - Destination visibility: source visibility.
 - Supported repository settings: restore.
 - Snapshot commit message: `Initial repository commit`.
-- Pages restoration and Actions activation are not offered as successful mutating v0.1.0 paths.
+- GitHub-side Pages restoration is available only when explicitly selected with `-RestorePages` and supported by the reviewed plan. General GitHub Actions configuration or activation remains outside the mutating product contract.
 
 Listed choices mark the Enter-to-accept value with `(default)`. Free-text inputs place the Enter-to-accept value in parentheses at the end of the prompt. Revisiting a step preserves a still-valid accepted value and makes it the new default.
 
@@ -115,4 +115,4 @@ Successful interactive execution does not dump the raw execution object. Automat
 
 Pester covers repository filtering, displayed controls, default behavior, Back/state preservation, contextual help, cancellation, real PlanOnly review, exact reviewed-plan execution, ShouldProcess, Snapshot/FullHistory terminology, replacement confirmation, source drift before mutation, replan behavior, presentation fallbacks, and installed-module packaging.
 
-The v0.1.0 wizard work does not create a release tag or GitHub Release; release publication remains a separate explicit boundary.
+The wizard never creates a stable release tag or GitHub Release. Product migration and stable release publication remain separate explicit boundaries.

@@ -13,6 +13,9 @@ $executionRoot = Join-Path $repositoryRoot '.documentation-test-execution'
 $testResultsPath = Join-Path $repositoryRoot 'TestResults'
 $testResultPath = Join-Path $testResultsPath 'documentation-test-results.xml'
 
+$versionAuditPath = Join-Path $repositoryRoot 'build/Test-DocumentationVersionReferences.ps1'
+& $versionAuditPath | Out-Null
+
 $documentationTestNames = @(
     'AccessibilityDocumentation.Tests.ps1'
     'CapabilityReadinessDocumentation.Tests.ps1'

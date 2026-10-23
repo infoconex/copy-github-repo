@@ -140,6 +140,41 @@ The README and published documentation site should expose a clear path for:
 
 Navigation may point to planned areas only after those pages exist. Avoid dead links or placeholder pages that imply unfinished work is current documentation.
 
+## Product version references and release drift
+
+Use version-neutral language for routine installation and current-user guidance:
+\`Install-PSResource CopyGitHubRepo\` selects the latest **published** stable Gallery
+package. The source module manifest's \`ModuleVersion\` is the **intended candidate
+version**, not proof of a published Gallery package, GitHub Release, ZIP, checksum,
+or provenance attestation.
+
+Classify version literals according to their purpose before changing them:
+
+| Reference class | Required handling |
+| --- | --- |
+| Normal Gallery installation, README, user guide | Do not hard-code the product version; link to detailed pinned-install security instructions |
+| Current candidate's pinned-release install examples | Must match \`ModuleVersion\` until publication; keep immutable tag/source identity, SHA-256 and GitHub provenance verification before extraction |
+| Release metadata/changelog | Exact dated version required; preserve historical entries and check current candidate against \`ModuleVersion\` |
+| Historical releases, ADRs, initial-version facts, released capability boundaries | Preserve historical version and evidence; never blindly replace with the current product version |
+| Test fixtures, sample source-repository tags, SemVer/SPDX standard versions, external dependency pins | Treat as independent versions; tests/dependency policy own their correctness |
+| Maintainer publication steps and Actions input help | Derive the intended version from the module manifest or use the format \`vX.Y.Z\`; never imply planned artifacts have been published |
+
+\`build/Test-DocumentationVersionReferences.ps1\` is a **read-only targeted
+actionable-example guard**, run by \`build/Test-Documentation.ps1\` and
+\`build/Test-ReleaseReadiness.ps1\`. It enforces manifest alignment for the
+Gallery, repository-hosted stable-bootstrap and pinned ZIP example versions,
+and version-neutral behavior in ordinary guides, publication commands, and
+release-workflow tag help. Stale literal command versions fail with file/line
+information. The gate must be qualified on the exact PR/release candidate SHA.
+
+This gate does **not** claim to automatically classify every prose/version
+mention in the repository or validate external package publication. Release
+reviewers still examine historical, security, dependency, platform and
+capability claims for accuracy, and the release workflow independently
+verifies immutable publication identities and artifacts. Do not weaken the
+guard by excluding a stale actionable example or turning a pinned attested
+download into an unverified moving \`latest\` link.
+
 ## Change guidance
 
 When changing behavior or documentation, identify the authority first:

@@ -14,7 +14,7 @@ Describe 'Recovery E2E migration-authored child report discovery' {
         Set-StrictMode -Version Latest
         $result = Get-RecoveryE2eNewChildRecoveryReports -Directory $script:reportDir -FilePattern $script:pattern
         $result.Count | Should -Be 0
-        $result.Files | Should -BeOfType 'System.Object[]'
+        ($result.Files -is [array]) | Should -BeTrue
         @($result.Files).Count | Should -Be 0
     }
 
@@ -26,7 +26,7 @@ Describe 'Recovery E2E migration-authored child report discovery' {
         $result = Get-RecoveryE2eNewChildRecoveryReports -Directory $script:reportDir -FilePattern $script:pattern
 
         $result.Count | Should -Be 1
-        $result.Files | Should -BeOfType 'System.Object[]'
+        ($result.Files -is [array]) | Should -BeTrue
         @($result.Files).Count | Should -Be 1
         $result.Files[0].FullName | Should -BeExactly $onePath
         (Get-Content -LiteralPath $result.Files[0].FullName -Raw | ConvertFrom-Json).FailureStage |
@@ -51,7 +51,7 @@ Describe 'Recovery E2E migration-authored child report discovery' {
         }
         $result = Get-RecoveryE2eNewChildRecoveryReports @args
         $result.Count | Should -Be 2
-        $result.Files | Should -BeOfType 'System.Object[]'
+        ($result.Files -is [array]) | Should -BeTrue
         @($result.Files).Count | Should -Be 2
         (@($result.Files.FullName) -contains $first) | Should -BeTrue
         (@($result.Files.FullName) -contains $second) | Should -BeTrue

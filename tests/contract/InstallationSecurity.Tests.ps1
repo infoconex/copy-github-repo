@@ -67,8 +67,8 @@ Describe 'Installer supply-chain trust documentation' {
 
     It 'prepares manifest-aligned stable installation examples before publication without assuming artifacts exist' {
         $escapedVersion = [regex]::Escape($script:version)
-        $script:security | Should -Match ("Install-PSResource CopyGitHubRepo -Version {0}" -f $escapedVersion)
-        $script:security | Should -Match ("-Version {0} -Force" -f $escapedVersion)
+        $script:security | Should -Match ('Install-PSResource CopyGitHubRepo -Version {0}' -f $escapedVersion)
+        $script:security | Should -Match ('-Version {0} -Force' -f $escapedVersion)
         $versionAssignment = '$version = ''{0}''' -f $script:version
         $script:security | Should -Match ([regex]::Escape($versionAssignment))
         $script:security | Should -Match 'latest \*\*published\*\* stable version'

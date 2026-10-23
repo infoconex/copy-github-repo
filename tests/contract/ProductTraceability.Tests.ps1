@@ -162,11 +162,11 @@ Describe 'Product scenario traceability contract' {
         $source | Should -Match 'settingsfault-child-recovery\.json'
         # A one-file child recovery collection must never turn into a scalar
         # FileInfo under StrictMode; retain the exact-one evidence boundary.
-        $source | Should -Match 'Get-RecoveryE2eNewChildRecoveryReports -Directory'
+        $source | Should -Match 'Get-RecoveryE2eChildRecoveryReportInventory -Directory'
         $source | Should -Match '\$childDiscovery\.Count -ne 1'
         $source | Should -Match '\$settingsChildRecoveryFile = \$childDiscovery\.Files\[0\]'
         $source | Should -Not -Match '\$newChildReports = if \(Test-Path'
-        $reportDiscoveryHelper = Get-Content -LiteralPath (Join-Path $repositoryRoot 'tests/support/Get-RecoveryE2eNewChildRecoveryReports.ps1') -Raw
+        $reportDiscoveryHelper = Get-Content -LiteralPath (Join-Path $repositoryRoot 'tests/support/Get-RecoveryE2eChildRecoveryReportInventory.ps1') -Raw
         $reportDiscoveryHelper | Should -Match '\$newFiles = @\('
         $reportDiscoveryHelper | Should -Match 'Files = @\(\$newFiles\)'
         $source | Should -Match '\$settingsChildRecovery\.FailureStage -ne ''RestoreSupportedSettings'''

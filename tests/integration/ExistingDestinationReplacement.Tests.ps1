@@ -113,3 +113,94 @@ Describe 'Existing destination archive and replace recovery' {
         }
     }
 }
+
+
+Describe 'Existing destination durable recovery report I/O boundary' {
+    It 'fails a final execution report at an existing directory while writing a sibling recovery report' {
+        InModuleScope CopyGitHubRepo {
+            $probeRoot = Join-Path ([System.IO.Path]::GetTempPath()) "cgr-recovery-report-contract-$([guid]::NewGuid().ToString('N'))"
+            New-Item -Path $probeRoot -ItemType Directory -ErrorAction Stop | Out-Null
+            try {
+                $reportTarget = Join-Path $probeRoot 'blocked-execution-report.json'
+                New-Item -Path $reportTarget -ItemType Directory -ErrorAction Stop | Out-Null
+                Mock Format-CgrMigrationExecutionResult { '{"fixture":true}' }
+
+                $reportError = $null
+                try {
+                    Write-CgrMigrationExecutionReport -Result ([pscustomobject] @{}) -Path $reportTarget -ErrorAction Stop
+                }
+                catch { $reportError = $_ }
+                $reportError | Should -Not -BeNullOrEmpty
+                (Test-Path -LiteralPath $reportTarget -PathType Container) | Should -BeTrue
+
+                $plan = [pscustomobject] @{
+                    SourceRepository = 'infoconex/fixture-source'
+                    DestinationRepository = 'infoconex/fixture-destination'
+                    ArchiveRepository = 'infoconex/fixture-archive'
+                    ContentMode = 'Snapshot'
+                }
+                $archive = [pscustomobject] @{ FullName = $plan.ArchiveRepository; Id = 20 }
+                $replacement = [pscustomobject] @{ FullName = $plan.DestinationRepository; Id = 30 }
+                $steps = @(
+                    [pscustomobject] @{ Order = 1; Name = 'PreserveDestinationAsArchive'; MutatedGitHub = $true; Verified = $true }
+                    [pscustomobject] @{ Order = 2; Name = 'VerifyArchivedDestinationIdentity'; MutatedGitHub = $false; Verified = $true }
+                    [pscustomobject] @{ Order = 3; Name = 'CreateReplacementRepository'; MutatedGitHub = $true; Verified = $true }
+                    [pscustomobject] @{ Order = 4; Name = 'VerifyReplacementRepositoryIdentity'; MutatedGitHub = $false; Verified = $true }
+                )
+
+                $savedPath = Write-CgrExistingDestinationRecoveryReport `
+                    -Plan $plan `
+                    -OriginalDestinationRepositoryId 20 `
+                    -ArchiveRepository $archive `
+                    -DestinationRepository $replacement `
+                    -FailureStage 'WriteCompletionReport' `
+                    -ErrorRecord $reportError `
+                    -CompletedSteps $steps `
+                    -PreferredReportPath $reportTarget
+
+                $savedPath | Should -Be ([System.IO.Path]::GetFullPath("$reportTarget.recovery.json"))
+                (Test-Path -LiteralPath $savedPath -PathType Leaf) | Should -BeTrue
+                $recovery = Get-Content -LiteralPath $savedPath -Raw | ConvertFrom-Json
+                $recovery.Status | Should -Be 'ExistingDestinationReplacementFailed'
+                $recovery.FailureStage | Should -Be 'WriteCompletionReport'
+                $recovery.ErrorId | Should -Be $reportError.FullyQualifiedErrorId
+                $recovery.OriginalDestinationRepositoryId | Should -Be 20
+                $recovery.ArchiveRepositoryId | Should -Be 20
+                $recovery.ReplacementRepositoryId | Should -Be 30
+                $recovery.Recovery.AutomaticRollbackAttempted | Should -BeFalse
+                $recovery.Recovery.AutomaticDeletionAttempted | Should -BeFalse
+                @($recovery.CompletedSteps).Count | Should -Be 4
+            }
+            finally {
+                Remove-Item -LiteralPath $probeRoot -Recurse -Force -ErrorAction Stop
+            }
+        }
+    }
+}
+
+Describe 'Local-only native Git commit failure fixture' {
+    It 'rejects a real commit-tree with invalid scoped author date without publishing a ref' {
+        InModuleScope CopyGitHubRepo {
+            $probeRoot = Join-Path ([System.IO.Path]::GetTempPath()) "cgr-commit-tree-probe-$([guid]::NewGuid().ToString('N'))"
+            New-Item -ItemType Directory -Path $probeRoot -ErrorAction Stop | Out-Null
+            try {
+                $init = Invoke-CgrNativeCommand -FilePath 'git' -ArgumentList @('init', '-b', 'main', $probeRoot)
+                $init.ExitCode | Should -Be 0
+                Set-Content -LiteralPath (Join-Path $probeRoot 'probe.txt') -Value 'No remote mutation' -Encoding utf8NoBOM
+                $add = Invoke-CgrNativeCommand -FilePath 'git' -ArgumentList @('-C', $probeRoot, 'add', 'probe.txt')
+                $add.ExitCode | Should -Be 0
+                $treeResult = Invoke-CgrNativeCommand -FilePath 'git' -ArgumentList @('-C', $probeRoot, 'write-tree')
+                $treeResult.ExitCode | Should -Be 0
+                $treeSha = [string] @($treeResult.Output)[0]
+                $result = Invoke-CgrNativeCommand -FilePath 'git' -ArgumentList @('-C', $probeRoot, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit-tree', $treeSha, '-m', 'Expected local Git failure') -Environment @{ GIT_AUTHOR_DATE = 'not-a-valid-date'; GIT_COMMITTER_DATE = 'not-a-valid-date' }
+                $result.ExitCode | Should -Not -Be 0
+                $result.ErrorText | Should -Match 'invalid date format'
+                $heads = Invoke-CgrNativeCommand -FilePath 'git' -ArgumentList @('-C', $probeRoot, 'show-ref', '--heads')
+                @($heads.Output).Count | Should -Be 0
+            }
+            finally {
+                Remove-Item -LiteralPath $probeRoot -Recurse -Force -ErrorAction Stop
+            }
+        }
+    }
+}

@@ -65,6 +65,19 @@ Describe 'Installer supply-chain trust documentation' {
         $pinnedSection | Should -Not -Match 'raw\.githubusercontent\.com'
     }
 
+    It 'prepares manifest-aligned stable installation examples before publication without assuming artifacts exist' {
+        $escapedVersion = [regex]::Escape($script:version)
+        $script:security | Should -Match ("Install-PSResource CopyGitHubRepo -Version {0}" -f $escapedVersion)
+        $script:security | Should -Match ("-Version {0} -Force" -f $escapedVersion)
+        $versionAssignment = '$version = ''{0}''' -f $script:version
+        $script:security | Should -Match ([regex]::Escape($versionAssignment))
+        $script:security | Should -Match 'latest \*\*published\*\* stable version'
+        $script:security | Should -Match 'Run it only after that exact GitHub Release'
+        $script:security | Should -Match 'versioned ZIP and checksum and has a valid GitHub provenance attestation'
+        $script:security | Should -Match 'merely merging the .+ module manifest into `main` does not make a release artifact available'
+        $script:security | Should -Not -Match '\$version = ''0\.4\.0'''
+    }
+
     It 'distinguishes checksum integrity from independent provenance' {
         $script:security | Should -Match 'does \*\*not\*\*, by itself, prove who produced the artifact'
         $script:security | Should -Match 'replace both the artifact and its checksum'

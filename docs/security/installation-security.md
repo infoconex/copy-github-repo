@@ -110,7 +110,7 @@ Therefore the convenience bootstrap remains inside the trust boundary even thoug
 
 For a higher-assurance stable install using the project's GitHub Release evidence, avoid executing mutable branch content. Pin a stable release and download its versioned artifact/checksum directly, then verify both checksum and GitHub artifact attestation before extraction.
 
-The following pinned procedure targets `v0.4.2` as the intended stable release. **Run it only after that exact GitHub Release contains the versioned ZIP and checksum and has a valid GitHub provenance attestation.** Before publication, use the latest already-published stable version instead; merely merging the `0.4.2` module manifest into `main` does not make a release artifact available. This source documentation is complete before tagging and does not require a later documentation commit.
+The following pinned procedure targets `v0.4.2` as the intended stable release. **Run it only after that exact GitHub Release contains the versioned ZIP and checksum and has a valid GitHub provenance attestation.** Before publication, use the latest already-published stable version instead; merely merging the `0.4.2` module manifest into `main` does not make a release artifact available.
 
 ```powershell
 $version = '0.4.2'

@@ -4,7 +4,7 @@ name: Publish Release
   workflow_dispatch:
     inputs:
       tag:
-        description: Stable release tag to create, for example v0.1.0
+        description: Stable release tag to create, for example vX.Y.Z
         required: true
         type: string
       confirm_publish:

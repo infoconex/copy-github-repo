@@ -13,15 +13,15 @@ The package is an **evidence index and current-state summary**, not a certificat
 
 | Review item | Current state | Authority / evidence |
 | --- | --- | --- |
-| Product version under review | `0.1.0` is the initial stable release | [Repository module manifest](https://github.com/infoconex/copy-github-repo/blob/main/src/CopyGitHubRepo/CopyGitHubRepo.psd1), [`versioning.md`](../release/versioning.md) |
+| Product version under review | Source module version is defined by the current manifest; v0.1.0 was the initial stable release. Source-version changes do not prove publication or release approval. | [Repository module manifest](https://github.com/infoconex/copy-github-repo/blob/main/src/CopyGitHubRepo/CopyGitHubRepo.psd1), [`versioning.md`](../release/versioning.md) |
 | Product behavior and supported scope | Implemented/documented contract | [`product-contract.md`](../product/product-contract.md) |
 | Support/compatibility lifecycle | Implemented/documented policy; latest published stable version is the supported line | [`support-policy.md`](../user/support-policy.md) |
 | Automated quality evidence | Cross-platform Quality Gate, Pester, PSScriptAnalyzer, package validation | [`quality-strategy.md`](../engineering/quality-strategy.md) |
-| Exact release-candidate live evidence | Recorded through the release qualification process for the exact v0.1.0 candidate | [`quality-strategy.md`](../engineering/quality-strategy.md) |
+| Exact release-candidate live evidence | Historical v0.1.0 qualification is not evidence for a newer candidate; current evidence must be bound to the exact proposed main commit before release approval. | [`quality-strategy.md`](../engineering/quality-strategy.md) |
 | Security architecture/control evidence | Implemented/documented, with explicit residual risk | [`security-architecture.md`](security-architecture.md) |
 | Repository security hardening | Main-branch rules, required checks, secret scanning, push protection, and release controls are enabled; residual platform limitations remain documented | [`repository-security-baseline.md`](repository-security-baseline.md) |
 | Release SBOM/provenance contract | Implemented in the stable release workflow with deterministic ZIP/checksum, SPDX SBOM, build provenance, and SBOM attestation | [`release-sbom.md`](release-sbom.md) |
-| Independent publisher signing | Authenticode signing is not implemented; GitHub artifact attestations are the selected v0.1.0 authenticity control | [`security-architecture.md`](security-architecture.md), [`release-readiness.md`](../release/release-readiness.md) |
+| Independent publisher signing | Authenticode signing remains unimplemented; the stable-release workflow uses GitHub artifact attestations, which must be verified for each exact published artifact. | [`security-architecture.md`](security-architecture.md), [`release-readiness.md`](../release/release-readiness.md) |
 | Release approval | Project release approval is governed by the exact-candidate release-readiness process; organizational adoption approval remains the adopter's decision | [`release-readiness.md`](../release/release-readiness.md) |
 
 An organization adopting the tool should make its own approval decision based on its risk tolerance, GitHub governance model, prerequisite software policy, and the exact release evidence available at adoption time.
@@ -34,7 +34,7 @@ An organization adopting the tool should make its own approval decision based on
 | Purpose | Safely copy, publish, and verify GitHub repositories using clean Snapshot or history-preserving FullHistory modes |
 | Public interface | `Copy-GitHubRepository`, `Get-GitHubRepository`, `Start-CopyGitHubRepositoryWizard`, `Test-GitHubRepositoryMigration` |
 | PowerShell baseline | PowerShell 7.4+, PowerShell Core edition |
-| Supported remote host for v0.1.0 | GitHub.com only; unsupported hosts fail closed |
+| Supported remote host (current release line) | GitHub.com only; unsupported hosts fail closed |
 | Primary copy modes | Snapshot (default) and FullHistory |
 | Human/automation use | Native PowerShell commands plus a dependency-free console wizard |
 
@@ -60,7 +60,7 @@ The machine-readable release inventory is defined in [`release-sbom.md`](release
 | Conditional runtime prerequisite | Git LFS | No | Required when the approved operation includes LFS content |
 | Development/test | Pester 6.2.0, PSScriptAnalyzer 1.25.0 | No | Exact-version pinned development dependencies |
 | CI/release automation | GitHub Actions dependencies | No | Immutable-SHA pinning policy; monitored/reviewed separately |
-| Runtime remote service | GitHub.com | N/A | v0.1.0 supported remote API/Git service |
+| Runtime remote service | GitHub.com | N/A | Current supported remote API/Git service |
 | Distribution | GitHub Releases, PowerShell Gallery | N/A | Distribution trust boundaries, not installed-module dependencies |
 
 For authoritative dependency/security posture see [`security-architecture.md`](security-architecture.md), [`dependency-monitoring.md`](dependency-monitoring.md), and [`release-sbom.md`](release-sbom.md). Prerequisite compatibility expectations are in [`support-policy.md`](../user/support-policy.md).
@@ -135,9 +135,9 @@ The stable-release contract requires the exact tagged commit to pass the reusabl
 
 `install-release.ps1` verifies the selected ZIP against the published checksum and GitHub artifact provenance before extraction. The higher-assurance pinned procedure avoids executing mutable branch bootstrap content. Details are in [`installation-security.md`](installation-security.md).
 
-GitHub attestations add repository/workflow provenance evidence, but the checksum, SBOM, and GitHub attestations are **not represented as Authenticode publisher signing**. For v0.1.0, GitHub artifact attestations are the selected independent release-authenticity mechanism; Authenticode may be added later for environments that require it.
+GitHub attestations add repository/workflow provenance evidence, but the checksum, SBOM, and GitHub attestations are **not represented as Authenticode publisher signing**. For stable releases, GitHub artifact attestations are the selected release-authenticity mechanism; Authenticode is not implemented and would require a separate design and control decision.
 
-Version `v0.1.0` is the initial stable release and uses the documented ZIP/checksum/SBOM/attestation evidence contract. See [`release-sbom.md`](release-sbom.md), [`publishing.md`](../release/publishing.md), and [`versioning.md`](../release/versioning.md).
+Version `v0.1.0` established the initial ZIP/checksum/SBOM/attestation evidence contract. The same current-release workflow contract applies to later stable versions, with artifacts and attestations independently verified only after each version is published. See [`release-sbom.md`](release-sbom.md), [`publishing.md`](../release/publishing.md), and [`versioning.md`](../release/versioning.md).
 
 ## Vulnerability reporting, maintenance, and support
 
@@ -154,12 +154,12 @@ A governance approval should distinguish the normal support lifecycle and vulner
 
 The concise approval-relevant limitations are:
 
-- v0.1.0 is GitHub.com-only; GitHub Enterprise Server and other hosts are outside current scope;
+- the current release line supports GitHub.com only; GitHub Enterprise Server and other hosts remain outside scope;
 - external prerequisite executables and GitHub.com availability/authorization/API behavior remain trust dependencies outside the module's direct enforcement;
 - secret-bearing repository configuration such as GitHub secrets, webhook secrets, private deploy-key material, and GitHub App credentials is unsupported and intentionally excluded;
 - no automatic destructive rollback/delete is attempted after partial mutation; preservation and explicit recovery evidence take priority;
 - resource exhaustion, timeout/cancellation, retry/throttling, interruption, and scale behavior retain documented limits and accepted boundaries under the non-functional model;
-- Authenticode publisher signing is not implemented; v0.1.0 instead relies on GitHub artifact attestations plus checksum verification for release authenticity/integrity;
+- Authenticode publisher signing is not implemented; the stable-release workflow relies on GitHub artifact attestations plus checksum verification, with exact-version publication and provenance verification still required;
 - quality/static-analysis/security controls do not prove absence of defects or vulnerabilities.
 
 See [`non-functional-requirements.md`](../product/non-functional-requirements.md), [`security-architecture.md`](security-architecture.md), [`repository-security-baseline.md`](repository-security-baseline.md), [`support-policy.md`](../user/support-policy.md), and [`quality-strategy.md`](../engineering/quality-strategy.md) for the detailed authorities.

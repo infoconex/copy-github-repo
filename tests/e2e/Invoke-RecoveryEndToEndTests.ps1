@@ -31,6 +31,7 @@ $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $modulePath = Join-Path $repositoryRoot 'src/CopyGitHubRepo/CopyGitHubRepo.psd1'
 . (Join-Path $repositoryRoot 'tests/support/Invoke-RecoveryE2eScopedGitCommitTreeFault.ps1')
 . (Join-Path $repositoryRoot 'tests/support/Invoke-RecoveryE2eScopedSettingsReadbackDrift.ps1')
+. (Join-Path $repositoryRoot 'tests/support/Get-RecoveryE2eNewChildRecoveryReports.ps1')
 $runId = [guid]::NewGuid().ToString('N').Substring(0, 10)
 $repositoryPrefix = "copy-github-repo-recovery-e2e-$runId"
 $createdRepositories = [System.Collections.Generic.List[string]]::new()
@@ -763,16 +764,14 @@ try {
             throw 'Settings-fault archived content, independently copied Snapshot or durable recovery mismatched.'
         }
 
-        $newChildReports = if (Test-Path -LiteralPath $childRecoveryDir -PathType Container) {
-            $childReportCandidates = @(Get-ChildItem -LiteralPath $childRecoveryDir -File -Filter $childReportPattern)
-            @($childReportCandidates | Where-Object { $_.FullName -cnotin $existingChildReports })
+        $childDiscovery = Get-RecoveryE2eNewChildRecoveryReports -Directory $childRecoveryDir `
+            -FilePattern $childReportPattern -PreviouslyObservedPaths $existingChildReports
+        if ($childDiscovery.Count -ne 1) {
+            throw "Expected exactly one migration-authored child recovery report; found $($childDiscovery.Count)."
         }
-        else { @() }
-        if ($newChildReports.Count -ne 1) {
-            throw "Expected exactly one migration-authored child recovery report; found $($newChildReports.Count)."
-        }
-        $settingsChildRecovery = Get-Content -LiteralPath $newChildReports[0].FullName -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-        Copy-Item -LiteralPath $newChildReports[0].FullName -Destination (Join-Path $tempRoot 'settingsfault-child-recovery.json') -ErrorAction Stop
+        $settingsChildRecoveryFile = $childDiscovery.Files[0]
+        $settingsChildRecovery = Get-Content -LiteralPath $settingsChildRecoveryFile.FullName -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        Copy-Item -LiteralPath $settingsChildRecoveryFile.FullName -Destination (Join-Path $tempRoot 'settingsfault-child-recovery.json') -ErrorAction Stop
         $settingsChildSteps = @($settingsChildRecovery.CompletedSteps | ForEach-Object { $_.Name })
         if ($settingsChildRecovery.FailureStage -ne 'RestoreSupportedSettings' -or
             $settingsChildRecovery.ErrorId -ne $settingsErrorId -or
@@ -792,7 +791,7 @@ try {
             ParentRecoveryErrorId = $settingsRecovery.ErrorId
             ChildRecoveryErrorId = $settingsChildRecovery.ErrorId
             ParentRecoveryReport = $settingsRecoveryPath
-            ChildRecoveryReport = $newChildReports[0].FullName
+            ChildRecoveryReport = $settingsChildRecoveryFile.FullName
             OriginalDestinationRepositoryId = $settingsOldId
             ArchiveRepositoryId = [string] $settingsArchived.id
             ReplacementRepositoryId = $settingsReplacementId

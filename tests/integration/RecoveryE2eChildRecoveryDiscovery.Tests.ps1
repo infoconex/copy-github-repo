@@ -20,7 +20,7 @@ Describe 'Recovery E2E migration-authored child report discovery' {
 
     It 'keeps exactly one new child recovery report as an indexable array under StrictMode' {
         Set-StrictMode -Version Latest
-        New-Item -LiteralPath $script:reportDir -ItemType Directory -Force | Out-Null
+        New-Item -Path $script:reportDir -ItemType Directory -Force | Out-Null
         $onePath = Join-Path $script:reportDir "$($script:prefix)-20261023T010839076Z.json"
         Set-Content -LiteralPath $onePath -Value '{"FailureStage":"RestoreSupportedSettings"}' -Encoding utf8NoBOM
         $result = Get-RecoveryE2eNewChildRecoveryReports -Directory $script:reportDir -FilePattern $script:pattern
@@ -35,7 +35,7 @@ Describe 'Recovery E2E migration-authored child report discovery' {
 
     It 'counts multiple new reports rather than silently picking one or including old evidence' {
         Set-StrictMode -Version Latest
-        New-Item -LiteralPath $script:reportDir -ItemType Directory -Force | Out-Null
+        New-Item -Path $script:reportDir -ItemType Directory -Force | Out-Null
         $previous = Join-Path $script:reportDir "$($script:prefix)-previous.json"
         $first = Join-Path $script:reportDir "$($script:prefix)-new1.json"
         $second = Join-Path $script:reportDir "$($script:prefix)-new2.json"

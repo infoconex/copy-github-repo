@@ -62,10 +62,11 @@ Describe 'Security architecture documentation contract' {
         $script:securityArchitecture | Should -Match 'language `actions`'
         $script:securityArchitecture | Should -Match 'does not analyze the project''s PowerShell source'
         $script:securityArchitecture | Should -Match 'dependency-monitoring\.md'
-        $script:securityArchitecture | Should -Match 'required v0\.1\.0 baseline restored and verified during release qualification'
+        $script:securityArchitecture | Should -Match 'v0\.1\.0 baseline was historically verified'
+        $script:securityArchitecture | Should -Match 'each new release candidate must assess current GitHub-side state'
         $script:securityArchitecture | Should -Match 'Independent release authenticity/signing'
-        $script:securityArchitecture | Should -Match 'Implemented for v0\.1\.0 with GitHub artifact attestations'
-        $script:securityArchitecture | Should -Match 'Authenticode publisher signing remains optional/not implemented'
+        $script:securityArchitecture | Should -Match 'stable-release workflow''s GitHub artifact-attestation contract'
+        $script:securityArchitecture | Should -Match 'Authenticode publisher signing remains unimplemented'
         $script:securityArchitecture | Should -Match 'New-ReleaseSbom\.ps1'
         $script:securityArchitecture | Should -Match 'release-sbom\.md'
         $script:securityArchitecture | Should -Match 'SPDX 2\.3 JSON'
@@ -79,7 +80,7 @@ Describe 'Security architecture documentation contract' {
         $script:releaseSbom | Should -Match 'GitHub SBOM attestation'
         $script:releaseSbom | Should -Match 'Independent publisher signing remains a separate optional control'
         $script:securityArchitecture | Should -Match '\[`release-sbom\.md`\]\(release-sbom\.md\)'
-        $script:securityArchitecture | Should -Match 'GitHub artifact attestation is the selected independent release-authenticity mechanism'
+        $script:securityArchitecture | Should -Match 'GitHub artifact attestation remains the selected release-authenticity mechanism for the current stable-release workflow'
         $script:securityArchitecture | Should -Match 'not Authenticode publisher signing'
     }
 

@@ -1,6 +1,6 @@
 BeforeAll {
     $repositoryRoot = Split-Path -Parent $PSScriptRoot
-    . (Join-Path $repositoryRoot 'tests/support/Get-RecoveryE2eNewChildRecoveryReports.ps1')
+    . (Join-Path $repositoryRoot 'tests/support/Get-RecoveryE2eChildRecoveryReportInventory.ps1')
 }
 
 Describe 'Recovery E2E migration-authored child report discovery' {
@@ -12,7 +12,7 @@ Describe 'Recovery E2E migration-authored child report discovery' {
 
     It 'returns a stable empty report collection when the directory does not exist' {
         Set-StrictMode -Version Latest
-        $result = Get-RecoveryE2eNewChildRecoveryReports -Directory $script:reportDir -FilePattern $script:pattern
+        $result = Get-RecoveryE2eChildRecoveryReportInventory -Directory $script:reportDir -FilePattern $script:pattern
         $result.Count | Should -Be 0
         ($result.Files -is [array]) | Should -BeTrue
         @($result.Files).Count | Should -Be 0
@@ -23,7 +23,7 @@ Describe 'Recovery E2E migration-authored child report discovery' {
         New-Item -Path $script:reportDir -ItemType Directory -Force | Out-Null
         $onePath = Join-Path $script:reportDir "$($script:prefix)-20261023T010839076Z.json"
         Set-Content -LiteralPath $onePath -Value '{"FailureStage":"RestoreSupportedSettings"}' -Encoding utf8NoBOM
-        $result = Get-RecoveryE2eNewChildRecoveryReports -Directory $script:reportDir -FilePattern $script:pattern
+        $result = Get-RecoveryE2eChildRecoveryReportInventory -Directory $script:reportDir -FilePattern $script:pattern
 
         $result.Count | Should -Be 1
         ($result.Files -is [array]) | Should -BeTrue
@@ -44,12 +44,12 @@ Describe 'Recovery E2E migration-authored child report discovery' {
             Set-Content -LiteralPath $path -Value '{}' -Encoding utf8NoBOM
         }
 
-        $args = @{
+        $reportSelectionArgs = @{
             Directory = $script:reportDir
             FilePattern = $script:pattern
             PreviouslyObservedPaths = @($previous)
         }
-        $result = Get-RecoveryE2eNewChildRecoveryReports @args
+        $result = Get-RecoveryE2eChildRecoveryReportInventory @reportSelectionArgs
         $result.Count | Should -Be 2
         ($result.Files -is [array]) | Should -BeTrue
         @($result.Files).Count | Should -Be 2
@@ -58,8 +58,8 @@ Describe 'Recovery E2E migration-authored child report discovery' {
         (@($result.Files.FullName) -contains $previous) | Should -BeFalse
         (@($result.Files.FullName) -contains $unrelated) | Should -BeFalse
 
-        $args.PreviouslyObservedPaths = @($previous, $first, $second)
-        $allPreviouslySeen = Get-RecoveryE2eNewChildRecoveryReports @args
+        $reportSelectionArgs.PreviouslyObservedPaths = @($previous, $first, $second)
+        $allPreviouslySeen = Get-RecoveryE2eChildRecoveryReportInventory @reportSelectionArgs
         $allPreviouslySeen.Count | Should -Be 0
         @($allPreviouslySeen.Files).Count | Should -Be 0
     }

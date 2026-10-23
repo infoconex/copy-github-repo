@@ -134,6 +134,7 @@ Do not add author, creation-date, last-modified, or change-history headers. Git 
 | `build/New-ScaleCharacterizationFixture.ps1` | Generates deterministic local Git fixtures used by the scale-characterization harness without claiming a production support limit. |
 | `build/Set-PowerShellGalleryReleaseNotes.ps1` | Extracts the current version's dated `CHANGELOG.md` section and injects it into the staged Gallery manifest so each immutable package carries version-specific release notes. |
 | `build/Test-Documentation.ps1` | Runs the narrow documentation validation path used for documentation-only changes. |
+| `build/Test-DocumentationVersionReferences.ps1` | Read-only candidate-version audit for actionable installation and publication documentation; compares intended manifest version against pinned examples, rejects stale commands with file/line diagnostics, and leaves historical release evidence and external dependency versions unchanged. |
 | `build/Test-GeneratedSite.ps1` | Validates generated GitHub Pages content and site-link assumptions. |
 | `build/Test-Project.ps1` | Canonical local/CI quality gate: analyzer, classified Pester suites, and aggregate coverage for `All`. |
 | `build/Test-ReleaseReadiness.ps1` | Checks release metadata and packaging prerequisites before publication. |

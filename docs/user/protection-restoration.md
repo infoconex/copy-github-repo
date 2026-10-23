@@ -25,7 +25,7 @@ For mutating Snapshot and FullHistory flows, the intended order is:
 
 ## Supported rulesets
 
-The `v0.1.0` protection-restoration contract copies repository-level rulesets when the rule can be recreated without carrying source-specific identities into the destination.
+The current protection-restoration contract copies repository-level rulesets only when each rule can be recreated without carrying source-specific identities into the destination. This identity-safety boundary was established for the initial stable release and remains in force.
 
 Supported rulesets preserve:
 

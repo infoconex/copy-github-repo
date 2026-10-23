@@ -26,6 +26,7 @@
         'build/New-ScaleCharacterizationFixture.ps1'
         'build/Set-PowerShellGalleryReleaseNotes.ps1'
         'build/Test-Documentation.ps1'
+        'build/Test-DocumentationVersionReferences.ps1'
         'build/Test-GeneratedSite.ps1'
         'build/Test-Project.ps1'
         'build/Test-ReleaseReadiness.ps1'

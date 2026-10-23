@@ -19,7 +19,7 @@ For module version `X.Y.Z`, the stable GitHub release contains:
 
 Independent publisher signing remains a separate optional control. A checksum, SBOM, or GitHub attestation must not be described as equivalent to an independently managed publisher-signing key.
 
-A VEX sidecar is **not** part of the routine v0.1.0 release evidence set. [`vulnerability-applicability.md`](vulnerability-applicability.md) defines the trigger-based VEX decision and the evidence required before a vulnerability applicability statement is published.
+A VEX sidecar is **not** part of the routine stable-release evidence set. [`vulnerability-applicability.md`](vulnerability-applicability.md) defines the trigger-based VEX decision and the evidence required before a vulnerability applicability statement is published.
 
 ## What the SBOM describes
 
@@ -47,7 +47,7 @@ This classification is deliberate so vulnerability and software-inventory scanne
 
 ## SPDX format
 
-The project uses **SPDX 2.3 JSON** for v0.1.0 release SBOMs. SPDX 2.3 provides a stable JSON serialization and is accepted by GitHub's SBOM attestation capability. The repository contract validates the fields used by this project, package/version identity, shipped file inventory, artifact checksum binding, deterministic output, and dependency classification.
+The current stable-release SBOM format is **SPDX 2.3 JSON**, as established for the initial stable release. SPDX 2.3 provides a stable JSON serialization and is accepted by GitHub's SBOM attestation capability. The repository contract validates the fields used by this project, package/version identity, shipped file inventory, artifact checksum binding, deterministic output, and dependency classification.
 
 The SBOM uses one top-level `CopyGitHubRepo` package with `CONTAINS` relationships to the files present in the release archive. A package verification code is calculated from the file SHA-1 values according to the SPDX 2.x package model. The ZIP itself is recorded with a SHA-256 package checksum.
 
@@ -87,7 +87,7 @@ For a stable release:
 5. Treat any digest, repository, workflow, version, or subject mismatch as a failed verification rather than falling back to an unverified install.
 6. If a release publishes VEX in response to a material vulnerability, verify its exact release/product/vulnerability identity and any associated attestation separately; absence of VEX is not evidence that no vulnerabilities apply.
 
-Version `v0.1.0` is the initial stable release and uses this evidence contract.
+Version `v0.1.0` established this evidence contract for the initial stable release. The contract continues to apply to current stable releases, with actual ZIP, checksum, SBOM, and attestations produced and verified for each published version.
 
 ## Reproducibility and failure behavior
 

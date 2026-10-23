@@ -19,7 +19,7 @@ Import-Module CopyGitHubRepo
 gh auth login --hostname github.com
 ```
 
-`Install-PSResource` installs the latest stable Gallery version by default. To deliberately pin the initial stable release, use `Install-PSResource CopyGitHubRepo -Version 0.1.0`. Environments using the older PowerShellGet commands can use `Install-Module CopyGitHubRepo -Scope CurrentUser` instead. For repository-hosted, provenance-verified, pinned-artifact, and prerelease alternatives, see [Installation security](../security/installation-security.md).
+`Install-PSResource` installs the latest **published** stable Gallery version by default. For deliberate exact-version pinning, choose a version that is already published; a module manifest version does not prove that its release artifacts are available. Environments using older PowerShellGet commands can use `Install-Module CopyGitHubRepo -Scope CurrentUser` instead. For exact-version, repository-hosted, provenance-verified, pinned-artifact, and prerelease alternatives, see [Installation security](../security/installation-security.md).
 
 For interactive use, start with:
 

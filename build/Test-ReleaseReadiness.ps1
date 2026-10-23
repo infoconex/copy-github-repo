@@ -51,6 +51,10 @@ if (-not [string]::IsNullOrWhiteSpace($Tag) -and $Tag -cne $expectedTag) {
     throw "Release tag '$Tag' does not match module version '$version'. Expected '$expectedTag'."
 }
 
+# The intended source version is not a published release. Check all current-release
+# installation examples before accepting release metadata as candidate-ready.
+& (Join-Path $repositoryRoot 'build/Test-DocumentationVersionReferences.ps1') | Out-Null
+
 $changelog = Get-Content -LiteralPath $changelogPath -Raw
 $escapedVersion = [regex]::Escape($version)
 $releaseHeadingPattern = "(?m)^## \[$escapedVersion\] - (?<ReleaseDate>\d{4}-\d{2}-\d{2})\r?$"

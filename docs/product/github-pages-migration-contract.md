@@ -9,7 +9,7 @@ description: "Normative contract and architecture for GitHub Pages migration, im
 
 This is the authoritative product contract and architecture for GitHub Pages migration, introduced in version 0.4.0 and applicable to the current release line. Pages planning, execution, verification, recovery, wizard, E2E, and user documentation consume this definition rather than redefine it.
 
-The current release line implements deterministic GitHub-side Pages planning, restoration, independent verification, activation control, replacement custom-domain handoff, and recovery evidence behind the opt-in `-RestorePages` switch. General GitHub Actions restoration, external DNS mutation, secrets migration, account/organization domain verification transfer, and certificate management remain outside this contract.
+The current release line implements deterministic GitHub-side Pages planning, restoration, independent verification, activation control, replacement custom-domain handoff, and recovery evidence behind the existing opt-in `-RestorePages` switch. General GitHub Actions restoration, external DNS mutation, secrets migration, account/organization domain verification transfer, and certificate management remain outside this contract.
 
 ## Core distinction: Git content is not GitHub Pages state
 

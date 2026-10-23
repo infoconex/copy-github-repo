@@ -29,7 +29,9 @@ Describe 'Software assurance review package documentation contract' {
             $script:assurance | Should -Match ([regex]::Escape($term))
         }
 
-        $script:assurance | Should -Match '`0\.1\.0` is the initial stable release'
+        $script:assurance | Should -Match 'v0\.1\.0 was the initial stable release'
+        $script:assurance | Should -Match 'Source-version changes do not prove publication or release approval'
+        $script:assurance | Should -Match 'Historical v0\.1\.0 qualification is not evidence for a newer candidate'
         $script:assurance | Should -Not -Match 'first stable release has not yet been published'
 
         foreach ($command in @(
@@ -108,7 +110,8 @@ Describe 'Software assurance review package documentation contract' {
     }
 
     It 'surfaces current residual risk and support lifecycle for approval' {
-        $script:assurance | Should -Match 'GitHub artifact attestations are the selected v0\.1\.0 authenticity control'
+        $script:assurance | Should -Match 'stable-release workflow uses GitHub artifact attestations'
+        $script:assurance | Should -Match 'must be verified for each exact published artifact'
         $script:assurance | Should -Match 'Authenticode publisher signing is not implemented'
         $script:assurance | Should -Match '../user/support-policy\.md'
         $script:assurance | Should -Match 'latest published stable module version is the supported line'

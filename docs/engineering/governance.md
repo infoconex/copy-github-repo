@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Governance and Ownership – Decision Authority"
-description: "Review CopyGitHubRepo project governance, current maintainership, ownership by decision area, compatibility and architecture proposal paths, CODEOWNERS policy, and release authority."
+description: "Review CopyGitHubRepo project governance, current maintainership, ownership by decision area, compatibility and architecture proposal paths, CODEOWNERS."
 ---
 
 # Project governance and ownership

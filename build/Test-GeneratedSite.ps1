@@ -25,6 +25,26 @@ $failures = [System.Collections.Generic.List[string]]::new()
 $siteConfig = Get-Content -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) '_config.yml')
 $siteTitle = (($siteConfig | Where-Object { $_ -match '^title:\s*' } | Select-Object -First 1) -replace '^title:\s*', '').Trim('"', "'", ' ')
 $siteDescription = (($siteConfig | Where-Object { $_ -match '^description:\s*' } | Select-Object -First 1) -replace '^description:\s*', '').Trim('"', "'", ' ')
+$sourceRoot = Split-Path -Parent $PSScriptRoot
+$publishedMarkdown = @(
+    Get-Item -LiteralPath (Join-Path $sourceRoot 'README.md')
+    Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'docs') -Filter '*.md' -Recurse -File
+)
+foreach ($markdownFile in $publishedMarkdown) {
+    $markdown = Get-Content -LiteralPath $markdownFile.FullName -Raw
+    $relativeMarkdown = [System.IO.Path]::GetRelativePath($sourceRoot, $markdownFile.FullName)
+    $frontMatter = [regex]::Match($markdown, '(?s)\A---\s*\r?\n(?<yaml>.*?)\r?\n---\s*\r?\n')
+    if (-not $frontMatter.Success) {
+        $failures.Add("$relativeMarkdown -> missing SEO front matter")
+        continue
+    }
+    foreach ($field in @('title', 'description')) {
+        $fieldLine = @($frontMatter.Groups['yaml'].Value -split '\r?\n' | Where-Object { $_ -match "^$field\s*:" })
+        if ($fieldLine.Count -ne 1 -or [string]::IsNullOrWhiteSpace(($fieldLine[0] -replace "^$field\s*:", '').Trim('"', "'", ' '))) {
+            $failures.Add("$relativeMarkdown -> expected one explicit nonempty $field")
+        }
+    }
+}
 $htmlFiles = @(Get-ChildItem -LiteralPath $siteRoot -Filter '*.html' -File -Recurse)
 $titleRecords = @()
 $descriptionRecords = @()

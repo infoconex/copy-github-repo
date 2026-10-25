@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo GitHub Repository Security Baseline"
-description: "Review the required GitHub repository security baseline for CopyGitHubRepo, including rulesets, CodeQL, PowerShell security analysis, Dependabot, secret scanning, Actions permissions, and post-Snapshot qualification."
+description: "Review required CopyGitHubRepo repository protections, rulesets, CodeQL, Dependabot, secret scanning, and Actions permissions."
 ---
 
 # GitHub repository security baseline

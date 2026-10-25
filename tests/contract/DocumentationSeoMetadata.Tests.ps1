@@ -4,6 +4,10 @@ BeforeAll {
     $script:repoRoot = Split-Path -Parent $PSScriptRoot
     $script:pages = @(
         Get-Item -LiteralPath (Join-Path $script:repoRoot 'README.md')
+    Get-Item -LiteralPath (Join-Path $script:repoRoot 'CONTRIBUTING.md')
+    Get-Item -LiteralPath (Join-Path $script:repoRoot 'SECURITY.md')
+    Get-Item -LiteralPath (Join-Path $script:repoRoot 'CODE_OF_CONDUCT.md')
+    Get-Item -LiteralPath (Join-Path $script:repoRoot 'CHANGELOG.md')
         Get-ChildItem -LiteralPath (Join-Path $script:repoRoot 'docs') -Filter '*.md' -Recurse -File
     )
 }

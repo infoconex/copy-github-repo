@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Support and Compatibility Policy"
-description: "Review supported CopyGitHubRepo versions, PowerShell and operating-system compatibility, Git and GitHub prerequisites, deprecation rules, breaking changes, and end-of-support policy."
+description: "Review supported CopyGitHubRepo versions, PowerShell and OS compatibility, prerequisites, deprecation, breaking changes, and support."
 ---
 
 # Support, compatibility, and deprecation policy

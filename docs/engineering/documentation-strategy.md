@@ -1,6 +1,6 @@
 ---
 title: "Documentation Strategy | CopyGitHubRepo"
-description: "Understand how CopyGitHubRepo documentation is organized by audience and subject, how progressive disclosure works, which pages own each contract, and how."
+description: "Learn how CopyGitHubRepo documentation is organized, how progressive disclosure works, and which pages own product contracts and evidence."
 ---
 
 # Documentation strategy

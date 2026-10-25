@@ -1,7 +1,7 @@
 #requires -Version 7.4
 
 BeforeAll {
-    $script:repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+    $script:repoRoot = Split-Path -Parent $PSScriptRoot
     $script:pages = @(
         Get-Item -LiteralPath (Join-Path $script:repoRoot 'README.md')
         Get-ChildItem -LiteralPath (Join-Path $script:repoRoot 'docs') -Filter '*.md' -Recurse -File

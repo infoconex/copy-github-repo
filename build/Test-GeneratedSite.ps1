@@ -28,6 +28,10 @@ $siteDescription = (($siteConfig | Where-Object { $_ -match '^description:\s*' }
 $sourceRoot = Split-Path -Parent $PSScriptRoot
 $publishedMarkdown = @(
     Get-Item -LiteralPath (Join-Path $sourceRoot 'README.md')
+    Get-Item -LiteralPath (Join-Path $sourceRoot 'CONTRIBUTING.md')
+    Get-Item -LiteralPath (Join-Path $sourceRoot 'SECURITY.md')
+    Get-Item -LiteralPath (Join-Path $sourceRoot 'CODE_OF_CONDUCT.md')
+    Get-Item -LiteralPath (Join-Path $sourceRoot 'CHANGELOG.md')
     Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'docs') -Filter '*.md' -Recurse -File
 )
 foreach ($markdownFile in $publishedMarkdown) {

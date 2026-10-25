@@ -1,6 +1,6 @@
 ---
 title: "PowerShell Wizard Navigation and Keyboard Controls | CopyGitHubRepo"
-description: "Review CopyGitHubRepo wizard navigation, paging, filtering, contextual help, Back and Cancel behavior, default values, and keyboard-friendly repository selection."
+description: "Review CopyGitHubRepo wizard navigation, filtering, paging, help, Back and Cancel behavior, defaults, and keyboard-friendly selection."
 ---
 
 # Wizard navigation

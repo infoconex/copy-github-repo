@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Engineering Principles – Maintainable PowerShell Design"
-description: "Review CopyGitHubRepo engineering principles for responsibility, pragmatic DRY and SOLID, domain contracts, error stability, safety-first abstraction, testing, and PowerShell maintainability."
+description: "Review CopyGitHubRepo engineering principles for responsibility, pragmatic DRY and SOLID, domain contracts, error stability, safety-first abstraction."
 ---
 
 # Engineering principles

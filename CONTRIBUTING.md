@@ -1,6 +1,6 @@
 ---
 title: "Contributing to CopyGitHubRepo – PowerShell Development Guide"
-description: "Set up CopyGitHubRepo development, follow the PowerShell engineering conventions, run the quality gate and focused tests, and prepare safe contributions and pull requests."
+description: "Contribute to CopyGitHubRepo with development setup, PowerShell conventions, quality checks, focused tests, and safe pull-request guidance."
 ---
 
 # Contributing

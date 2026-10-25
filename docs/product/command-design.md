@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Command Design – PowerShell API and Safety Contracts"
-description: "Review CopyGitHubRepo public command design, immutable planning, Snapshot and FullHistory execution, settings and protection restoration, replacement safety, wizard delegation, and output contracts."
+description: "Review CopyGitHubRepo command design for immutable planning, Snapshot, FullHistory, replacement safeguards, wizard delegation, and output contracts."
 ---
 
 # Command design

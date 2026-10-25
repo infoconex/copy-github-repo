@@ -35,33 +35,9 @@ Describe 'Published documentation SEO contracts' {
     It 'has exactly one nonempty first-level heading on every published Markdown page' {
         foreach ($page in $script:pages) {
             $markdown = Get-Content -LiteralPath $page.FullName -Raw
-            $markdownOutsideFences = [regex]::Replace($markdown, '(?ms)^```[^\r\n]*\r?\n.*?^```\s*
-            $headingMatches.Count | Should -Be 1 -Because $page.FullName
-            if ($headingMatches.Count -eq 1) {
-                $headingMatches[0].Groups['heading'].Value.Trim() | Should -Not -BeNullOrEmpty
-            }
-        }
-    }
-}
-, '')
-            $markdownOutsideFences = [regex]::Replace($markdownOutsideFences, '(?ms)^~~~[^\r\n]*\r?\n.*?^~~~\s*
-            $headingMatches.Count | Should -Be 1 -Because $page.FullName
-            if ($headingMatches.Count -eq 1) {
-                $headingMatches[0].Groups['heading'].Value.Trim() | Should -Not -BeNullOrEmpty
-            }
-        }
-    }
-}
-, '')
-            $headingMatches = @([regex]::Matches($markdownOutsideFences, '(?m)^#(?!#)\s+(?<heading>.*)
-            $headingMatches.Count | Should -Be 1 -Because $page.FullName
-            if ($headingMatches.Count -eq 1) {
-                $headingMatches[0].Groups['heading'].Value.Trim() | Should -Not -BeNullOrEmpty
-            }
-        }
-    }
-}
-))
+            $markdownOutsideFences = [regex]::Replace($markdown, '(?ms)^```[^\r\n]*\r?\n.*?^```\s*$', '')
+            $markdownOutsideFences = [regex]::Replace($markdownOutsideFences, '(?ms)^~~~[^\r\n]*\r?\n.*?^~~~\s*$', '')
+            $headingMatches = @([regex]::Matches($markdownOutsideFences, '(?m)^#(?!#)\s+(?<heading>.*)$'))
             $headingMatches.Count | Should -Be 1 -Because $page.FullName
             if ($headingMatches.Count -eq 1) {
                 $headingMatches[0].Groups['heading'].Value.Trim() | Should -Not -BeNullOrEmpty

@@ -23,8 +23,8 @@ $referencePattern = '(?i)(?:href|src)\s*=\s*["''](?<value>[^"'']+)["'']'
 $failures = [System.Collections.Generic.List[string]]::new()
 # Detect generic site metadata even when Jekyll supplies fallback values.
 $siteConfig = Get-Content -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) '_config.yml')
-$siteTitle = (($siteConfig | Where-Object { $_ -match '^title:\\s*' } | Select-Object -First 1) -replace '^title:\\s*', '').Trim('"', "'", ' ')
-$siteDescription = (($siteConfig | Where-Object { $_ -match '^description:\\s*' } | Select-Object -First 1) -replace '^description:\\s*', '').Trim('"', "'", ' ')
+$siteTitle = (($siteConfig | Where-Object { $_ -match '^title:\s*' } | Select-Object -First 1) -replace '^title:\s*', '').Trim('"', "'", ' ')
+$siteDescription = (($siteConfig | Where-Object { $_ -match '^description:\s*' } | Select-Object -First 1) -replace '^description:\s*', '').Trim('"', "'", ' ')
 $htmlFiles = @(Get-ChildItem -LiteralPath $siteRoot -Filter '*.html' -File -Recurse)
 $titleRecords = @()
 $descriptionRecords = @()
@@ -191,7 +191,7 @@ foreach ($htmlFile in $htmlFiles) {
     }
 
     if ($h1Count -eq 1) {
-        $h1Content = [regex]::Match($html, '(?is)<h1\\b[^>]*>(?<value>.*?)</h1>').Groups['value'].Value
+        $h1Content = [regex]::Match($html, '(?is)<h1\b[^>]*>(?<value>.*?)</h1>').Groups['value'].Value
         $h1Text = [System.Net.WebUtility]::HtmlDecode(($h1Content -replace '(?is)<[^>]+>', '')).Trim()
         if ([string]::IsNullOrWhiteSpace($h1Text)) {
             Add-GeneratedSiteFailure -Source $relativeSource -Message 'h1 heading has no text'

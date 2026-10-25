@@ -1,6 +1,6 @@
 ---
 title: "PowerShell Wizard Presentation and Accessibility | CopyGitHubRepo"
-description: "Understand CopyGitHubRepo wizard styling, semantic status presentation, NO_COLOR and redirected-output fallbacks, completion summaries, and structured-output separation."
+description: "Understand CopyGitHubRepo wizard styling, semantic status, NO_COLOR and redirected-output fallbacks, and structured completion summaries."
 ---
 
 # Wizard presentation contract

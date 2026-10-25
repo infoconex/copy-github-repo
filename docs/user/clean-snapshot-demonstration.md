@@ -1,6 +1,6 @@
 ---
 title: "Clean GitHub Repository Snapshot Demonstration | CopyGitHubRepo"
-description: "Run CopyGitHubRepo's live Snapshot demonstration to verify a clean GitHub repository copy with the same current tree, one new root commit, and no migrated development history."
+description: "Run the controlled CopyGitHubRepo Snapshot demonstration to verify identical current files, one new root commit, and no migrated development history."
 ---
 
 # Clean Snapshot demonstration

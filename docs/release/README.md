@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Release and Operations Documentation"
-description: "Release and operations documentation for CopyGitHubRepo covering release readiness, publication, versioning, GitHub Pages deployment, release runbooks, and post-release incident response."
+description: "Explore CopyGitHubRepo release readiness, publishing, versioning, GitHub Pages deployment, runbooks, and incident response procedures."
 ---
 
 # Release and Operations

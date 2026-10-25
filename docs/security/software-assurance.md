@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Software Assurance Review Package"
-description: "Use the CopyGitHubRepo software assurance review package to assess product scope, licensing, dependencies, permissions, network use, data handling, security controls, release provenance, support, and approval evidence."
+description: "Assess CopyGitHubRepo licensing, dependencies, permissions, data handling, controls, release provenance, support, and assurance evidence."
 ---
 
 # Software assurance review package

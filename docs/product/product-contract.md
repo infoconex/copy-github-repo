@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Product Contract – GitHub Repository Copy Behavior"
-description: "Review the normative CopyGitHubRepo contract for Snapshot and FullHistory modes, immutable source-state planning, optional GitHub Release and GitHub Pages preservation, replacement safety, configuration restoration, verification, provenance, and recovery."
+description: "Review the normative CopyGitHubRepo contract for Snapshot, FullHistory, immutable planning, optional releases, replacement safety, verification, and recovery."
 ---
 
 # Product contract

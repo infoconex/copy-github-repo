@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Dependency and Supply-Chain Monitoring"
-description: "Understand how CopyGitHubRepo monitors PowerShell development dependencies and GitHub Actions for stable updates and published security advisories without automatically adopting changes."
+description: "Learn how CopyGitHubRepo monitors PowerShell dependencies and GitHub Actions for stable updates and security advisories without automatic adoption."
 ---
 
 # Dependency and supply-chain monitoring

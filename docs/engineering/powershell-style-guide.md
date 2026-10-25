@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo PowerShell Style Guide – Naming, Safety, and Testing"
-description: "Follow CopyGitHubRepo's PowerShell conventions for terminology, naming, formatting, public/private command design, structured output, ShouldProcess, native-command safety, tests, and analyzer policy."
+description: "Follow CopyGitHubRepo PowerShell conventions for naming, formatting, structured output, ShouldProcess, native-command safety, and testing."
 ---
 
 # PowerShell style guide

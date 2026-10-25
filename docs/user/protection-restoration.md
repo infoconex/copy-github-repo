@@ -1,6 +1,6 @@
 ---
 title: "Restore GitHub Rulesets and Branch Protection After Migration"
-description: "Learn how CopyGitHubRepo restores transferable GitHub repository rulesets and default-branch protection after migration, including supported and skipped policy semantics."
+description: "Learn how CopyGitHubRepo restores transferable GitHub rulesets and branch protection, including skipped and unsupported policies."
 ---
 
 # Repository protection restoration

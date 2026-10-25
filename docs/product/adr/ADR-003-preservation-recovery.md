@@ -1,6 +1,6 @@
 ---
 title: "ADR-003 – Preserve Repositories and Recovery Evidence | CopyGitHubRepo"
-description: "Architecture decision defining preservation-first recovery: CopyGitHubRepo keeps archives, replacements, and recovery evidence instead of deleting repositories or automatically rolling back."
+description: "Learn why CopyGitHubRepo preserves archives, replacement identities, and recovery evidence instead of deleting or automatically rolling back."
 ---
 
 # ADR-003: Preserve repositories and recovery evidence instead of deleting or auto-rolling back

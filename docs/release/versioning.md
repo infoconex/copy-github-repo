@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Versioning and Releases – Semantic Versioning Policy"
-description: "Understand CopyGitHubRepo Semantic Versioning, stable tag rules, release-readiness validation, tagged-commit quality gates, PowerShell Gallery publication, release immutability, prereleases, signing, and installer trust."
+description: "Understand CopyGitHubRepo versioning, stable tags, release gates, PowerShell Gallery publishing, immutability, prereleases, and signing."
 ---
 
 # Versioning and releases

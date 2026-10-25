@@ -1,6 +1,6 @@
 ---
 title: "Scale Characterization | CopyGitHubRepo"
-description: "Review CopyGitHubRepo repository scale and resource characterization for history, refs, content, Git LFS, temporary storage, performance observations, and release-readiness interpretation."
+description: "Review CopyGitHubRepo repository scale, history, refs, Git LFS, temporary storage, performance observations, and release readiness."
 ---
 
 # Repository scale and resource characterization

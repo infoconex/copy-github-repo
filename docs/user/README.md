@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo User Documentation – Plan, Copy, Verify, Recover"
-description: "User and operator documentation for installing CopyGitHubRepo, planning and executing GitHub repository copies, verifying results, and recovering safely from failures."
+description: "Find CopyGitHubRepo user guidance for installation, planning, migration execution, verification, and safe recovery from failures."
 ---
 
 # Use the Product

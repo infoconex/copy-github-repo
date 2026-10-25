@@ -1,6 +1,6 @@
 ---
 title: "GitHub API Retry and Throttling Policy | CopyGitHubRepo"
-description: "Understand CopyGitHubRepo's bounded retry policy for transient GitHub API reads, Retry-After handling, fail-fast errors, and why mutation requests are never automatically replayed."
+description: "Understand bounded GitHub API read retries, Retry-After handling, fail-fast errors, and why mutations are never automatically retried."
 ---
 
 # GitHub API throttling and transient retry policy

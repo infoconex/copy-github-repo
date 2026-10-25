@@ -1,6 +1,6 @@
 ---
 title: "Snapshot Migration Safety – Git Tags and GitHub Releases"
-description: "Understand plain Snapshot versus opt-in release-checkpoint preservation, original Git history versus selected release states, same-name replacement archives, and safe stable-release ordering."
+description: "Compare plain Snapshot with selected release checkpoints, learn how replacement archives work, and understand safe release ordering."
 ---
 
 # Snapshot Release Safety

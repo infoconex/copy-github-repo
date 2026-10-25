@@ -34,6 +34,7 @@ Describe 'Generated site SEO failure diagnostics' {
 
     It 'rejects missing, generic, and out-of-range descriptions' {
         $cases = @(
+            @{ Description = $null; Expected = 'expected exactly one meta description, found 0' }
             @{ Description = ''; Expected = 'meta description is empty' }
             @{ Description = 'Too short'; Expected = 'outside 120-160 characters' }
             @{ Description = ('x' * 161); Expected = 'outside 120-160 characters' }
@@ -43,7 +44,10 @@ Describe 'Generated site SEO failure diagnostics' {
             $site = Join-Path ([System.IO.Path]::GetTempPath()) ("cgr-seo-" + [guid]::NewGuid().ToString('N'))
             New-Item -ItemType Directory -Path $site -Force | Out-Null
             try {
-                $html = $script:template.Replace('__DESCRIPTION__', $testCase.Description).Replace('__HEADING__', '<h1>Title</h1>')
+                $html = $script:template.Replace('__DESCRIPTION__', [string]$testCase.Description).Replace('__HEADING__', '<h1>Title</h1>')
+                if ($null -eq $testCase.Description) {
+                    $html = $html.Replace('<meta name="description" content="">', '')
+                }
                 Set-Content -LiteralPath (Join-Path $site 'index.html') -Value $html
                 $caught = ''
                 try { & $script:validator -SitePath $site } catch { $caught = $_.Exception.Message }

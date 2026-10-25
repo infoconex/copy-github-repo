@@ -1,5 +1,5 @@
 ---
-title: "CopyGitHubRepo Source Code Documentation Policy – PowerShell Help and Inventories"
+title: "Source Documentation Policy | CopyGitHubRepo"
 description: "Review CopyGitHubRepo source documentation requirements for public PowerShell help, private-function documentation tiers, operational script inventories, comments, and automated enforcement."
 ---
 

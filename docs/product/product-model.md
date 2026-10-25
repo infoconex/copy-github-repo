@@ -1,5 +1,5 @@
 ---
-title: "CopyGitHubRepo Product Journeys, Capabilities, Use Cases, and Scenarios"
+title: "Product Journeys and Scenarios | CopyGitHubRepo"
 description: "Explore CopyGitHubRepo personas, product journeys, capability and use-case catalogs, behavioral scenarios, resilience requirements, and traceability from requirements to release evidence."
 ---
 

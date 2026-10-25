@@ -1,5 +1,5 @@
 ---
-title: "CopyGitHubRepo Post-Release Incident Response and Emergency Maintenance"
+title: "Incident Response | CopyGitHubRepo"
 description: "Use the CopyGitHubRepo incident-response process for critical defects, vulnerabilities, credential or workflow compromise, artifact problems, distribution mismatches, emergency patches, communication, and follow-up."
 ---
 

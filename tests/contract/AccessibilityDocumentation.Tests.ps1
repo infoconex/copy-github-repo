@@ -43,7 +43,7 @@ Describe 'Accessibility documentation and site contract' {
         $script:layout | Should -Match 'aria-label="Repository links"'
         $script:layout | Should -Match 'aria-label="Back to top"'
         $script:layout | Should -Match 'aria-label="Choose site theme"'
-        $script:layout | Should -Match 'class="brand__image"[^>]+width="64"[^>]+height="64"[^>]+alt=""'
+        $script:layout | Should -Match 'class="brand__image"[^>]+width="64"[^>]+height="64"[^>]+alt="Copy GitHub Repository logo"'
         $script:layout | Should -Match 'aria-current="page"'
     }
 

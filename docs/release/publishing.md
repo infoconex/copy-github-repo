@@ -1,5 +1,5 @@
 ---
-title: "Publish CopyGitHubRepo to PowerShell Gallery – Release Workflow and Validation"
+title: "Publishing Releases | CopyGitHubRepo"
 description: "Learn how stable CopyGitHubRepo releases are integrated, qualified, and published from the exact approved main commit to PowerShell Gallery and GitHub Releases."
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Release Readiness – Capability and Go/No-Go Model"
-description: "Understand the CopyGitHubRepo exact-candidate release-readiness model, including capability scope, evidence states, non-functional limitations, dependencies, accepted exceptions, and GO/NO-GO decision requirements."
+description: "Review CopyGitHubRepo release readiness, exact-candidate qualification, evidence states, dependencies, accepted exceptions, and GO/NO-GO decisions."
 ---
 
 # Release capability readiness and go/no-go model

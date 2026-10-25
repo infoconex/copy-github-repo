@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo GitHub Pages Migration Contract"
-description: "Normative contract and architecture for GitHub Pages migration, implicit workflow activation, custom domains, ordering, verification boundaries, and fail-closed behavior."
+description: "Review the GitHub Pages migration contract for activation, custom domains, ordering, verification boundaries, and fail-closed behavior."
 ---
 
 # GitHub Pages migration contract

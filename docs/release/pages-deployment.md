@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo GitHub Pages Documentation Deployment"
-description: "Understand how the CopyGitHubRepo Jekyll documentation site is built and deployed with GitHub Pages, including path filters, site inputs, exclusions, workflow permissions, concurrency, and validation."
+description: "Learn how CopyGitHubRepo documentation is built and deployed to GitHub Pages, including workflow permissions, concurrency, and validation."
 ---
 
 # Documentation site deployment

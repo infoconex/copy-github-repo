@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Release SBOM and GitHub Attestations"
-description: "Understand CopyGitHubRepo stable-release SBOM, SHA-256 integrity, dependency classification, GitHub provenance and SBOM attestations, VEX boundaries, retrieval, and verification."
+description: "Understand CopyGitHubRepo stable-release SBOMs, hashes, dependency classification, provenance, attestations, VEX, and verification."
 ---
 
 # Release SBOM and attestations

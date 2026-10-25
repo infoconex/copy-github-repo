@@ -1,6 +1,6 @@
 ---
 title: "Guided GitHub Repository Copy Wizard Contract | CopyGitHubRepo"
-description: "Review the CopyGitHubRepo wizard contract for guided planning, defaults, keyboard controls, immutable reviewed plans, replacement safety, ShouldProcess, output, and diagnostics."
+description: "Review the CopyGitHubRepo wizard contract for guided planning, defaults, keyboard controls, reviewed plans, replacement safety, and diagnostics."
 ---
 
 # Guided repository-copy wizard contract

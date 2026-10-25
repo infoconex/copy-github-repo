@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Maintainer Guide – Change Impact and Definition of Done"
-description: "Use the CopyGitHubRepo maintainer guide to map repository ownership, choose validation and live E2E, triage failures, assess change impact, and apply the."
+description: "Use the CopyGitHubRepo maintainer guide to find owners, choose tests, triage failures, assess changes, and apply the Definition of Done."
 ---
 
 # Maintainer guide

@@ -3,8 +3,8 @@
 [CmdletBinding()]
 param(
     [string]$SitePath = (Join-Path (Split-Path -Parent $PSScriptRoot) '_site'),
-    [string]$BaseUrlPath = '/copy-github-repo',
-    [string]$SiteUrl = 'https://infoconex.github.io'
+    [string]$BaseUrlPath = '',
+    [string]$SiteUrl = 'https://copy-github-repo.infoconex.com'
 )
 
 Set-StrictMode -Version Latest
@@ -15,7 +15,7 @@ if (-not (Test-Path -LiteralPath $siteRoot -PathType Container)) {
     throw "Generated site directory was not found: $siteRoot"
 }
 
-$basePath = '/' + $BaseUrlPath.Trim('/')
+$basePath = if ([string]::IsNullOrWhiteSpace($BaseUrlPath) -or $BaseUrlPath.Trim('/') -eq '') { '' } else { '/' + $BaseUrlPath.Trim('/') }
 $siteOrigin = $SiteUrl.TrimEnd('/')
 $canonicalRoot = "$siteOrigin$basePath/"
 $expectedSocialPreviewUrl = "$siteOrigin$basePath/assets/images/social-preview.png"
@@ -156,6 +156,22 @@ function Get-ExpectedCanonicalUrl {
 foreach ($htmlFile in $htmlFiles) {
     $html = Get-Content -LiteralPath $htmlFile.FullName -Raw
     $relativeSource = [System.IO.Path]::GetRelativePath($siteRoot, $htmlFile.FullName)
+
+    if ($relativeSource -eq 'index.html') {
+        # The custom-domain site lives at /, not at the former project Pages subpath.
+        # Verify the generated homepage actually loads root-relative CSS/JS/search assets.
+        foreach ($expectedAttribute in @(
+                'href="/assets/css/site.css"',
+                'href="/assets/css/site-layout.css"',
+                'src="/assets/js/site.js"',
+                'src="/assets/images/hero_icon.png"',
+                'data-search-index="/assets/search-index.json"'
+            )) {
+            if ($html -cnotmatch [regex]::Escape($expectedAttribute)) {
+                Add-GeneratedSiteFailure -Source $relativeSource -Message "missing root-relative asset reference: $expectedAttribute"
+            }
+        }
+    }
 
     foreach ($match in [regex]::Matches($html, $referencePattern)) {
         $reference = $match.Groups['value'].Value

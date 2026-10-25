@@ -5,7 +5,7 @@
     Author = 'infoconex'
     CompanyName = 'infoconex'
     Copyright = '(c) 2026 infoconex. Licensed under the MIT License.'
-    Description = 'PowerShell module for safely copying and migrating GitHub repositories with clean Snapshot or history-preserving FullHistory modes. For documentation, visit https://infoconex.github.io/copy-github-repo/'
+    Description = 'PowerShell module for safely copying and migrating GitHub repositories with clean Snapshot or history-preserving FullHistory modes. For documentation, visit https://copy-github-repo.infoconex.com/'
     PowerShellVersion = '7.4'
     CompatiblePSEditions = @('Core')
     FormatsToProcess = @('CopyGitHubRepo.format.ps1xml')
@@ -35,8 +35,8 @@
                 'MacOS'
             )
             LicenseUri = 'https://github.com/infoconex/copy-github-repo/blob/main/LICENSE'
-            ProjectUri = 'https://infoconex.github.io/copy-github-repo/'
-            IconUri = 'https://infoconex.github.io/copy-github-repo/assets/images/gallery-icon.png'
+            ProjectUri = 'https://copy-github-repo.infoconex.com/'
+            IconUri = 'https://copy-github-repo.infoconex.com/assets/images/gallery-icon.png'
             ReleaseNotes = 'https://github.com/infoconex/copy-github-repo/releases'
         }
     }

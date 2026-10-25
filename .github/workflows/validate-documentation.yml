@@ -5,6 +5,7 @@ name: Validate Documentation
     branches:
       - main
     paths:
+      - 'CNAME'
       - '_config.yml'
       - '_data/**'
       - '_layouts/**'
@@ -64,7 +65,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
               throw 'Unable to determine changed files for documentation validation.'
           }
-          $documentationPattern = '^(?:_config\.yml$|_data/|_layouts/|assets/|search-index\.json$|docs/|README\.md$|CHANGELOG\.md$|CODE_OF_CONDUCT\.md$|CONTRIBUTING\.md$|SECURITY\.md$|LICENSE$|build/(?:DevelopmentDependencies\.psd1|Install-DevelopmentDependencies\.ps1|Test-Documentation\.ps1|Test-GeneratedSite\.ps1)$|tests/contract/|\.github/workflows/(?:validate-documentation|deploy-documentation-site)\.yml$)'
+          $documentationPattern = '^(?:CNAME$|_config\.yml$|_data/|_layouts/|assets/|search-index\.json$|docs/|README\.md$|CHANGELOG\.md$|CODE_OF_CONDUCT\.md$|CONTRIBUTING\.md$|SECURITY\.md$|LICENSE$|build/(?:DevelopmentDependencies\.psd1|Install-DevelopmentDependencies\.ps1|Test-Documentation\.ps1|Test-GeneratedSite\.ps1)$|tests/contract/|\.github/workflows/(?:validate-documentation|deploy-documentation-site)\.yml$)'
           $requiresDocumentation = @($changedFiles | Where-Object { $_ -match $documentationPattern }).Count -gt 0
           "run-documentation=$($requiresDocumentation.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 

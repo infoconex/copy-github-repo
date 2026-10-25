@@ -5,7 +5,7 @@ description: "Learn how CopyGitHubRepo documentation is built and deployed to Gi
 
 # Documentation site deployment
 
-The project website is published at `https://infoconex.github.io/copy-github-repo/` with Jekyll and GitHub Pages.
+The project website is published at `https://copy-github-repo.infoconex.com/` with Jekyll and GitHub Pages.
 
 ## Deployment model
 
@@ -17,12 +17,32 @@ The Pages repository setting must use **GitHub Actions** as the publishing sourc
 
 Pull requests do not deploy the public site. Documentation changes are checked separately by **Validate Documentation**, which runs the documentation contracts and builds/validates the generated site without publishing it.
 
+## Custom-domain configuration and verification
+
+The documentation domain is `https://copy-github-repo.infoconex.com/` and the Jekyll `baseurl` is empty: the homepage and CSS, JavaScript, images, sitemap, search index, and documentation paths all resolve from `/`, with no repository-name path prefix. The repository-root `CNAME` records `copy-github-repo.infoconex.com` for source visibility.
+
+**GitHub Actions Pages deployment caveat:** this site uses GitHub Actions rather than branch-based Pages publishing. GitHub ignores the repository `CNAME` file for custom-domain configuration in this mode. The maintainer must configure **Settings → Pages → Custom domain** separately; the source file alone does not attach the hostname. Verify ownership of the custom domain before binding it, and ensure the domain is not attached to another GitHub Pages repository.
+
+For this custom subdomain, the authoritative DNS provider should have a `CNAME` record for `copy-github-repo.infoconex.com` targeting `infoconex.github.io` (the account Pages host **without** a `/copy-github-repo` path, and not the parent `infoconex.com` apex domain). DNS is external to the repository and is not set by this deployment. Confirm DNS, GitHub Pages domain status, and certificate/HTTPS readiness independently; enable **Enforce HTTPS** once available.
+
+After the domain is configured and the site is deployed, verify:
+
+1. `https://copy-github-repo.infoconex.com/` serves the Jekyll homepage with HTTP success and the expected content.
+2. `https://copy-github-repo.infoconex.com/assets/css/site.css`, `https://copy-github-repo.infoconex.com/assets/css/site-layout.css`, `https://copy-github-repo.infoconex.com/assets/js/site.js`, and the homepage image/search index load from the root (not from a `/copy-github-repo/` subpath).
+3. Homepage and deep-page canonical URLs, Open Graph URLs, `sitemap.xml`, and `robots.txt` use the new host; the deployed-site smoke test checks the returned Pages URL and critical routes.
+4. Former default Pages URLs redirect to the new hostname and preserve deep links, rather than becoming 404s. Check redirect behavior before removing old Search Console properties or changing external links.
+5. Register/verify the new Search Console URL-prefix property and submit `https://copy-github-repo.infoconex.com/sitemap.xml`. Sitemap submission is not a guarantee of discovery or processing. Preserve the earlier Search Console evidence for comparison.
+6. Update GitHub repository About link, and other outside-the-repository descriptions or links, manually. Future PowerShell Gallery packages use the updated module manifest; already published packages and their immutable metadata do **not** change when the source manifest changes.
+
+Do not treat a passing repository build as proof that external DNS, GitHub Pages custom-domain binding, certificate readiness, redirect behavior, Search Console, or published PowerShell Gallery metadata have been updated. If cutover fails, fix DNS/Pages configuration or deliberately revert the site settings and matching Jekyll/manifest source through a reviewed change; do not silently publish mixed origin and base-path URLs.
+
 ## Site input surface
 
 The following paths can affect the generated website and therefore trigger **Deploy Documentation Site**:
 
 | Path | Purpose |
 | --- | --- |
+| `CNAME` | Custom-domain source declaration (Pages setting remains authoritative for Actions deployments) |
 | `_config.yml` | Jekyll configuration, plugins, site metadata, layout defaults, exclusions, and asset versioning |
 | `_data/**` | Structured site data, including documentation navigation |
 | `_layouts/**` | HTML layouts used to render Markdown pages |
@@ -66,6 +86,7 @@ Representative expected behavior:
 | `_layouts/**` | Yes |
 | `assets/**` | Yes |
 | `_config.yml` | Yes |
+| `CNAME` | Yes |
 | Published top-level project document | Yes |
 | Deployment workflow definition | Yes |
 | Manual `workflow_dispatch` | Yes |

@@ -263,6 +263,9 @@ foreach ($htmlFile in $htmlFiles) {
             Add-GeneratedSiteFailure -Source $relativeSource -Message 'meta description is empty'
         }
         else {
+            if ($descriptionValue.Length -lt 120 -or $descriptionValue.Length -gt 160) {
+                Add-GeneratedSiteFailure -Source $relativeSource -Message "meta description length $($descriptionValue.Length) outside 120-160 characters"
+            }
             if ($descriptionValue -ceq $siteDescription) {
                 Add-GeneratedSiteFailure -Source $relativeSource -Message 'meta description uses generic site default'
             }

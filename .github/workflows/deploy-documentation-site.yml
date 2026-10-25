@@ -5,6 +5,7 @@ name: Deploy Documentation Site
     branches:
       - main
     paths:
+      - 'CNAME'
       - '_config.yml'
       - '_data/**'
       - '_layouts/**'
@@ -86,6 +87,11 @@ jobs:
         run: |
           set -euo pipefail
           base_url="${PAGE_URL%/}"
+          expected_url="https://copy-github-repo.infoconex.com"
+          if [[ "$base_url" != "$expected_url" ]]; then
+            echo "Unexpected Pages deployment URL: $base_url (expected $expected_url). Check the custom-domain Pages setting." >&2
+            exit 1
+          fi
           routes=(
             ""
             "docs/security/installation-security.html"
@@ -104,4 +110,18 @@ jobs:
                 exit 1
               }
             fi
+          done
+
+          # Content loads on the custom domain only if root-relative assets also resolve.
+          for asset in \
+            assets/css/site.css \
+            assets/css/site-layout.css \
+            assets/js/site.js \
+            assets/search-index.json \
+            assets/images/hero_icon.png \
+            sitemap.xml \
+            robots.txt; do
+            url="$base_url/$asset"
+            echo "Checking published asset $url"
+            curl --fail --silent --show-error --location --retry 5 --retry-delay 3 --retry-all-errors --output /dev/null "$url"
           done

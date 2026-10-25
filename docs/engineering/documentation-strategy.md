@@ -1,5 +1,5 @@
 ---
-title: "CopyGitHubRepo Documentation Strategy – Structure, Personas, and Authority"
+title: "Documentation Strategy | CopyGitHubRepo"
 description: "Understand how CopyGitHubRepo documentation is organized by audience and subject, how progressive disclosure works, which pages own each contract, and how duplication and evidence claims are governed."
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: "ADR-004 – Shared Execution and Native Command Boundaries | CopyGitHubRepo"
+title: "ADR-004: Execution Boundaries | CopyGitHubRepo"
 description: "Architecture decision requiring the wizard and public command to share the approved-plan engine while Git, Git LFS, and GitHub CLI run through centralized no-shell process helpers."
 ---
 

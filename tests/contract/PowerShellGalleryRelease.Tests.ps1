@@ -75,8 +75,8 @@ Describe 'PowerShell Gallery package' {
         $manifest.Copyright | Should -Not -BeNullOrEmpty
         $manifest.Description | Should -Match 'PowerShell module.*copying.*migrating.*GitHub repositories'
         $manifest.PrivateData.PSData.LicenseUri | Should -Match '^https://github\.com/infoconex/copy-github-repo/'
-        $manifest.PrivateData.PSData.ProjectUri | Should -Be 'https://infoconex.github.io/copy-github-repo/'
-        $manifest.PrivateData.PSData.IconUri | Should -Be 'https://infoconex.github.io/copy-github-repo/assets/images/gallery-icon.png'
+        $manifest.PrivateData.PSData.ProjectUri | Should -Be 'https://copy-github-repo.infoconex.com/'
+        $manifest.PrivateData.PSData.IconUri | Should -Be 'https://copy-github-repo.infoconex.com/assets/images/gallery-icon.png'
         $manifest.PrivateData.PSData.ReleaseNotes | Should -Be 'https://github.com/infoconex/copy-github-repo/releases'
 
         foreach ($tag in @('PowerShell', 'Automation', 'DevOps', 'PSEdition_Core', 'Windows', 'Linux', 'MacOS')) {

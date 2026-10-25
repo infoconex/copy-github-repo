@@ -19,7 +19,7 @@ Describe 'Generated site SEO failure diagnostics' {
             @{ Heading = '<h1>   </h1>'; Expected = 'h1 heading has no text' }
         )
         foreach ($fixture in $fixtures) {
-            $site = Join-Path ([System.IO.Path]::GetTempPath()) ("cgr-seo-" + [guid]::NewGuid().ToString('N'))
+            $site = Join-Path ([System.IO.Path]::GetTempPath()) ('cgr-seo-' + [guid]::NewGuid().ToString('N'))
             New-Item -ItemType Directory -Path $site -Force | Out-Null
             try {
                 $html = $script:template.Replace('__DESCRIPTION__', $script:description).Replace('__HEADING__', $fixture.Heading)
@@ -41,7 +41,7 @@ Describe 'Generated site SEO failure diagnostics' {
             @{ Description = 'PowerShell module for safely copying and migrating GitHub repositories with clean Snapshot or history-preserving FullHistory modes.'; Expected = 'meta description uses generic site default' }
         )
         foreach ($testCase in $cases) {
-            $site = Join-Path ([System.IO.Path]::GetTempPath()) ("cgr-seo-" + [guid]::NewGuid().ToString('N'))
+            $site = Join-Path ([System.IO.Path]::GetTempPath()) ('cgr-seo-' + [guid]::NewGuid().ToString('N'))
             New-Item -ItemType Directory -Path $site -Force | Out-Null
             try {
                 $html = $script:template.Replace('__DESCRIPTION__', [string]$testCase.Description).Replace('__HEADING__', '<h1>Title</h1>')
@@ -64,7 +64,7 @@ Describe 'Generated site SEO failure diagnostics' {
             @{ TitleMarkup = '<title>Copy GitHub Repository</title>'; Expected = 'page title uses generic site default' }
         )
         foreach ($testCase in $cases) {
-            $site = Join-Path ([System.IO.Path]::GetTempPath()) ("cgr-seo-" + [guid]::NewGuid().ToString('N'))
+            $site = Join-Path ([System.IO.Path]::GetTempPath()) ('cgr-seo-' + [guid]::NewGuid().ToString('N'))
             New-Item -ItemType Directory -Path $site -Force | Out-Null
             try {
                 $html = $script:template.Replace('__DESCRIPTION__', $script:description).Replace('__HEADING__', '<h1>Title</h1>')
@@ -79,7 +79,7 @@ Describe 'Generated site SEO failure diagnostics' {
     }
 
     It 'rejects duplicate page titles and descriptions' {
-        $site = Join-Path ([System.IO.Path]::GetTempPath()) ("cgr-seo-" + [guid]::NewGuid().ToString('N'))
+        $site = Join-Path ([System.IO.Path]::GetTempPath()) ('cgr-seo-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $site -Force | Out-Null
         try {
             $html = $script:template.Replace('__DESCRIPTION__', $script:description).Replace('__HEADING__', '<h1>Title</h1>')

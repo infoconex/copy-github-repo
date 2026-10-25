@@ -53,6 +53,27 @@ Describe 'Generated site SEO failure diagnostics' {
         }
     }
 
+    It 'rejects missing, empty, and generic page titles' {
+        $cases = @(
+            @{ TitleMarkup = ''; Expected = 'expected exactly one title element, found 0' }
+            @{ TitleMarkup = '<title></title>'; Expected = 'title element is empty' }
+            @{ TitleMarkup = '<title>Copy GitHub Repository</title>'; Expected = 'page title uses generic site default' }
+        )
+        foreach ($testCase in $cases) {
+            $site = Join-Path ([System.IO.Path]::GetTempPath()) ("cgr-seo-" + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path $site -Force | Out-Null
+            try {
+                $html = $script:template.Replace('__DESCRIPTION__', $script:description).Replace('__HEADING__', '<h1>Title</h1>')
+                $html = $html.Replace('<title>Specific documentation title</title>', $testCase.TitleMarkup)
+                Set-Content -LiteralPath (Join-Path $site 'index.html') -Value $html
+                $caught = ''
+                try { & $script:validator -SitePath $site } catch { $caught = $_.Exception.Message }
+                $caught | Should -Match ([regex]::Escape($testCase.Expected))
+            }
+            finally { Remove-Item -LiteralPath $site -Force -Recurse }
+        }
+    }
+
     It 'rejects duplicate page titles and descriptions' {
         $site = Join-Path ([System.IO.Path]::GetTempPath()) ("cgr-seo-" + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $site -Force | Out-Null

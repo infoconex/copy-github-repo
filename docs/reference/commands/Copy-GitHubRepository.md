@@ -1,6 +1,6 @@
 ---
 title: "Copy-GitHubRepository – Copy or Migrate GitHub Repositories"
-description: "Use Copy-GitHubRepository to safely copy or migrate GitHub repositories with Snapshot or FullHistory, optional release preservation and GitHub Pages restoration, planning, verification, and replacement safeguards."
+description: "Use Copy-GitHubRepository to plan or execute Snapshot or FullHistory migrations with optional release preservation and safety verification."
 ---
 
 # Copy-GitHubRepository

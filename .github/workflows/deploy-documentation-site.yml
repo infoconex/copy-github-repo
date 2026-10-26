@@ -6,6 +6,7 @@ name: Deploy Documentation Site
       - main
     paths:
       - 'CNAME'
+      - '44a8ccf7b3174a899cf885563f087eaa.txt'
       - '_config.yml'
       - '_data/**'
       - '_layouts/**'

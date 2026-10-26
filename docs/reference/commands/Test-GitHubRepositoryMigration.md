@@ -1,6 +1,6 @@
 ---
 title: "Test-GitHubRepositoryMigration – Verify GitHub Repository Migrations"
-description: "Verify Snapshot or FullHistory GitHub repository migrations with read-only destination evidence, including approved release checkpoints, GitHub Releases, and reviewed GitHub Pages configuration."
+description: "Verify Snapshot or FullHistory migrations with read-only destination checks for release checkpoints, releases, and GitHub Pages settings."
 ---
 
 # Test-GitHubRepositoryMigration

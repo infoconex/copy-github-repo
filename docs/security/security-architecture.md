@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Security Architecture and Threat Model"
-description: "Review CopyGitHubRepo security objectives, protected assets, trust boundaries, threat model, controls, credentials, release provenance, dependency trust, static analysis, residual risk, and incident boundaries."
+description: "Review CopyGitHubRepo assets, threats, trust boundaries, credential controls, release provenance, dependency trust, and residual risk."
 ---
 
 # Security architecture and threat model

@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Quality Strategy – Test and Release Evidence"
-description: "Understand CopyGitHubRepo quality strategy, test taxonomy, traceability, coverage, live E2E evidence, resilience validation, and release-candidate evidence requirements."
+description: "Understand CopyGitHubRepo quality strategy, test taxonomy, coverage, resilience validation, and release-candidate evidence requirements."
 ---
 
 # Quality strategy and traceability

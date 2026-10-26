@@ -21,6 +21,8 @@ $documentationTestNames = @(
     'CapabilityReadinessDocumentation.Tests.ps1'
     'CommandReferenceDocumentation.Tests.ps1'
     'DocumentationContract.Tests.ps1'
+    'DocumentationSeoMetadata.Tests.ps1'
+    'GeneratedSiteSeoValidation.Tests.ps1'
     'DocumentationStrategy.Tests.ps1'
     'DocumentationVersionReferences.Tests.ps1'
     'DurableDocumentationIssueReferences.Tests.ps1'

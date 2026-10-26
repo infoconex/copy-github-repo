@@ -1,6 +1,6 @@
 ---
 title: "Migrate GitHub Pages Safely"
-description: "Use CopyGitHubRepo to opt into GitHub Pages configuration restoration, understand workflow and branch publishing modes, handle custom domains during replacement, verify results, and recover from partial restoration."
+description: "Learn how CopyGitHubRepo restores GitHub Pages settings, handles branch and workflow publishing, verifies custom domains, and supports recovery."
 ---
 
 # GitHub Pages migration and recovery

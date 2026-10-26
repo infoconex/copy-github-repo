@@ -1,6 +1,6 @@
 ---
 title: "ADR-005: Publication Boundaries | CopyGitHubRepo"
-description: "Architecture decision requiring GitHub content verification before settings and protection restoration, while limiting the current CopyGitHubRepo host contract to GitHub.com."
+description: "Learn why CopyGitHubRepo verifies GitHub content before restoring settings and protection, and currently supports GitHub.com."
 ---
 
 # ADR-005: Verify content before protection restoration and limit v0.1.0 to github.com

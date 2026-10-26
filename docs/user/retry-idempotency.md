@@ -1,6 +1,6 @@
 ---
 title: "Retry and Idempotency for GitHub Repository Copies | CopyGitHubRepo"
-description: "Learn when CopyGitHubRepo operations can be safely retried, how stale plans and partial mutations are handled, and why repository-copy mutations are not blindly replayed."
+description: "Learn when CopyGitHubRepo operations can be retried, how stale plans and partial mutations are handled, and why mutations are not blindly replayed."
 ---
 
 # Retry and idempotency

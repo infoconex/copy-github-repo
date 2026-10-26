@@ -1,6 +1,6 @@
 ---
 title: "Product Journeys and Scenarios | CopyGitHubRepo"
-description: "Explore CopyGitHubRepo personas, product journeys, capability and use-case catalogs, behavioral scenarios, resilience requirements, and traceability from requirements to release evidence."
+description: "Explore CopyGitHubRepo personas, journeys, use cases, scenarios, resilience requirements, and traceability to release evidence."
 ---
 
 # Product journeys and behavioral model

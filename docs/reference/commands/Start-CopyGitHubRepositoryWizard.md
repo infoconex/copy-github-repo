@@ -1,6 +1,6 @@
 ---
 title: "Start-CopyGitHubRepositoryWizard – Guided GitHub Repository Copy"
-description: "Use Start-CopyGitHubRepositoryWizard for a guided PowerShell workflow that selects Snapshot or FullHistory, optional releases and GitHub Pages restoration, reviews a real copy plan, and safely executes it."
+description: "Start the guided PowerShell wizard to choose Snapshot or FullHistory, review repository migration plans, and explicitly authorize execution."
 ---
 
 # Start-CopyGitHubRepositoryWizard

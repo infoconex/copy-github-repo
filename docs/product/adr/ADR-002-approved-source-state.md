@@ -1,6 +1,6 @@
 ---
 title: "ADR-002: Approved Source State | CopyGitHubRepo"
-description: "Architecture decision requiring CopyGitHubRepo execution to remain bound to immutable source-state evidence reviewed during planning and to fail closed when that state changes."
+description: "Learn why CopyGitHubRepo execution uses immutable reviewed source-state evidence and fails closed when approved state changes."
 ---
 
 # ADR-002: Bind execution to immutable approved source state

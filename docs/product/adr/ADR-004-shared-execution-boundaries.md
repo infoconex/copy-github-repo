@@ -1,6 +1,6 @@
 ---
 title: "ADR-004: Execution Boundaries | CopyGitHubRepo"
-description: "Architecture decision requiring the wizard and public command to share the approved-plan engine while Git, Git LFS, and GitHub CLI run through centralized no-shell process helpers."
+description: "Learn why the CopyGitHubRepo wizard and command share one planning engine and centralize Git, Git LFS, and GitHub CLI process execution."
 ---
 
 # ADR-004: Share the approved-plan engine and centralize native command execution

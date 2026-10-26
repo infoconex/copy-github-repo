@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Architecture Decision Records"
-description: "Review the durable architecture decisions behind CopyGitHubRepo, including Snapshot defaults, immutable approved state, preservation-first recovery, execution boundaries, and host/protection policy."
+description: "Explore CopyGitHubRepo architecture decisions covering Snapshot, approved source state, preservation-first recovery, execution, and hosting."
 ---
 
 # Architecture Decision Records

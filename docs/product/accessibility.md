@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Accessibility Baseline – Console and Documentation"
-description: "Review CopyGitHubRepo accessibility expectations for PowerShell console output, keyboard interaction, GitHub Pages semantics, focus, reduced motion, images, diagrams, and manual review."
+description: "Review CopyGitHubRepo accessibility expectations for console output, keyboard use, focus, reduced motion, GitHub Pages, and diagrams."
 ---
 
 # Accessibility baseline

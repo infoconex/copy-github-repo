@@ -1,6 +1,6 @@
 ---
 title: "CopyGitHubRepo Non-Functional Requirements and Resilience Boundaries"
-description: "Review CopyGitHubRepo operational requirements for scale, disk and memory, API retries, native-command timeout and cancellation, interruption, concurrency, recovery, and cross-platform behavior."
+description: "Review CopyGitHubRepo requirements for scale, resources, API retries, timeouts, cancellation, interruption, recovery, and cross-platform use."
 ---
 
 # Non-functional requirements and operational boundaries

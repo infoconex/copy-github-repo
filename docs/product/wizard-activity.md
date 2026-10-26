@@ -1,6 +1,6 @@
 ---
 title: "PowerShell Wizard Progress and Activity Contract | CopyGitHubRepo"
-description: "Understand how CopyGitHubRepo reports repository-copy progress in interactive, redirected, and automation contexts without fabricating percentages or polluting structured output."
+description: "Learn how CopyGitHubRepo reports migration progress across interactive and automated use without inventing percentages or corrupting structured output."
 ---
 
 # Wizard activity and progress contract

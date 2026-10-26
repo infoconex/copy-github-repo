@@ -1,6 +1,6 @@
 ---
 title: "Copy and Migrate GitHub Repositories with PowerShell"
-description: "Copy GitHub repositories with PowerShell using Snapshot for a clean copy or FullHistory to preserve history, with optional releases and GitHub Pages restoration plus planning, verification, and recovery safeguards."
+description: "Copy and migrate GitHub repositories with PowerShell. Choose Snapshot or FullHistory, with safeguards for planning, verification, and recovery."
 ---
 
 # Copy GitHub Repository

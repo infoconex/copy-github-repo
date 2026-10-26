@@ -21,6 +21,34 @@ $canonicalRoot = "$siteOrigin$basePath/"
 $expectedSocialPreviewUrl = "$siteOrigin$basePath/assets/images/social-preview.png"
 $referencePattern = '(?i)(?:href|src)\s*=\s*["''](?<value>[^"'']+)["'']'
 $failures = [System.Collections.Generic.List[string]]::new()
+# Detect generic site metadata even when Jekyll supplies fallback values.
+$siteConfig = Get-Content -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) '_config.yml')
+$siteTitle = (($siteConfig | Where-Object { $_ -match '^title:\s*' } | Select-Object -First 1) -replace '^title:\s*', '').Trim('"', "'", ' ')
+$siteDescription = (($siteConfig | Where-Object { $_ -match '^description:\s*' } | Select-Object -First 1) -replace '^description:\s*', '').Trim('"', "'", ' ')
+$sourceRoot = Split-Path -Parent $PSScriptRoot
+$publishedMarkdown = @(
+    Get-Item -LiteralPath (Join-Path $sourceRoot 'README.md')
+    Get-Item -LiteralPath (Join-Path $sourceRoot 'CONTRIBUTING.md')
+    Get-Item -LiteralPath (Join-Path $sourceRoot 'SECURITY.md')
+    Get-Item -LiteralPath (Join-Path $sourceRoot 'CODE_OF_CONDUCT.md')
+    Get-Item -LiteralPath (Join-Path $sourceRoot 'CHANGELOG.md')
+    Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'docs') -Filter '*.md' -Recurse -File
+)
+foreach ($markdownFile in $publishedMarkdown) {
+    $markdown = Get-Content -LiteralPath $markdownFile.FullName -Raw
+    $relativeMarkdown = [System.IO.Path]::GetRelativePath($sourceRoot, $markdownFile.FullName)
+    $frontMatter = [regex]::Match($markdown, '(?s)\A---\s*\r?\n(?<yaml>.*?)\r?\n---\s*\r?\n')
+    if (-not $frontMatter.Success) {
+        $failures.Add("$relativeMarkdown -> missing SEO front matter")
+        continue
+    }
+    foreach ($field in @('title', 'description')) {
+        $fieldLine = @($frontMatter.Groups['yaml'].Value -split '\r?\n' | Where-Object { $_ -match "^$field\s*:" })
+        if ($fieldLine.Count -ne 1 -or [string]::IsNullOrWhiteSpace(($fieldLine[0] -replace "^$field\s*:", '').Trim('"', "'", ' '))) {
+            $failures.Add("$relativeMarkdown -> expected one explicit nonempty $field")
+        }
+    }
+}
 $htmlFiles = @(Get-ChildItem -LiteralPath $siteRoot -Filter '*.html' -File -Recurse)
 $titleRecords = @()
 $descriptionRecords = @()
@@ -202,6 +230,14 @@ foreach ($htmlFile in $htmlFiles) {
         Add-GeneratedSiteFailure -Source $relativeSource -Message "expected exactly one h1, found $h1Count"
     }
 
+    if ($h1Count -eq 1) {
+        $h1Content = [regex]::Match($html, '(?is)<h1\b[^>]*>(?<value>.*?)</h1>').Groups['value'].Value
+        $h1Text = [System.Net.WebUtility]::HtmlDecode(($h1Content -replace '(?is)<[^>]+>', '')).Trim()
+        if ([string]::IsNullOrWhiteSpace($h1Text)) {
+            Add-GeneratedSiteFailure -Source $relativeSource -Message 'h1 heading has no text'
+        }
+    }
+
     $previousHeadingLevel = 0
     foreach ($headingMatch in $headingMatches) {
         $headingLevel = [int]$headingMatch.Groups['level'].Value
@@ -227,6 +263,9 @@ foreach ($htmlFile in $htmlFiles) {
             Add-GeneratedSiteFailure -Source $relativeSource -Message 'title element is empty'
         }
         else {
+            if ($titleValue -ceq $siteTitle) {
+                Add-GeneratedSiteFailure -Source $relativeSource -Message 'page title uses generic site default'
+            }
             $titleRecords += [pscustomobject]@{ Source = $relativeSource; Value = $titleValue }
         }
     }
@@ -244,6 +283,12 @@ foreach ($htmlFile in $htmlFiles) {
             Add-GeneratedSiteFailure -Source $relativeSource -Message 'meta description is empty'
         }
         else {
+            if ($descriptionValue.Length -lt 120 -or $descriptionValue.Length -gt 160) {
+                Add-GeneratedSiteFailure -Source $relativeSource -Message "meta description length $($descriptionValue.Length) outside 120-160 characters"
+            }
+            if ($descriptionValue -ceq $siteDescription) {
+                Add-GeneratedSiteFailure -Source $relativeSource -Message 'meta description uses generic site default'
+            }
             $descriptionRecords += [pscustomobject]@{ Source = $relativeSource; Value = $descriptionValue }
         }
     }
